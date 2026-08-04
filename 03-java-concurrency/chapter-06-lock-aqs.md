@@ -671,4 +671,4 @@ AQS 把这个问题一分为二：
 > - 与第 5 章（synchronized 与 Monitor）的联系：本章的 Lock/AQS 是 synchronized 的"升级版"。理解了 Monitor 的互斥和条件变量，再看 AQS 的 state + Condition，会发现思想一脉相承，只是实现方式从 JVM 内部提升到了 Java API 层面。
 > - 与第 7 章（并发容器）的联系：`ConcurrentHashMap` 的分段锁、`LinkedBlockingQueue` 的 put/take 阻塞，底层都依赖本章介绍的锁和条件变量机制。
 > - 与第 8 章（线程池）的联系：`ThreadPoolExecutor` 中的 `mainLock`（ReentrantLock）和 `termination`（Condition）直接使用了本章的知识。线程池的 worker 管理、任务排队，本质上也是 AQS 思想的延伸。
-> - 与第二卷《JVM 深入》的联系：AQS 中的 `volatile` 变量和 CAS 操作，其底层依赖 JVM 的内存模型保证（happens-before 关系）和 CPU 指令级的原子操作（cmpxchg）。理解 JVM 内存模型，才能真正理解 AQS 为什么正确。
+> - 与第二卷《JVM Runtime》的联系：AQS 中的 `volatile` 变量和 CAS 操作，其底层依赖 JVM 的内存模型保证（happens-before 关系）和 CPU 指令级的原子操作（cmpxchg）。理解 JVM 内存模型，才能真正理解 AQS 为什么正确。

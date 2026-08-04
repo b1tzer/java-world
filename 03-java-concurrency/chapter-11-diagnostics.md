@@ -692,4 +692,4 @@ future.get(3, TimeUnit.SECONDS);
 
 > **纵横联系**
 >
-> 本章的 jstack、jcmd、JFR 等诊断工具在第二卷《JVM 深度》中有更详细的介绍，包括 JVM 参数调优和 GC 日志分析。线程状态（BLOCKED、WAITING）的底层实现在第 8 章"线程调度与生命周期"中已经讲解。CAS 操作的硬件基础（CPU 的 cmpxchg 指令）在第 9 章"Java 内存模型"中有涉及。而"异步化"策略中提到的 CompletableFuture，正是上一章的核心内容。并发优化不是一个孤立的话题——它需要你理解 JMM、线程模型、锁实现，才能做出正确的判断。
+> 本章的 jstack、jcmd、JFR 等诊断工具在第二卷《JVM Runtime》第 6 章中有介绍，包括 JVM 参数调优和 GC 日志分析。线程状态（BLOCKED、WAITING）的底层实现在第 2 章"线程模型"中已经讲解。CAS 操作的硬件基础（CPU 的 cmpxchg 指令）在第 7 章"原子类与 CAS"中有涉及。而"异步化"策略中提到的 CompletableFuture，正是上一章的核心内容。并发优化不是一个孤立的话题——它需要你理解 JMM、线程模型、锁实现，才能做出正确的判断。

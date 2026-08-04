@@ -459,4 +459,4 @@ public class ProducerConsumerDemo {
 > - `CopyOnWriteArrayList` 的弱一致性与 Java 内存模型的可见性保证直接相关，理解 happens-before 规则有助于理解其迭代器行为
 > - `BlockingQueue` 是线程池（第9章）的内部核心组件——`ThreadPoolExecutor` 的工作队列就是 `BlockingQueue`
 > - `ConcurrentHashMap` 的 `CounterCell` 分散计数思想与 `LongAdder`（第6章并发工具类）完全一致，它们共享同一套代码
-> - 在第二卷《集合框架》中，我们详细分析了 `HashMap` 和 `ArrayList` 的内部结构，本章是在此基础上理解并发变体的关键前置知识
+> - `ConcurrentHashMap` 的内部结构基于 `HashMap` 的数组+链表+红黑树设计，`CopyOnWriteArrayList` 基于 `ArrayList` 的数组设计——理解 JDK 集合框架是理解并发集合的前提

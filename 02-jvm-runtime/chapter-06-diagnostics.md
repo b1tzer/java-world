@@ -151,7 +151,47 @@ returnObj: User{id=12345, name='Tom', age=25}
 
 ---
 
-## 6.6 JVM 核心参数速查
+## 6.6 JFR（Java Flight Recorder）
+
+JFR 是 JDK 内置的低开销性能分析工具，可以在生产环境持续录制，事后用 JDK Mission Control（JMC）分析。
+
+**启动录制：**
+
+```bash
+# 录制 60 秒，输出到文件
+jcmd <pid> JFR.start duration=60s filename=recording.jfr
+
+# 持续录制（手动停止）
+jcmd <pid> JFR.start settings=profile filename=continuous.jfr
+jcmd <pid> JFR.stop
+
+# 查看正在录制的任务
+jcmd <pid> JFR.check
+```
+
+**JFR 能看到什么：**
+
+| 数据类别 | 内容 |
+|---------|------|
+| CPU 热点 | 哪个方法消耗最多 CPU |
+| 内存分配 | 哪个方法分配了最多对象 |
+| 锁竞争 | 哪把锁等待时间最长 |
+| GC 事件 | 每次 GC 的耗时和回收量 |
+| I/O | 文件和网络 I/O 的耗时 |
+| 线程 | 线程状态变化、死锁检测 |
+
+**JMC 分析：**
+
+```bash
+# 打开 JMC 图形界面
+jmc
+```
+
+JMC 提供自动分析功能，能标记出潜在的性能问题（如"方法编译时间过长"、"GC 停顿过长"）。JFR 的优势是开销极低（< 1%），适合生产环境 7×24 持续录制。
+
+---
+
+## 6.7 JVM 核心参数速查
 
 | 类别 | 参数 | 说明 |
 |------|------|------|

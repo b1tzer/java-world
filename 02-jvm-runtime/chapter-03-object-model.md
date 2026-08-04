@@ -87,6 +87,30 @@ Mark Word 不是固定不变的。当对象被同步操作时，Mark Word 的内
      → 重量级锁（自旋超时，依赖 OS Mutex）
 ```
 
+### Monitor（监视器）
+
+当锁升级到重量级锁时，Mark Word 中存储的是指向 **Monitor** 对象的指针。Monitor 是 JVM 实现互斥同步的底层数据结构，每个 Java 对象都可以关联一个 Monitor：
+
+```
+┌─────────────────────────────────┐
+│          Object Monitor         │
+│                                 │
+│  _owner: Thread   (持有锁的线程) │
+│  _count: int      (重入次数)     │
+│  _EntryList: [Thread...]        │
+│             (等待获取锁的线程队列) │
+│  _WaitSet: [Thread...]          │
+│            (调用了 wait() 的线程) │
+└─────────────────────────────────┘
+```
+
+工作流程：
+1. **获取锁**（monitorenter）：如果 `_owner` 为空，当前线程成为 `_owner`，`_count` 设为 1。如果已经是 `_owner`，`_count++`（可重入）。
+2. **释放锁**（monitorexit）：`_count--`。当 `_count` 为 0 时，释放 Monitor，`_EntryList` 中的一个线程被唤醒。
+3. **等待/通知**（wait/notify）：线程调用 `wait()` 后进入 `_WaitSet` 并释放 Monitor。`notify()` 从 `_WaitSet` 唤醒一个线程，该线程需重新竞争 Monitor。
+
+Monitor 是重量级的数据结构，依赖操作系统的 Mutex 实现。这就是为什么 JVM 默认不直接使用它，而是先尝试偏向锁和轻量级锁——只有在竞争激烈时才升级到重量级锁。第三卷 `synchronized` 章节会详细展开锁升级的完整过程。
+
 ---
 
 ## 3.4 TLAB（线程本地分配缓冲）
