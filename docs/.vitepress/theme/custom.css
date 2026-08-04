@@ -1,47 +1,205 @@
-/* Java World 自定义样式 */
+/* ============================================
+   Java World — VitePress 自定义样式
+   ============================================ */
 
+/* ---------- 品牌色 ---------- */
 :root {
-  /* 品牌色 - Java 蓝 */
-  --vp-c-brand-1: #1a73e8;
-  --vp-c-brand-2: #1557b0;
-  --vp-c-brand-3: #0d47a1;
-  --vp-c-brand-soft: rgba(26, 115, 232, 0.14);
+  --vp-c-brand-1: #2563eb;
+  --vp-c-brand-2: #1d4ed8;
+  --vp-c-brand-3: #1e40af;
+  --vp-c-brand-soft: rgba(37, 99, 235, 0.12);
 
-  /* 首页 hero 渐变 */
+  /* Hero 渐变 */
   --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #1a73e8 30%, #0d47a1);
-
-  --vp-home-hero-image-background-image: linear-gradient(-45deg, #1a73e850 50%, #0d47a150 50%);
-  --vp-home-hero-image-filter: blur(44px);
+  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #2563eb 30%, #7c3aed 100%);
+  --vp-home-hero-image-background-image: linear-gradient(135deg, #2563eb30 50%, #7c3aed30 50%);
+  --vp-home-hero-image-filter: blur(56px);
 }
 
 .dark {
-  --vp-c-brand-1: #4da3ff;
-  --vp-c-brand-2: #1a73e8;
-  --vp-c-brand-3: #6bb5ff;
-  --vp-c-brand-soft: rgba(77, 163, 255, 0.14);
+  --vp-c-brand-1: #60a5fa;
+  --vp-c-brand-2: #3b82f6;
+  --vp-c-brand-3: #93c5fd;
+  --vp-c-brand-soft: rgba(96, 165, 250, 0.12);
 }
 
-/* 代码块样式优化 */
-.vp-doc div[class*='language-'] {
-  border-radius: 8px;
+/* ---------- 全局排版 ---------- */
+.vp-doc {
+  line-height: 1.8;
 }
 
-/* 表格样式优化 */
-.vp-doc table {
-  font-size: 14px;
+.vp-doc h1 {
+  font-size: 2em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  border-bottom: 2px solid var(--vp-c-brand-1);
+  padding-bottom: 0.4em;
 }
 
-.vp-doc th {
-  background-color: var(--vp-c-brand-soft);
+.vp-doc h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin-top: 2.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--vp-c-divider);
 }
 
-/* 侧边栏分卷标题加粗 */
-.VPSidebar .group .title {
+.vp-doc h3 {
+  font-size: 1.25em;
   font-weight: 600;
 }
 
-/* 特性卡片圆角 */
+/* ---------- 引用块 ---------- */
+.vp-doc blockquote {
+  border-left: 4px solid var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
+  color: var(--vp-c-text-2);
+}
+
+/* ---------- 代码块 ---------- */
+.vp-doc div[class*='language-'] {
+  border-radius: 10px;
+  border: 1px solid var(--vp-c-divider);
+}
+
+.vp-doc div[class*='language-'] code {
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+/* 内联代码 */
+.vp-doc :not(pre) > code {
+  font-size: 0.875em;
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+
+/* ---------- 表格 ---------- */
+.vp-doc table {
+  font-size: 14px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--vp-c-divider);
+}
+
+.vp-doc th {
+  background: var(--vp-c-brand-soft);
+  font-weight: 600;
+  color: var(--vp-c-brand-1);
+}
+
+.vp-doc tr:hover td {
+  background: var(--vp-c-bg-soft);
+}
+
+/* ---------- 首页特性卡片 ---------- */
 .VPFeature {
   border-radius: 12px;
+  border: 1px solid var(--vp-c-divider);
+  transition: all 0.3s ease;
+}
+
+.VPFeature:hover {
+  border-color: var(--vp-c-brand-1);
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.1);
+  transform: translateY(-2px);
+}
+
+.VPFeature .title {
+  font-weight: 600;
+}
+
+/* ---------- Hero 区域 ---------- */
+.VPHero .name {
+  font-weight: 800;
+}
+
+.VPHero .text {
+  font-size: 1.2em;
+  color: var(--vp-c-text-2);
+}
+
+.VPHero .tagline {
+  font-size: 1.05em;
+  color: var(--vp-c-text-3);
+}
+
+/* ---------- 侧边栏 ---------- */
+.VPSidebar .group .title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.VPSidebar .link {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.VPSidebar .link:hover {
+  background: var(--vp-c-brand-soft);
+}
+
+.VPSidebar .link.active {
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
+
+/* ---------- 导航栏 ---------- */
+.VPNavBar .title {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* ---------- 页脚 ---------- */
+.VPFooter {
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+/* ---------- 大纲（右侧目录）---------- */
+.VPDocOutline .outline-title {
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vp-c-text-3);
+}
+
+/* ---------- 上下页导航 ---------- */
+.VPDocFooter .pager .title {
+  font-weight: 500;
+  color: var(--vp-c-text-2);
+  transition: color 0.2s;
+}
+
+.VPDocFooter .pager:hover .title {
+  color: var(--vp-c-brand-1);
+}
+
+/* ---------- 搜索框 ---------- */
+.VPLocalSearchBox {
+  border-radius: 10px;
+}
+
+/* ---------- 适配暗色模式 ---------- */
+.dark .VPFeature:hover {
+  box-shadow: 0 4px 20px rgba(96, 165, 250, 0.08);
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 768px) {
+  .vp-doc h1 {
+    font-size: 1.6em;
+  }
+
+  .vp-doc h2 {
+    font-size: 1.3em;
+  }
+
+  .vp-doc table {
+    font-size: 13px;
+  }
 }

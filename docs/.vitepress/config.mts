@@ -4,19 +4,17 @@ export default defineConfig({
   title: 'Java World',
   description: '从语言到架构的 Java 完整知识体系',
   lang: 'zh-CN',
-
-  // GitHub Pages 部署路径
   base: '/java-world/',
+  lastUpdated: true,
 
   head: [
     ['link', { rel: 'icon', href: '/java-world/favicon.ico' }],
   ],
 
   themeConfig: {
-    logo: '/logo.svg',
     siteTitle: 'Java World',
+    logo: '/logo.svg',
 
-    // 顶部导航
     nav: [
       { text: '首页', link: '/' },
       {
@@ -34,7 +32,6 @@ export default defineConfig({
       { text: 'GitHub', link: 'https://github.com/b1tzer/java-world' },
     ],
 
-    // 侧边栏
     sidebar: {
       '/01-java-language/': [
         {
@@ -150,7 +147,6 @@ export default defineConfig({
       ],
     },
 
-    // 全文搜索
     search: {
       provider: 'local',
       options: {
@@ -165,30 +161,22 @@ export default defineConfig({
       }
     },
 
-    // 页脚
     footer: {
       message: '基于 MIT 发布',
       copyright: '© 2024 Java World'
     },
 
-    // 大纲显示深度
     outline: { level: [2, 3], label: '本章目录' },
-
-    // 上/下页导航
     docFooter: { prev: '上一章', next: '下一章' },
-
-    // 社交链接
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/b1tzer/java-world' }
-    ],
-
-    // 搜索快捷键
     returnToTopLabel: '回到顶部',
     sidebarMenuLabel: '菜单',
     darkModeSwitchLabel: '主题',
+
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/b1tzer/java-world' }
+    ],
   },
 
-  // Markdown 配置
   markdown: {
     lineNumbers: true,
   },
