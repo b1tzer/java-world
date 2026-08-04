@@ -1,0 +1,1 @@
+../../03-java-concurrency/chapter-02-thread-model.md
