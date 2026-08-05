@@ -279,7 +279,7 @@ list.add(null);            // OK，null 是任何类型的合法值
 List<String> strings = new ArrayList<>();
 List<Integer> integers = new ArrayList<>();
 
-strings.getClass() == integers.getClass()  // true！
+strings.getClass() == integers.getClass()  // true!
 ```
 
 运行时，`List<String>` 和 `List<Integer>` 是同一个类——泛型信息被"擦除"了。

@@ -29,7 +29,7 @@ export default defineConfig({
     nav: [
       { text: '首页', link: '/' },
       {
-        text: '全书目录',
+        text: '目录',
         items: [
           { text: '第一卷 Java 语言', link: '/01-java-language/' },
           { text: '第二卷 JVM Runtime', link: '/02-jvm-runtime/' },
