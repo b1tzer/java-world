@@ -1,1 +1,0 @@
-docs/02-jvm-runtime/chapter-04-gc.md

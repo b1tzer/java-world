@@ -1,1 +1,0 @@
-docs/07-performance-architecture/chapter-06-data-architecture.md
