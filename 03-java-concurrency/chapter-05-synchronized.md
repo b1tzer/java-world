@@ -525,9 +525,104 @@ public class LockEliminationDemo {
 
 ---
 
-## 5.6 synchronized 的局限性与替代方案
+## 5.6 wait/notify：线程间的通知机制
 
-### 5.6.1 synchronized 的不足
+`synchronized` 解决了互斥问题——同一时刻只有一个线程能进入临界区。但很多时候，线程需要的不只是"独占"，而是"等待某个条件成立后再继续"。这就是 `wait/notify` 的用途。
+
+### 基本用法
+
+```java
+synchronized (lock) {
+    while (!condition) {   // 用 while，不用 if
+        lock.wait();       // 释放锁，进入等待
+    }
+    // 条件满足，继续执行
+}
+```
+
+```java
+synchronized (lock) {
+    condition = true;
+    lock.notify();         // 唤醒一个等待的线程
+    // 或 lock.notifyAll() 唤醒所有等待的线程
+}
+```
+
+### 三个关键细节
+
+**1. 必须在 synchronized 块内调用**
+
+`wait()` 和 `notify()` 必须持有调用对象的 Monitor，否则抛 `IllegalMonitorStateException`。这不是语法限制，而是逻辑必须——`wait()` 的本质是"释放当前持有的锁并等待"，没有锁何谈释放？
+
+**2. 用 while 而不用 if**
+
+```java
+// ❌ 错误：用 if
+synchronized (queue) {
+    if (queue.isEmpty()) {
+        queue.wait();
+    }
+    // 唤醒后直接取，但 queue 可能又被其他线程清空了
+    Object item = queue.poll();
+}
+
+// ✅ 正确：用 while
+synchronized (queue) {
+    while (queue.isEmpty()) {   // 唤醒后重新检查条件
+        queue.wait();
+    }
+    Object item = queue.poll();
+}
+```
+
+原因有两个：**虚假唤醒**（spurious wakeup，操作系统可能在没有 `notify` 的情况下唤醒线程）和**竞争唤醒**（`notifyAll` 唤醒所有线程，但只有一个能拿到锁，其他线程醒来发现条件不满足，需要重新等待）。
+
+**3. notify() vs notifyAll()**
+
+`notify()` 只唤醒一个等待线程，`notifyAll()` 唤醒所有。选择取决于场景：
+
+| 场景 | 选择 | 原因 |
+|------|------|------|
+| 所有等待线程做同样的事 | `notify()` | 唤醒一个就够了，减少无效竞争 |
+| 等待不同条件的线程 | `notifyAll()` | 只唤醒一个可能唤醒了错误的线程 |
+| 不确定 | `notifyAll()` | 安全，多唤醒几个不会有正确性问题 |
+
+### wait/notify 的线程状态转换
+
+```
+Thread-C 调用 wait():
+  RUNNABLE → WAITING
+  从 _owner 变为 _WaitSet 成员
+  释放 Monitor（_owner = null, _count = 0）
+
+Thread-B 调用 notify():
+  从 _WaitSet 取出 Thread-C
+  Thread-C 移到 _EntryList
+  Thread-C: WAITING → BLOCKED（等待重新获取锁）
+
+Thread-B 释放 Monitor:
+  _EntryList 中的线程竞争锁
+  Thread-C 重新成为 _owner
+  Thread-C: BLOCKED → RUNNABLE，从 wait() 返回
+```
+
+很多人以为 `notify()` 后被唤醒的线程会立即执行——不会。它只是从 `_WaitSet` 移到了 `_EntryList`，还需要重新竞争锁。这就是为什么 `wait()` 必须在 `synchronized` 块中——醒来后要重新获取锁才能继续。
+
+### wait/notify 的局限
+
+`wait/notify` 是 Monitor 机制的基础能力，但它的功能比较原始：
+
+- 只有一个等待队列（`_WaitSet`），无法区分"等待非空"和"等待非满"
+- 不支持超时等待（`wait(timeout)` 有，但没有"等到某个条件成立或超时"的组合）
+- 不支持公平唤醒（`notify()` 随机唤醒一个，无法保证等待最久的线程先被唤醒）
+
+这些局限正是 `ReentrantLock` + `Condition` 要解决的问题——下一章会讲。`Condition` 可以创建多个等待队列，每个队列等待不同的条件，互不干扰。
+
+---
+
+## 5.7 synchronized 的局限性与替代方案
+
+### 5.7.1 synchronized 的不足
 
 尽管 synchronized 经过了大幅优化，它仍然有一些局限性：
 
@@ -538,7 +633,7 @@ public class LockEliminationDemo {
 | 不支持公平性 | 无法保证等待时间最长的线程优先获取锁 |
 | 不支持条件队列 | 只有一个等待队列（wait/notify），无法实现复杂的条件等待 |
 
-### 5.6.2 java.util.concurrent.locks
+### 5.7.2 java.util.concurrent.locks
 
 JDK 1.5 引入的 `java.util.concurrent.locks` 包提供了更灵活的锁机制：
 
@@ -568,7 +663,7 @@ Condition notEmpty = lock.newCondition();
 Condition notFull = lock.newCondition();
 ```
 
-### 5.6.3 如何选择
+### 5.7.3 如何选择
 
 ```
 需要锁？

@@ -78,6 +78,35 @@ CompletableFuture<String> cf2 = CompletableFuture.supplyAsync(() -> queryDB());
 CompletableFuture<String> cf3 = CompletableFuture.supplyAsync(() -> queryDB(), myExecutor);
 ```
 
+### 为什么不传线程池是危险的
+
+上面的 `supplyAsync(() -> queryDB())` 没有传第二个参数，它默认使用 `ForkJoinPool.commonPool()`。这个 commonPool 是全局共享的，线程数 = CPU 核数 - 1。
+
+听起来没问题？想想这个场景：
+
+```java
+// 10 个并发请求，每个都要查数据库（阻塞 IO）
+for (int i = 0; i < 10; i++) {
+    CompletableFuture.supplyAsync(() -> queryDB());  // 用 commonPool
+}
+
+// 如果 CPU 是 8 核，commonPool 只有 7 个线程
+// 7 个线程被阻塞在数据库查询上
+// 剩下 3 个请求排队等待
+// 此时 parallelStream、其他 CompletableFuture 全部卡住
+```
+
+**一条规则：但凡任务里有 IO（网络、数据库、文件），就不要用 commonPool。** 用自定义线程池，线程数可以设大一些（IO 等待时线程不占 CPU）。
+
+```java
+// 自定义线程池：IO 密集型任务，线程数可以多一些
+ExecutorService ioPool = Executors.newFixedThreadPool(20);
+
+CompletableFuture.supplyAsync(() -> queryDB(), ioPool);
+```
+
+---
+
 **转换（Transform）**
 
 ```java

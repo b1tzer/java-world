@@ -533,6 +533,75 @@ try {
 
 ## 9.8 小结
 
+## 9.7 ForkJoinPool：分治并行框架
+
+`ThreadPoolExecutor` 是通用线程池，适合"提交独立任务"的场景。但有一类任务天然适合分治——大任务拆成小任务，小任务并行执行，最后合并结果。`ForkJoinPool` 就是为这类任务设计的。
+
+### 工作窃取（Work-Stealing）
+
+ForkJoinPool 的核心创新是**工作窃取算法**：
+
+```
+每个工作线程有自己的双端队列（Deque）
+
+线程 A 的队列：[Task1, Task2, Task3]  ← 从头部取任务
+线程 B 的队列：[]                      ← 空闲了！
+
+线程 B 从线程 A 的队列尾部"偷"一个任务：
+线程 A 的队列：[Task1, Task2]          ← 还有活干
+线程 B 的队列：[Task3]                 ← 偷来的，从尾部取
+```
+
+为什么从尾部偷而不是头部？因为头部是最新提交的任务，尾部是最早提交的——从尾部偷可以减少和原线程的竞争（原线程操作头部，偷窃线程操作尾部，不需要锁）。
+
+### ForkJoinPool vs ThreadPoolExecutor
+
+| 维度 | ThreadPoolExecutor | ForkJoinPool |
+|------|-------------------|-------------|
+| 任务模型 | 独立任务 | 分治任务（fork/join） |
+| 队列 | 共享一个队列 | 每个线程有独立队列 |
+| 工作窃取 | 不支持 | 支持 |
+| 适用场景 | IO 密集、通用 | CPU 密集、递归分治 |
+
+### commonPool 的陷阱
+
+`ForkJoinPool.commonPool()` 是 JVM 全局共享的 ForkJoinPool，`parallelStream()` 和不指定线程池的 `CompletableFuture.supplyAsync()` 默认使用它。
+
+```java
+// 这些都在用 commonPool
+list.parallelStream().filter(...).collect(...);
+CompletableFuture.supplyAsync(() -> queryDB());
+```
+
+commonPool 的线程数 = CPU 核数 - 1（至少 1 个）。问题在于：**它是全局共享的**。如果你的 `supplyAsync` 里有阻塞操作（如 IO），会占满 commonPool 线程，导致其他所有使用 commonPool 的操作全部卡住。
+
+```java
+// ❌ 危险：阻塞操作占满 commonPool
+CompletableFuture.supplyAsync(() -> {
+    return httpClient.get("https://api.example.com");  // 阻塞 IO
+    // 如果同时有 CPU 核数-1 个请求在阻塞，commonPool 被耗尽
+    // parallelStream 和其他 CompletableFuture 全部卡住
+});
+
+// ✅ 正确：阻塞操作用自定义线程池
+ExecutorService ioPool = Executors.newFixedThreadPool(20);
+CompletableFuture.supplyAsync(() -> {
+    return httpClient.get("https://api.example.com");
+}, ioPool);  // 指定独立的线程池
+```
+
+**规则：永远为 CompletableFuture 指定自定义线程池，除非你确定任务是纯 CPU 计算且不会阻塞。**
+
+### 何时使用 ForkJoinPool
+
+- 大数组/大集合的并行处理（`parallelStream`）
+- 递归分治算法（归并排序、快速排序、二分搜索）
+- CPU 密集型任务的并行计算
+
+**不要用 ForkJoinPool 做 IO 操作**——它的工作线程数等于 CPU 核数，IO 阻塞会浪费宝贵的计算资源。
+
+---
+
 线程池是 Java 并发编程中最核心的基础设施。掌握它，需要理解三个层次：
 
 1. **原理层**：7 个参数的含义、任务执行流程、Worker 线程的生命周期

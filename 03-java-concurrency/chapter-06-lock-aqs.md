@@ -589,6 +589,64 @@ state (32 位 int)
 
 ---
 
+### StampedLock 的乐观读：读写锁的终极形态
+
+`ReentrantReadWriteLock` 有一个隐蔽的问题：**写线程饥饿**。当读操作非常频繁时，读锁一直被持有（因为读锁共享，可以无数线程同时持有），写线程永远等不到所有读锁释放——写操作被饿死了。
+
+`StampedLock`（JDK 8 引入）用一种巧妙的方式解决了这个问题：**乐观读**。
+
+### 三种模式
+
+```java
+StampedLock lock = new StampedLock();
+
+// 模式一：写锁（独占，和 ReentrantReadWriteLock 一样）
+long stamp = lock.writeLock();
+try { /* 写操作 */ } finally { lock.unlockWrite(stamp); }
+
+// 模式二：悲观读锁（共享，和 ReentrantReadWriteLock 一样）
+long stamp = lock.readLock();
+try { /* 读操作 */ } finally { lock.unlockRead(stamp); }
+
+// 模式三：乐观读（不加锁！）
+long stamp = lock.tryOptimisticRead();  // 只记录一个版本号
+// 直接读数据，不加锁
+int x = point.getX();
+int y = point.getY();
+// 读完后校验：stamp 期间有没有写操作发生？
+if (!lock.validate(stamp)) {
+    // stamp 失效了（期间有写操作），数据可能不一致
+    // 降级为悲观读锁，重新读
+    stamp = lock.readLock();
+    try {
+        x = point.getX();
+        y = point.getY();
+    } finally { lock.unlockRead(stamp); }
+}
+// stamp 有效，数据一致，直接使用
+```
+
+### 乐观读为什么快
+
+乐观读**完全不加锁**，只在读取后校验版本号。如果期间没有写操作发生，读到的数据就是一致的。这避免了读锁的 CAS 操作和内存屏障，性能接近无同步代码。
+
+适用场景：**读远多于写，且读操作很短**。比如缓存的读取、配置的读取、坐标的读取。
+
+### 不可重入的限制
+
+`StampedLock` 不可重入——同一线程再次获取锁会死锁。也不支持 `Condition`。它是一个纯粹的高性能读写锁，不适合替代 `ReentrantLock`。
+
+**选择建议**：
+
+| 场景 | 选择 |
+|------|------|
+| 通用互斥 | `ReentrantLock` 或 `synchronized` |
+| 读多写少，无饥饿问题 | `ReentrantReadWriteLock` |
+| 读多写少，有饥饿问题 | `StampedLock` |
+| 读操作极短，可接受重试 | `StampedLock` 乐观读 |
+
+---
+
 ## 6.8 AQS 的设计哲学
 
 ### 6.8.1 模板方法模式

@@ -677,6 +677,80 @@ future.get(3, TimeUnit.SECONDS);
 // 数据库连接池、HTTP 客户端等都要配置超时
 ```
 
+## 11.6 虚拟线程的诊断注意事项
+
+第 2 章介绍了虚拟线程，第 10 章也提到了它。但诊断工具和方法完全是基于传统平台线程的——虚拟线程有一些独特的坑。
+
+### Pinning：虚拟线程最常见的性能问题
+
+虚拟线程在 `synchronized` 块中执行阻塞操作时，不会从平台线程上卸载（unmount），导致平台线程被"钉住"（pinned）。这叫 **Pinning**。
+
+```java
+// ❌ 会导致 Pinning
+synchronized (lock) {
+    httpClient.get(url);  // 阻塞 IO
+    // 虚拟线程被钉在平台线程上，无法卸载
+    // 平台线程被占住，其他虚拟线程无法使用它
+}
+```
+
+Pinning 的后果：平台线程被占住，其他虚拟线程无法调度，系统吞吐量骤降。严重时，所有平台线程都被钉住，虚拟线程退化为平台线程。
+
+**检测方法**：
+
+```bash
+# 启动时加参数，检测 Pinning
+-Djdk.tracePinnedThreads=full
+
+# 输出示例：
+# Thread[#22,ForkJoinPool-1-worker-3,5,CarrierThreads]
+#     java.lang.VirtualThread.parkOnCarrier(VirtualThread.java:715)
+#     ...
+#     at com.example.MyService.doWork(MyService.java:42)
+#     - locked <0x00000007aab3a0d0> (a java.lang.Object)  ← synchronized 持有锁
+#     at com.example.MyService.process(MyService.java:35)
+```
+
+**解决方案**：用 `ReentrantLock` 替代 `synchronized`。
+
+```java
+// ✅ ReentrantLock 不会导致 Pinning
+ReentrantLock lock = new ReentrantLock();
+lock.lock();
+try {
+    httpClient.get(url);  // 阻塞 IO，虚拟线程可以正常卸载
+} finally {
+    lock.unlock();
+}
+```
+
+为什么 `ReentrantLock` 不会 Pinning？因为 JVM 对 `ReentrantLock` 做了特殊优化——它知道 `ReentrantLock` 的锁操作可以通过 `unpark` 协议解除，不需要持有平台线程。
+
+### 虚拟线程下的 jstack
+
+虚拟线程在 jstack 输出中的表示方式与平台线程不同：
+
+```
+// 平台线程（有完整的线程栈）
+"http-nio-8080-exec-1" #15 daemon prio=5 os_prio=0
+   java.lang.Thread.State: RUNNABLE
+    at com.example.Controller.handle(Controller.java:20)
+
+// 虚拟线程（挂载在平台线程上）
+"unnamed" #22 daemon prio=5
+   java.lang.Thread.State: TIMED_WAITING
+    at java.lang.VirtualThread.parkOnCarrier(VirtualThread.java:715)
+    ...
+```
+
+虚拟线程数量可能成千上万，jstack 输出会非常长。用 `jcmd <pid> Thread.dump_to_file -format=json threads.json` 可以导出为文件，便于分析。
+
+### ThreadMXBean 的限制
+
+`ThreadMXBean` 对虚拟线程的支持有限——`getThreadCount()` 不包含虚拟线程，`getThreadInfo()` 对虚拟线程返回的信息不完整。监控虚拟线程需要用 JFR 或 Arthas 等工具。
+
+---
+
 **最佳实践速查表**：
 
 | 原则 | 要点 | 违反后果 |
