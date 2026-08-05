@@ -132,22 +132,49 @@ new → Eden
 
 ## 4.6 HotSpot 收集器演进
 
-| 收集器 | 代 | 目标 | 核心特点 |
-|--------|---|------|---------|
-| Serial | 新生代 | 简单高效 | 单线程，Client 模式默认 |
-| Parallel | 新生代 | 高吞吐 | 多线程并行 |
-| CMS | 老年代 | 低延迟 | 并发标记清除 |
-| G1 | 整堆 | 可预测停顿 | Region 化，JDK 9 默认 |
-| ZGC | 整堆 | 亚毫秒 STW | 染色指针 + 读屏障 |
+| 收集器 | 代 | 目标 | 算法 | STW 阶段 |
+|--------|---|------|------|---------|
+| Serial | 新生代 | 简单高效 | 复制 | 全程 STW |
+| Parallel Scavenge | 新生代 | 高吞吐 | 复制 | 全程 STW（多线程） |
+| CMS | 老年代 | 低延迟 | 标记-清除 | 初始标记+重新标记 |
+| G1 | 整堆 | 可预测停顿 | 复制+整理 | 初始标记+最终标记+筛选回收 |
+| ZGC | 整堆 | 亚毫秒 STW | 整理 | 初始标记+并发转移 |
+
+### Serial / Parallel Scavenge（新生代）
+
+Serial 是最简单的收集器——单线程，全程 STW。适用于客户端模式或小堆场景。
+
+Parallel Scavenge 是 Serial 的多线程版本，目标是**最大化吞吐量**（`-XX:MaxGCPauseMillis` 控制最大停顿时间）。
+
+```
+Serial:                    Parallel Scavenge:
+  [STW]                      [STW]
+  GC 线程 1: ████████         GC 线程 1: ████
+                            GC 线程 2: ████
+                            GC 线程 3: ████
+                            GC 线程 4: ████
+  停顿长                      停顿短（多线程并行）
+```
 
 ### CMS（Concurrent Mark Sweep）
 
 目标：**最短停顿时间**。大部分标记工作与应用线程并发执行。
 
+四个阶段：
+
+```
+1. 初始标记（STW）     —— 标记 GC Roots 直接引用的对象（很快）
+2. 并发标记            —— 从 GC Roots 出发遍历整个引用链（与应用并发，耗时长）
+3. 重新标记（STW）     —— 修正并发标记期间变动的引用（比初始标记稍长）
+4. 并发清除            —— 清除垃圾（与应用并发）
+```
+
 三个致命缺陷：
-- **CPU 敏感**：并发阶段占用 CPU 资源
+- **CPU 敏感**：并发阶段占用 CPU 资源，默认启动 `(CPU核数+3)/4` 个 GC 线程
 - **浮动垃圾**：并发清除阶段新产生的垃圾只能下次回收
 - **碎片化**：标记-清除算法产生碎片，碎片过多时退化为 Serial Old（Full GC + 整理）
+
+CMS 已在 JDK 14 被移除。
 
 ### G1（Garbage First）
 
@@ -163,23 +190,106 @@ new → Eden
 └───┴───┴───┴───┴───┴───┘
 ```
 
-G1 的核心特性：
-- **可预测停顿**：`-XX:MaxGCPauseMillis=200`（默认 200ms），G1 优先回收垃圾最多的 Region
-- **RSet（Remembered Set）**：记录跨 Region 引用，避免全堆扫描
-- **并发标记**：大部分标记工作与应用线程并发
+**Humongous 对象**：超过 Region 大小一半的对象，直接分配在连续的 Humongous Region 中。
+
+#### G1 的回收过程
+
+```
+Young GC（新生代回收）
+  ↓ 触发并发标记阈值
+初始标记（STW，借用 Young GC 的暂停）
+  ↓
+并发标记（与应用并发）
+  ↓
+最终标记（STW）
+  ↓
+筛选回收（STW）—— 选择垃圾最多的 Region 优先回收
+```
+
+**Mixed GC**：既回收新生代 Region，也回收部分老年代 Region。这是 G1 的核心——不是整个老年代一起回收，而是选择"收益最大"的 Region。
+
+#### RSet（Remembered Set）
+
+G1 的关键数据结构。每个 Region 维护一个 RSet，记录**其他 Region 中指向本 Region 的引用**。
+
+```
+Region A 的 RSet: {Region B 的第 3 个卡页, Region D 的第 7 个卡页}
+含义：Region B 的第 3 个卡页和 Region D 的第 7 个卡页中有引用指向 Region A
+```
+
+有了 RSet，回收某个 Region 时不需要扫描整个堆，只需要扫描 RSet 中记录的卡页。
+
+代价：RSet 占用额外内存（约 5%~10% 的堆空间），写操作需要维护 RSet（写屏障）。
+
+#### 可预测停顿
+
+G1 通过 `-XX:MaxGCPauseMillis=200`（默认 200ms）控制最大停顿时间。G1 会追踪每个 Region 的回收价值（垃圾量 / 回收时间），优先回收价值最高的 Region，确保在停顿时间内回收最多的垃圾。
 
 ### ZGC
 
-目标：**亚毫秒级 STW**，支持 TB 级堆。
+目标：**亚毫秒级 STW**，支持 TB 级堆。JDK 15 生产就绪。
 
 核心技术：
 - **染色指针**：在 64 位指针中嵌入 GC 元数据（标记信息），不需要额外的 RSet
 - **读屏障**：在对象引用读取时自动转发到正确地址，实现并发转移
-- **并发转移**：对象移动与应用线程并发执行，STW 只在根扫描阶段
+- **并发转移**：对象移动与应用线程并发执行，STW 只在初始标记阶段（< 1ms）
+
+```
+传统 GC（G1）:
+  标记（并发）→ 转移（STW）   ← 转移阶段需要暂停
+
+ZGC:
+  初始标记（STW < 1ms）→ 并发标记 → 并发转移   ← 全程几乎不暂停
+```
+
+ZGC 的染色指针利用了 64 位地址空间中未使用的位：
+
+```
+64 位指针实际使用情况：
+  [4 位标志位] [1 位 Finalizable] [1 位 Remapped] [1 位 Marked0] [1 位 Marked1] [44 位地址] [保留]
+```
+
+44 位地址空间 = 16TB 寻址能力，足够绝大多数场景。
 
 ---
 
-## 4.7 核心 GC 参数
+## 4.7 GC 日志分析
+
+GC 日志是调优的第一手资料。
+
+### 开启 GC 日志
+
+```bash
+# JDK 9+ 统一格式
+-Xlog:gc*=info:file=gc.log:time,uptime,level,tags
+
+# 更详细的 GC 日志
+-Xlog:gc*=debug:file=gc.log:time,uptime,level,tags
+```
+
+### 解读 G1 GC 日志
+
+```
+[2024-01-15T10:30:15.123+0800] GC(42) Pause Young (Normal) 
+    [Eden: 1024M(1024M)->0B(1024M) 
+     Survivors: 128M->128M 
+     Old: 2048M->2100M]
+    Metaspace: 45678K->45678K(1089536K)
+   [123456K->98765K(4096M)]
+    [Times: user=0.15 sys=0.02, real=0.08 secs]
+```
+
+| 字段 | 含义 |
+|------|------|
+| `Pause Young (Normal)` | Young GC，正常模式 |
+| `Eden: 1024M(1024M)->0B(1024M)` | Eden 从 1024M 清空到 0 |
+| `Old: 2048M->2100M` | 老年代从 2048M 增长到 2100M |
+| `real=0.08 secs` | 实际停顿时间 80ms |
+| `user=0.15` | GC 线程总 CPU 时间 150ms（多线程累加） |
+
+---
+
+## 4.8 核心 GC 参数
 
 | 参数 | 说明 |
 |------|------|
@@ -190,7 +300,11 @@ G1 的核心特性：
 | `-XX:+UseG1GC` | 使用 G1 收集器 |
 | `-XX:MaxGCPauseMillis=200` | G1 目标最大停顿时间 |
 | `-XX:MaxTenuringThreshold=15` | 对象晋升老年代的年龄阈值 |
+| `-XX:G1HeapRegionSize=8m` | G1 Region 大小 |
+| `-XX:InitiatingHeapOccupancyPercent=45` | 触发并发标记的堆占用阈值 |
+| `-XX:ConcGCThreads=4` | 并发 GC 线程数 |
 | `-XX:+HeapDumpOnOutOfMemoryError` | OOM 时自动 dump |
+| `-Xlog:gc*:file=gc.log:time` | GC 日志（JDK 9+） |
 
 ---
 
