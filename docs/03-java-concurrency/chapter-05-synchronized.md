@@ -167,6 +167,58 @@ Monitor 的工作流程：
 
 在 HotSpot 虚拟机中，Monitor 并不是在对象创建时就分配的，而是**懒加载**的。只有当一个线程第一次尝试获取该对象的锁时，才会分配（或关联）一个 Monitor。这是因为 Monitor 是一个重量级的数据结构（依赖操作系统的 Mutex），大多数对象永远不会被用作锁。
 
+### 5.2.4 synchronized 的内存语义
+
+`synchronized` 不只负责互斥，还负责可见性和有序性。
+
+线程 A 在同步块里写入共享变量后退出，线程 B 随后进入同一把锁保护的同步块时，必须能看到线程 A 留下的结果。JMM 对 `synchronized` 的要求，就是通过加锁和解锁建立这层语义。
+
+`synchronized` 的内存语义由两个动作建立：
+
+- **`monitorenter`**：获取锁，建立 acquire 语义
+- **`monitorexit`**：释放锁，建立 release 语义
+
+可以先看结论：
+
+| 操作 | 语义 | 结果 |
+| :-- | :-- | :-- |
+| `monitorexit` | release | 退出同步块前的写入，对后续获取同一把锁的线程可见 |
+| `monitorenter` | acquire | 获取锁之后的读写，不能重排到加锁之前 |
+
+这就是 JMM 中"**对同一把锁的解锁 happens-before 后续加锁**"的具体落实方式。
+
+```text
+线程 A                              线程 B
+────────────                        ────────────
+synchronized(lock) {                synchronized(lock) {
+    x = 42;                             读取 x;
+    ready = true;                   }
+}
+
+关键关系：
+A 在 monitorexit 之前的写入
+        happens-before
+B 在 monitorenter 之后的读取
+```
+
+只要线程 B 获取到了线程 A 刚刚释放的那把锁，B 后续的读取就必须看到 A 在临界区内完成的写入结果。
+
+从实现角度看，HotSpot 会在加锁和解锁路径上加入相应的顺序约束，保证两件事：
+
+- 同步块里的写入在解锁前完成，并按同步语义对外可见
+- 获取锁之后的读写不能穿越到加锁之前
+
+在弱内存模型架构上，JVM 会用更明确的屏障把这层语义补齐；在较强内存模型架构上，需要的额外约束可能更少，但语义要求不变。
+
+这也是 `synchronized` 与 `volatile` 的根本区别之一：
+
+- `volatile` 负责单个共享变量读写周围的顺序与可见性
+- `synchronized` 负责一整段临界区的互斥、可见性和有序性
+
+因此，`synchronized` 可以保证临界区内复合操作的正确性，而 `volatile` 不能。
+
+HotSpot 会根据竞争情况把实现分成偏向锁、轻量级锁、重量级锁等不同路径；但无论走哪条路径，release / acquire 语义都必须成立。这是 `synchronized` 在不同实现形态下仍然保持同一并发语义的基础。
+
 ---
 
 ## 5.3 synchronized 与对象头
