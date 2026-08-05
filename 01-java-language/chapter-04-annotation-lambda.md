@@ -80,7 +80,69 @@ public class UserService { ... }
 
 ---
 
-## 4.3 编译期注解处理（APT）
+## 4.3 定义自定义注解
+
+4.2 节讲了注解的生命周期，但没有展示如何定义一个注解。`@interface` 是注解的定义语法：
+
+```java
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Retryable {
+    int maxAttempts() default 3;
+    long delayMs() default 1000;
+    Class<? extends Throwable>[] retryOn() default {Exception.class};
+}
+```
+
+### 元注解
+
+定义注解时，用**元注解**来指定注解的行为：
+
+| 元注解 | 作用 | 取值 |
+|--------|------|------|
+| `@Target` | 注解可以用在哪里 | `TYPE`（类）、`METHOD`、`FIELD`、`PARAMETER` 等 |
+| `@Retention` | 注解的生命周期 | `SOURCE`、`CLASS`、`RUNTIME` |
+| `@Documented` | 是否出现在 Javadoc 中 | — |
+| `@Inherited` | 子类是否继承父类的注解 | — |
+| `@Repeatable` | 是否可以重复使用（Java 8+） | 需要定义容器注解 |
+
+### 注解元素的类型限制
+
+注解的元素只能是以下类型：
+- 基本类型（`int`、`boolean` 等）
+- `String`
+- `Class`
+- `Enum`
+- 其他注解
+- 以上类型的数组
+
+不能是 `Object`、`List` 或自定义类。
+
+### 使用自定义注解
+
+```java
+@Retryable(maxAttempts = 5, delayMs = 2000, retryOn = {IOException.class})
+public String callExternalService() {
+    // ...
+}
+```
+
+注解本身不执行任何逻辑。要让注解生效，需要通过反射读取注解并执行相应逻辑：
+
+```java
+Method method = MyService.class.getMethod("callExternalService");
+if (method.isAnnotationPresent(Retryable.class)) {
+    Retryable retry = method.getAnnotation(Retryable.class);
+    int maxAttempts = retry.maxAttempts();
+    // 根据注解配置实现重试逻辑
+}
+```
+
+这就是注解驱动框架的基本原理——注解 + 反射（或编译期处理）。Spring 的 `@Transactional`、JUnit 的 `@Test`、MyBatis 的 `@Select` 都是这个模式。
+
+---
+
+## 4.4 编译期注解处理（APT）
 
 RUNTIME 注解（如 Spring 的 `@Component`）在运行时通过反射读取。但还有一类强大的机制——**编译期注解处理（Annotation Processing Tool, APT）**，它在编译阶段就根据注解生成新的源代码。
 
@@ -279,7 +341,87 @@ Java 8 在 `java.util.function` 包中提供了一套标准函数式接口：
 
 ---
 
-## 4.7 Lambda vs 匿名内部类
+## 4.7 方法引用
+
+Lambda 有一种简写形式——**方法引用**，当 Lambda 体只是调用一个已有方法时，可以用 `::` 替代：
+
+```java
+// Lambda 形式
+names.forEach(name -> System.out.println(name));
+
+// 方法引用（等价写法）
+names.forEach(System.out::println);
+```
+
+方法引用不是新语法，是 Lambda 的语法糖。它有四种形式：
+
+### 四种方法引用
+
+**1. 静态方法引用：`ClassName::staticMethod`**
+
+```java
+// Lambda
+Function<String, Integer> f1 = s -> Integer.parseInt(s);
+
+// 方法引用
+Function<String, Integer> f2 = Integer::parseInt;
+```
+
+**2. 实例方法引用（任意对象）：`ClassName::instanceMethod`**
+
+当 Lambda 的第一个参数是方法的调用者时：
+
+```java
+// Lambda：s 调用了 toUpperCase()
+Function<String, String> f1 = s -> s.toUpperCase();
+
+// 方法引用
+Function<String, String> f2 = String::toUpperCase;
+```
+
+这是最让人困惑的形式。`String::toUpperCase` 等价于 `s -> s.toUpperCase()`，不是 `String.toUpperCase()`。Lambda 的第一个参数成为方法的接收者。
+
+**3. 特定对象的实例方法引用：`instance::method`**
+
+```java
+User user = new User("Tom");
+// Lambda
+Supplier<String> s1 = () -> user.getName();
+
+// 方法引用
+Supplier<String> s2 = user::getName;
+```
+
+**4. 构造方法引用：`ClassName::new`**
+
+```java
+// Lambda
+Function<String, User> f1 = name -> new User(name);
+
+// 方法引用
+Function<String, User> f2 = User::new;
+
+// 数组构造方法引用
+Function<Integer, String[]> f3 = String[]::new;
+```
+
+### 何时用方法引用 vs Lambda
+
+原则：**可读性优先**。
+
+```java
+// ✅ 方法引用更简洁
+names.stream().map(String::toUpperCase).collect(Collectors.toList());
+
+// ❌ 这里 Lambda 更清晰（因为有额外逻辑）
+names.stream().filter(name -> name.length() > 3 && name.startsWith("A")).collect(Collectors.toList());
+```
+
+如果 Lambda 体只是调用一个已有方法，用方法引用；如果有多步逻辑或条件判断，用 Lambda。
+
+---
+
+## 4.8 Lambda vs 匿名内部类
 
 Lambda 表达式和匿名内部类看似等价，实际上底层完全不同：
 
@@ -310,7 +452,7 @@ public class Demo {
 
 ---
 
-## 4.8 Lambda 背后的编译机制：invokedynamic
+## 4.9 Lambda 背后的编译机制：invokedynamic
 
 ### 不是语法糖
 
@@ -348,7 +490,7 @@ Lambda 表达式编译后，生成的是一条 `invokedynamic` 指令：
 
 ---
 
-## 4.9 Stream API：声明式数据处理
+## 4.10 Stream API：声明式数据处理
 
 ### 集合 vs Stream
 
@@ -416,7 +558,7 @@ List<User> result = users.parallelStream()
 
 ---
 
-## 4.10 Optional：用类型表达空值语义
+## 4.11 Optional：用类型表达空值语义
 
 ### null 的问题
 
@@ -475,7 +617,7 @@ User u = user.orElseThrow(() -> new NotFoundException("User not found"));
 
 ---
 
-## 4.11 Java 不是纯函数式语言
+## 4.12 Java 不是纯函数式语言
 
 Java 是以面向对象为核心，同时吸收函数式思想的**多范式语言**。
 

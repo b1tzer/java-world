@@ -132,6 +132,89 @@ Primitive       Reference
   ...            ...
 ```
 
+### Enum：编译器魔法加持的引用类型
+
+Enum 在 1.2 的类型树中列在引用类型下，但它不是普通的类——编译器对它有特殊支持。
+
+```java
+public enum Color {
+    RED, GREEN, BLUE
+}
+```
+
+编译器将这段代码生成为：
+
+```java
+public final class Color extends Enum<Color> {
+    public static final Color RED = new Color("RED", 0);
+    public static final Color GREEN = new Color("GREEN", 1);
+    public static final Color BLUE = new Color("BLUE", 2);
+
+    private Color(String name, int ordinal) { ... }
+
+    public static Color[] values() { ... }  // 编译器生成
+    public static Color valueOf(String name) { ... }  // 编译器生成
+}
+```
+
+几个关键特性：
+
+**1. 天然单例。** 枚举常量在类加载时创建，JVM 保证唯一。这就是为什么 Effective Java 推荐用 Enum 实现单例模式——比 `private static final` 更安全，且天然防反射和序列化攻击。
+
+**2. 可以有字段和方法。** Enum 本质是类，可以有构造方法、字段、方法：
+
+```java
+public enum HttpStatus {
+    OK(200, "Success"),
+    NOT_FOUND(404, "Not Found"),
+    INTERNAL_ERROR(500, "Server Error");
+
+    private final int code;
+    private final String message;
+
+    HttpStatus(int code, String message) {
+        this.code = code;
+        this.message = message;
+    }
+
+    public int getCode() { return code; }
+}
+```
+
+**3. 可以实现接口。** `enum Color implements Serializable { ... }`
+
+**4. 天然线程安全。** 枚举常量是 `static final` 的，不可变，不需要同步。
+
+**5. 可以用于 switch。** 这是 Enum 最常见的使用场景之一。
+
+### ordinal() 的陷阱
+
+每个枚举常量有一个 `ordinal()` 方法，返回它在声明中的位置（从 0 开始）。**不要用 ordinal 做业务逻辑**：
+
+```java
+public enum Size { SMALL, MEDIUM, LARGE }
+
+Size.SMALL.ordinal()  // 0
+Size.MEDIUM.ordinal() // 1
+Size.LARGE.ordinal()  // 2
+```
+
+如果在 `MEDIUM` 和 `LARGE` 之间插入一个 `EXTRA_LARGE`，所有后续的 ordinal 都变了——依赖 ordinal 的代码会出 bug。用枚举常量本身或自定义字段来表示业务值。
+
+### EnumSet 与 EnumMap
+
+Java 提供了两个专门针对 Enum 优化的集合：
+
+- **`EnumSet`**：用位向量实现的 Set，比 `HashSet` 更高效（每个枚举常量对应一个 bit）
+- **`EnumMap`**：用数组实现的 Map，key 是枚举常量，比 `HashMap` 更高效
+
+```java
+EnumSet<Color> warmColors = EnumSet.of(Color.RED, Color.ORANGE, Color.YELLOW);
+EnumMap<Color, String> colorNames = new EnumMap<>(Color.class);
+```
+
+如果 key 是枚举类型，优先用 `EnumMap` 而非 `HashMap`。
+
 ### 基本类型：性能与抽象之间的取舍
 
 Java 有 8 种基本类型：

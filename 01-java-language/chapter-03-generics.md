@@ -41,7 +41,146 @@ list.add(123);           // 编译错误！编译器直接拒绝
 
 ---
 
-## 3.2 泛型与类型系统：为什么 List\<String\> 不是 List\<Object\>
+## 3.2 泛型类与泛型方法的定义
+
+理解了"为什么需要泛型"，接下来解决"怎么写"。泛型可以用在类和方法两个层面。
+
+### 泛型类
+
+在类名后面加类型参数，类内部就可以使用这个类型：
+
+```java
+public class Box<T> {
+    private T value;
+
+    public Box(T value) {
+        this.value = value;
+    }
+
+    public T getValue() {
+        return value;
+    }
+
+    public void setValue(T value) {
+        this.value = value;
+    }
+}
+
+// 使用
+Box<String> stringBox = new Box<>("hello");
+String s = stringBox.getValue();  // 不需要强制转换
+
+Box<Integer> intBox = new Box<>(42);
+Integer i = intBox.getValue();
+```
+
+`<T>` 是类型参数，使用时传入具体类型（如 `String`），编译器保证类型安全。
+
+多个类型参数用逗号分隔：
+
+```java
+public class Pair<K, V> {
+    private K key;
+    private V value;
+
+    public Pair(K key, V value) {
+        this.key = key;
+        this.value = value;
+    }
+    // getter/setter 省略
+}
+
+Pair<String, Integer> entry = new Pair<>("age", 25);
+```
+
+### 泛型方法
+
+方法也可以有自己的类型参数——注意是**方法自己的**类型参数，不是类的：
+
+```java
+public class Util {
+    // 泛型方法：<T> 声明在返回类型之前
+    public static <T> void printArray(T[] array) {
+        for (T element : array) {
+            System.out.println(element);
+        }
+    }
+}
+
+// 使用：类型推断，不需要显式指定
+String[] names = {"Alice", "Bob"};
+Util.printArray(names);  // 编译器推断 T = String
+```
+
+**类类型参数 vs 方法类型参数的区别**：
+
+```java
+public class Box<T> {
+    // T 是类的类型参数，所有方法都能用
+    private T value;
+
+    // 这个方法用的是类的 T
+    public T getValue() { return value; }
+
+    // <U> 是方法自己的类型参数，只有这个方法能用
+    public <U> void inspect(U other) {
+        System.out.println("T: " + value + ", U: " + other);
+    }
+}
+
+Box<String> box = new Box<>("hello");
+box.inspect(42);  // U 是 Integer，T 是 String，互不影响
+```
+
+### 有界类型参数
+
+类型参数可以加约束，限制传入的类型范围：
+
+```java
+// T 必须是 Comparable 的实现类
+public static <T extends Comparable<T>> T findMax(T[] array) {
+    T max = array[0];
+    for (T element : array) {
+        if (element.compareTo(max) > 0) {
+            max = element;
+        }
+    }
+    return max;
+}
+
+Integer[] nums = {3, 1, 4, 1, 5};
+Integer max = findMax(nums);  // 5
+
+// findMax(new Object[]{...})  // 编译错误！Object 没有实现 Comparable
+```
+
+`<T extends Comparable<T>>` 的含义：T 必须实现 `Comparable<T>` 接口。`extends` 在这里表示"上界"，既可以是类也可以是接口（多个约束用 `&` 连接）：
+
+```java
+// 多个约束
+public static <T extends Serializable & Comparable<T>> void process(T item) { ... }
+```
+
+### 泛型构造方法
+
+构造方法也可以有自己的类型参数（虽然少见）：
+
+```java
+public class Event<T> {
+    private T data;
+
+    // 泛型构造方法：方法自己的 <T> 遮蔽了类的 <T>
+    public <T> Event(T data) {
+        this.data = (T) data;  // 注意：这里的 T 是方法的 T，不是类的 T
+    }
+}
+```
+
+实际上这种情况很少用到，知道即可。
+
+---
+
+## 3.3 泛型与类型系统：为什么 List\<String\> 不是 List\<Object\>
 
 这是很多人理解困难的地方。直觉上，既然 `String` is-a `Object`，那 `List<String>` 应该也是 `List<Object>` 吧？
 
@@ -91,7 +230,7 @@ Object obj = list.get(0); // OK，但只能读取为 Object
 
 ---
 
-## 3.3 通配符与 PECS 原则
+## 3.4 通配符与 PECS 原则
 
 ### PECS：Producer Extends, Consumer Super
 
@@ -130,7 +269,7 @@ list.add(null);            // OK，null 是任何类型的合法值
 
 ---
 
-## 3.4 类型擦除：Java 泛型的核心设计
+## 3.5 类型擦除：Java 泛型的核心设计
 
 ### 运行时看不到泛型
 
@@ -189,7 +328,7 @@ if (list instanceof List<String>) { }  // 编译错误
 
 ---
 
-## 3.5 擦除之后：桥接方法、类型转换与字节码
+## 3.6 擦除之后：桥接方法、类型转换与字节码
 
 ### 编译器自动插入类型转换
 
@@ -256,7 +395,7 @@ Spring、MyBatis 等框架大量利用这个能力来获取泛型参数。第二
 
 ---
 
-## 3.6 泛型的限制与未来
+## 3.7 泛型的限制与未来
 
 ### 当前限制
 
@@ -291,7 +430,7 @@ Oracle 正在开发的 Project Valhalla 计划解决这些问题：
 
 ---
 
-## 3.7 泛型在框架中的应用
+## 3.8 泛型在框架中的应用
 
 泛型在主流 Java 框架中无处不在：
 

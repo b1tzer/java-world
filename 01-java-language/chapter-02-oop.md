@@ -216,7 +216,86 @@ Java 通过一些设计来限制继承的滥用：
 
 ---
 
-## 2.4 多态：面向对象扩展性的核心
+## 2.4 Object：所有对象的公共契约
+
+Java 中所有类都直接或间接继承 `Object`。`Object` 定义了每个 Java 对象都必须具备的基础行为。第一章讲了 `equals()` 和 `hashCode()`，这里补全其他关键方法。
+
+### toString()
+
+默认实现是 `类名@哈希值`（如 `User@1a2b3c`），几乎没有信息量：
+
+```java
+User user = new User("Tom", 25);
+System.out.println(user);  // com.example.User@1a2b3c4d
+```
+
+**应该重写 `toString()`**，返回对调试有用的描述：
+
+```java
+@Override
+public String toString() {
+    return "User{name='" + name + "', age=" + age + "}";
+}
+```
+
+IDE 可以一键生成。`toString()` 的输出会出现在日志、调试器、异常堆栈中——不重写就是在给未来的自己挖坑。
+
+### clone()：一个被广泛认为是设计失误的 API
+
+`clone()` 的意图是"复制对象"，但它的默认行为是**浅拷贝**——只复制字段值，不复制字段指向的对象：
+
+```java
+public class User {
+    private String name;
+    private String[] hobbies;
+}
+
+User original = new User("Tom", new String[]{"reading", "gaming"});
+User copy = original.clone();
+
+copy.getHobbies()[0] = "cooking";
+System.out.println(original.getHobbies()[0]);  // "cooking"！原对象也被改了
+```
+
+因为 `hobbies` 是数组（引用类型），浅拷贝只复制了引用，两个对象共享同一个数组。
+
+`Cloneable` 接口是一个标记接口（没有方法），但不实现它就调用 `clone()` 会抛 `CloneNotSupportedException`。这个设计违反了接口隔离原则——一个空接口只用来触发异常。
+
+**实际建议**：不要用 `clone()`。用拷贝构造方法或工厂方法代替：
+
+```java
+public User(User other) {
+    this.name = other.name;
+    this.hobbies = Arrays.copyOf(other.hobbies, other.hobbies.length);
+}
+```
+
+### finalize()：已废弃的对象回收钩子
+
+`finalize()` 在对象被 GC 回收前调用，原本设计用来释放非堆资源（如文件句柄、网络连接）。但它已被 **Java 9 废弃**，原因是：
+
+1. **执行时机不确定**：GC 何时回收对象是不可预测的，`finalize()` 可能在对象不可达后很久才执行
+2. **性能差**：有 `finalize()` 的对象需要额外的 GC 处理，回收更慢
+3. **可能导致对象复活**：`finalize()` 中可以把 `this` 赋给一个全局变量，使对象重新可达——这是灾难
+
+**替代方案**：用 `try-with-resources` 或 `Cleaner`（Java 9+）。
+
+### getClass()
+
+返回对象的运行时类型信息，是反射的入口：
+
+```java
+User user = new User("Tom", 25);
+Class<?> clazz = user.getClass();
+clazz.getName();      // "com.example.User"
+clazz.getDeclaredFields();  // 获取所有字段
+```
+
+反射和第二卷类加载机制会详细展开。
+
+---
+
+## 2.5 多态：面向对象扩展性的核心
 
 多态是面向对象最重要、最有价值的特性。
 
@@ -293,7 +372,7 @@ Java 的多态通过**动态绑定（Dynamic Binding）**实现。编译时，�
 
 ---
 
-## 2.5 接口 vs 抽象类
+## 2.6 接口 vs 抽象类
 
 Java 没有多继承，接口承担了类型抽象、能力定义和解耦的职责。
 
@@ -357,7 +436,7 @@ public interface List<E> {
 
 ---
 
-## 2.6 SOLID 原则
+## 2.7 SOLID 原则
 
 SOLID 是五个面向对象设计原则的首字母缩写，由 Robert C. Martin（Uncle Bob）总结。它们不是教条，而是解决大型系统可维护性问题的经验总结。
 
@@ -489,7 +568,7 @@ public class OrderService {
 
 ---
 
-## 2.7 组合优于继承
+## 2.8 组合优于继承
 
 "组合优于继承"（Composition Over Inheritance）是 GoF 在《设计模式》中提出的建议，也是现代面向对象设计的共识。
 
