@@ -1,10 +1,12 @@
 # 第二章 JVM 运行时数据区
 
-> 本章建立完整的 JVM 内存世界观：堆、栈、方法区的分工与协作。这是一切内存调优和 GC 理解的大前提。
+> 本章回答一个核心问题：`new User()` 这行代码执行时，JVM 内部的各个内存区域分别做了什么？不是罗列"堆、栈、方法区"的概念，而是深入每个区域的内部工作机制、边界条件和出问题时的表现。
 
 ---
 
-## 2.1 JVM 内存全景图
+## 2.1 全景图与核心矛盾
+
+先建立整体认知，再逐个深入。
 
 ```
 JVM 运行时数据区
@@ -17,306 +19,359 @@ JVM 运行时数据区
       └── PC Register（程序计数器）
 ```
 
-**线程共享**意味着所有线程都可以访问同一块内存。**线程私有**意味着每个线程有自己的独立空间。
+这些区域不是孤立存在的。一行 Java 代码的执行，会同时涉及多个区域。以 `User user = new User("Tom")` 为例：
 
-除了这五块运行时数据区，还有一块**堆外内存（Direct Memory）**不在 JVM 规范中，但实际使用广泛（NIO、Netty 都依赖它）。
+```
+1. 方法区：加载 User 类的元数据（类名、字段、方法字节码）
+2. 堆：分配 User 对象的内存空间
+3. 虚拟机栈：当前方法的栈帧中，user 变量指向堆中的对象
+4. 程序计数器：记录当前执行到哪一行字节码
+```
 
-| 区域 | 线程 | 存储内容 | 异常 |
-|------|------|---------|------|
-| 堆 | 共享 | 对象实例、数组 | `OutOfMemoryError` |
-| 方法区/Metaspace | 共享 | 类信息、常量池、静态变量 | `OutOfMemoryError` |
-| 虚拟机栈 | 私有 | 栈帧（局部变量、操作数栈） | `StackOverflowError` / `OutOfMemoryError` |
-| 本地方法栈 | 私有 | Native 方法调用 | `StackOverflowError` |
-| 程序计数器 | 私有 | 当前执行的字节码行号 | 无 |
-| 堆外内存 | 共享 | NIO DirectBuffer | `OutOfMemoryError` |
+理解这四个区域如何协作，比记住它们的名字重要得多。
 
 ---
 
-## 2.2 方法调用与栈帧
+## 2.2 虚拟机栈：方法执行的舞台
 
-每个线程有一个**虚拟机栈**，每调用一个方法就在栈上压入一个**栈帧（Stack Frame）**，方法返回时弹出。
+### 栈帧是什么
 
-### 栈帧的四个组成部分
+每调用一个方法，JVM 就在当前线程的虚拟机栈上压入一个**栈帧**。方法返回时弹出。栈帧是方法执行的"工作台"，包含四个组成部分：
 
 ```
 栈帧
-├── 局部变量表 —— 存放方法参数和局部变量（以 Slot 为单位）
-├── 操作数栈   —— JVM 基于栈的运算中转站
-├── 动态链接   —— 指向运行时常量池中该方法的引用
-└── 返回地址   —— 方法调用后的下一条指令地址
+├── 局部变量表 —— 存放方法参数和局部变量
+├── 操作数栈   —— 字节码指令的运算中转站
+├── 动态链接   —— 指向运行时常量池中该方法的符号引用
+└── 返回地址   —— 方法返回后继续执行的位置
 ```
 
-### 局部变量表与 Slot
+大部分开发者不需要关心操作数栈和动态链接的细节——JVM 自动管理。但**局部变量表**值得深入理解，因为它直接影响你对 `this`、参数传递、变量作用域的认知。
 
-局部变量表以 **Slot（变量槽）** 为单位存储。32 位类型（`int`、`float`、引用）占 1 个 Slot，64 位类型（`long`、`double`）占 2 个 Slot。
+### 局部变量表的 Slot 机制
 
-实例方法的局部变量表中，**Slot 0 固定存放 `this` 引用**：
+局部变量表以 **Slot（变量槽）** 为单位。32 位类型（`int`、`float`、引用）占 1 个 Slot，64 位类型（`long`、`double`）占 2 个 Slot。
+
+关键细节：**实例方法的 Slot 0 固定是 `this`**。
 
 ```java
 public class UserService {
     public User findUser(int id, String name) {
-        // Slot 0 = this
-        // Slot 1 = id (int, 1个Slot)
-        // Slot 2 = name (引用, 1个Slot)
+        // Slot 0 = this（隐式参数）
+        // Slot 1 = id
+        // Slot 2 = name
         User user = new User(id, name);  // Slot 3 = user
         return user;
     }
 }
 ```
 
-对应的字节码：
+这解释了一个常见的面试问题：**为什么静态方法不能访问 `this`？** 因为静态方法的局部变量表中没有 Slot 0 给 `this`——它根本没有隐式参数。
 
-```
-aload_0     // 加载 Slot 0 (this) 到操作数栈
-iload_1     // 加载 Slot 1 (id)
-aload_2     // 加载 Slot 2 (name)
-invokespecial #2  // 调用构造方法
-astore_3    // 将结果存到 Slot 3 (user)
-aload_3     // 加载 Slot 3
-areturn     // 返回引用
-```
+这也解释了 **Lambda 表达式为什么能访问外部变量但不能修改**：Lambda 捕获的是变量的**值的拷贝**（Slot 中的值），不是引用。如果允许修改，会导致 Lambda 内部的修改对调用方不可见——违反了 Java 的值传递语义。
 
-### 操作数栈的工作过程
+### 栈溢出的真实场景
 
-操作数栈是栈帧中的"计算区"。所有运算都在操作数栈上完成：
+每个线程的栈大小由 `-Xss` 控制（默认因平台而异，通常 512KB~1MB）。栈溢出不只是"无限递归"这么简单——在实际项目中，更常见的触发场景是：
+
+**1. 深度递归处理大数据**
 
 ```java
-int result = a + b;  // 假设 a 在 Slot 1, b 在 Slot 2
-```
-
-```
-1. iload_1    → 操作数栈: [a]
-2. iload_2    → 操作数栈: [a, b]
-3. iadd       → 弹出 a 和 b，相加 → 操作数栈: [a+b]
-4. istore_3   → 将 a+b 存到 Slot 3 → 操作数栈: []
-```
-
-### 方法调用的栈帧变化
-
-```java
-public int outer() {
-    int a = 1;
-    int b = inner(a);  // 调用 inner
-    return a + b;
-}
-
-public int inner(int x) {
-    return x * 2;
+// 处理一棵深度为 10000 的树
+public void traverse(TreeNode node) {
+    if (node == null) return;
+    process(node);
+    traverse(node.left);   // 深度递归 → StackOverflowError
+    traverse(node.right);
 }
 ```
 
-```
-调用 outer():
-┌─────────────────┐
-│ outer 栈帧       │  局部变量: [this, a=?, b=?]
-│ 操作数栈: []     │
-├─────────────────┤
-│ VM Stack        │
-└─────────────────┘
+**2. 过深的方法调用链**
 
-执行 a=1, 调用 inner(1):
-┌─────────────────┐
-│ outer 栈帧       │  局部变量: [this, a=1, b=?]
-├─────────────────┤
-│ inner 栈帧       │  局部变量: [x=1]
-│ 操作数栈: []     │
-├─────────────────┤
-│ VM Stack        │
-└─────────────────┘
+Spring + MyBatis 应用中，一次请求可能经过：Filter → DispatcherServlet → Controller → Service → Mapper → MyBatis 拦截器 → JDBC → ...，调用链本身就可能很深。
 
-inner 返回 2, 回到 outer:
-┌─────────────────┐
-│ outer 栈帧       │  局部变量: [this, a=1, b=2]
-│ 操作数栈: [3]    │  ← a+b 的结果
-├─────────────────┤
-│ VM Stack        │
-└─────────────────┘
-```
+**3. JSP 编译后的超长方法**
 
-### 栈溢出
+JSP 页面编译成 Servlet 后，整个页面的逻辑在一个 `_jspService()` 方法中。复杂的 JSP 页面可能生成超长的方法，导致栈帧过大。
 
-每个线程的栈大小是有限的（`-Xss256k`）。如果方法调用层次太深（如无限递归），栈帧不断压入，最终导致 `StackOverflowError`。
+### StackOverflowError vs OutOfMemoryError
 
-```java
-// 无限递归 → StackOverflowError
-public void recurse() {
-    recurse();
-}
-```
+栈区域可能抛出两种异常，触发条件不同：
 
-注意：`StackOverflowError` 是 **Error**，不是 **Exception**，不能被 catch 恢复。
+| 异常 | 触发条件 | 含义 |
+|------|---------|------|
+| `StackOverflowError` | 栈深度超过 `-Xss` 限制 | 单个线程的方法调用太深 |
+| `OutOfMemoryError` | 无法分配新的线程栈 | 创建了太多线程，操作系统内存耗尽 |
+
+第二种更隐蔽。每个线程的栈需要独立的内存空间，1000 个线程 × 1MB 栈 = 1GB 内存。在高并发场景下，线程数过多会直接导致 OOM，而不是 StackOverflow。
 
 ---
 
-## 2.3 堆内存：对象的家园
+## 2.3 堆：对象的生命周期
 
-**堆（Heap）** 是 JVM 中最大的一块内存区域，所有对象实例和数组都在这里分配。
+### 分代不是理论，是工程经验
 
-### 分代划分
+堆分为新生代（Eden + S0 + S1）和老年代（Old）。分代的依据是**弱分代假说**（Weak Generational Hypothesis）：绝大多数对象在创建后很快就会被回收。
 
-```
-┌── Eden（伊甸区）──────────┐  ← 新对象在这里分配
-│  Survivor 0 │ Survivor 1 │  ← 存活对象在两个 S 区之间复制
-├──────────────────────────┤
-│      Old（老年代）        │  ← 长期存活的对象晋升到这里
-└──────────────────────────┘
-```
+这不是学术假设，而是对真实应用的观测。一个 Web 应用中，一次请求创建的大量临时对象（DTO、StringBuilder、各种中间变量）在请求结束后就变成垃圾。分代的设计就是利用这个特征：频繁回收新生代（少量存活对象），偶尔回收老年代（长期存活对象）。
 
-分代的依据是"大多数对象朝生夕灭"的经验假设：新创建的对象很快就会被回收（Minor GC 频繁但快速），少数长期存活的对象晋升到老年代（Major GC 较少但耗时长）。
-
-默认比例：`Eden : S0 : S1 = 8 : 1 : 1`（通过 `-XX:SurvivorRatio=8` 调整），`新生代 : 老年代 = 1 : 2`（通过 `-XX:NewRatio=2` 调整）。
-
-### 对象分配过程
+### 对象分配的完整路径
 
 ```java
 User user = new User("Tom");
 ```
 
+这行代码在 JVM 内部经历的分配过程远比"在 Eden 区分配"复杂：
+
 ```
-1. 尝试在 Eden 区分配
-   ├─ TLAB 可用 → 在 TLAB 中分配（无需加锁，快速路径）
-   └─ TLAB 用完 → 在 Eden 共享区分配（需要 CAS）
-2. Eden 满了 → 触发 Minor GC
-   ├─ 存活对象复制到 Survivor 区（S0 或 S1）
-   └─ 存活对象年龄 +1
-3. 年龄达到阈值（默认 15）→ 晋升到老年代
-4. 老年代满了 → 触发 Major GC / Full GC
+1. 类加载检查
+   └─ User 类是否已加载？没有？先执行类加载（见第一章）
+
+2. 分配内存
+   ├─ 堆内存是否规整？
+   │  ├─ 是 → 指针碰撞（Bump the Pointer）：移动分配指针
+   │  └─ 否 → 空闲列表（Free List）：找到合适的空闲块
+   │
+   └─ 线程安全？
+      ├─ TLAB（Thread Local Allocation Buffer）：每个线程在 Eden 有私有缓冲区
+      │  └─ TLAB 内分配只需移动指针，无需 CAS，极快
+      └─ TLAB 用完 → 在 Eden 共享区分配，需要 CAS 同步
+
+3. 初始化零值
+   └─ 所有字段设为默认值（int=0, boolean=false, 引用=null）
+   └─ 这就是为什么不赋初值也能使用字段——JVM 保证了零值初始化
+
+4. 设置对象头
+   └─ Mark Word（hashCode、GC 年龄、锁状态）
+   └─ Klass Pointer（指向方法区中的类元数据）
+
+5. 执行 <init>
+   └─ 你写的构造方法代码
 ```
 
-### 大对象直接进老年代
+**TLAB 是关键优化**。没有 TLAB，多线程同时在 Eden 分配对象需要加锁（CAS），TLAB 让每个线程有自己的"私人领地"，分配只需要移动指针。`-XX:+UseTLAB` 默认开启。
 
-超过 `-XX:PretenureSizeThreshold`（默认 0，表示不启用）的大对象直接分配在老年代，避免在 Eden 和 Survivor 之间来回复制。
+### 大对象为什么直接进老年代
+
+超过 `-XX:PretenureSizeThreshold` 的大对象直接分配在老年代。原因不是"大对象生命周期长"，而是**避免大对象在 Eden 和 Survivor 之间来回复制**。
+
+复制算法的代价与对象大小成正比。一个 10MB 的数组在 Minor GC 时复制到 Survivor，再复制回来，开销巨大。直接放老年代，只在 Full GC 时处理。
 
 ```java
-// 如果 PretenureSizeThreshold=1MB
-byte[] big = new byte[2 * 1024 * 1024];  // 2MB，直接进老年代
+// -XX:PretenureSizeThreshold=4194304 (4MB)
+byte[] big = new byte[5 * 1024 * 1024];  // 5MB，直接进老年代
+byte[] small = new byte[1024];            // 1KB，在 Eden 分配
 ```
 
 ### 动态年龄判定
 
-并非所有对象都要等到年龄 15 才晋升。JVM 有**动态年龄判定**规则：
+JVM 不是死板地等到对象年龄达到 15 才晋升。有一个**动态年龄判定**规则：
 
-> 如果 Survivor 区中相同年龄的所有对象大小之和超过 Survivor 空间的一半，年龄 ≥ 该年龄的对象直接晋升老年代。
+> 如果 Survivor 区中某个年龄及以下的所有对象大小之和超过 Survivor 空间的一半，年龄 ≥ 该年龄的对象直接晋升老年代。
 
-这条规则避免了 Survivor 区频繁触发复制。
+为什么需要这个规则？假设 Survivor 只有 100MB，某次 Minor GC 后有 60MB 的对象年龄都是 3。如果不晋升，下次 Minor GC 时 Survivor 可能放不下存活对象，导致直接进入老年代（HandlePromotionFailure 失败）。动态年龄判定提前晋升，避免了这种"被动晋升"的风险。
+
+### 堆内存的监控
+
+```bash
+# 查看堆内存使用情况
+jstat -gcutil <pid> 1000
+
+# 输出示例:
+#   S0     S1     E      O      M     CCS    YGC     YGCT    FGC    FGCT     GCT
+#   0.00  25.31  45.67  32.18  95.32  92.15   125    1.234     3    0.456    1.690
+```
+
+| 列 | 含义 | 关注点 |
+|---|------|--------|
+| S0/S1 | Survivor 区使用率 | 一个为 0，一个有数据（复制算法） |
+| E | Eden 区使用率 | 接近 100% 时即将触发 Young GC |
+| O | 老年代使用率 | 持续增长 → 可能有内存泄漏 |
+| YGC/YGCT | Young GC 次数/总耗时 | 频繁但每次应该很快（< 50ms） |
+| FGC/FGCT | Full GC 次数/总耗时 | 次数应该很少，每次较慢 |
+
+**实战经验**：如果 FGC 频繁（每分钟多次），通常意味着老年代空间不足或有内存泄漏。先检查 O 区使用率是否持续增长，再用 `jmap -histo` 看哪些对象占用了大量内存。
 
 ---
 
-## 2.4 方法区与 Metaspace 演进
+## 2.4 方法区：类的元数据仓库
 
-方法区存储类的元数据：类名、字段、方法、常量池、静态变量。
+### 方法区存了什么
 
-### 方法区存储的内容
+方法区不是"存方法的地方"——它存的是**类的元数据**：
 
 ```
 方法区（Metaspace）
 ├── 类元数据（Klass）
-│   ├── 类名、访问修饰符、父类、接口
-│   ├── 字段定义（名称、类型、修饰符）
-│   └── 方法定义（名称、参数、返回值、字节码）
+│   ├── 类名、访问修饰符、父类、接口列表
+│   ├── 字段定义（名称、类型、修饰符、偏移量）
+│   └── 方法定义（名称、参数、返回值、字节码、异常表）
 ├── 运行时常量池
-│   ├── 字面量（字符串、数字）
-│   └── 符号引用（类名、方法名、字段名）
-├── 静态变量（引用类型的静态变量）
-└── JIT 编译后的机器码（CodeCache）
+│   ├── 字面量（字符串、数字常量）
+│   └── 符号引用（类名、方法名、字段名 → 解析后变成直接引用）
+├── 静态变量（引用类型的静态变量，JDK 7+ 移到了堆中）
+└── JIT 编译后的机器码（CodeCache，单独管理）
 ```
 
-注意：**JDK 7 之后，静态变量（引用类型）从永久代移到了堆中**。`static Object obj = new Object()` 中，`obj` 这个引用本身在堆上，不是方法区。
+一个常见的误解：**静态变量存在方法区**。实际上，JDK 7 之后，`static Object obj = new Object()` 中，`obj` 这个引用本身在**堆**中，不在方法区。方法区只存类的结构信息。
 
-### JDK 7 → 8 的重大变化
+### PermGen → Metaspace 的演进
 
-| | JDK 7 及以前 | JDK 8+ |
+JDK 7 及以前，方法区的实现叫**永久代（PermGen）**，是堆的一部分，大小固定（`-XX:MaxPermSize`）。
+
+JDK 8 将永久代彻底移除，替换为 **Metaspace**，使用本地内存（Native Memory）。
+
+| | 永久代 | Metaspace |
 |---|---|---|
-| 实现 | 永久代（PermGen，堆的一部分） | Metaspace（本地内存） |
-| 大小限制 | `-XX:MaxPermSize` 固定 | 默认不设上限 |
-| 常见问题 | PermGen OOM | Metaspace OOM（大量动态生成类） |
-| 字符串常量池 | 在永久代 | 在堆中 |
-| 静态变量 | 在永久代 | 在堆中 |
+| 内存位置 | 堆内 | 本地内存 |
+| 大小限制 | 固定（默认 64MB~82MB） | 默认不设上限 |
+| OOM 表现 | `PermGen space` | `Metaspace` |
+| 字符串常量池 | 在永久代 | 移到堆中 |
+| 静态变量 | 在永久代 | 移到堆中 |
 
-为什么改？永久代大小固定，容易 OOM（尤其是大量使用反射、动态代理、CGLIB 的应用）。Metaspace 使用本地内存，默认不设上限，由操作系统管理。
+**为什么要改？** 永久代有两个致命问题：
 
-但 Metaspace 也不是无限的。大量动态生成类（如 Groovy 脚本、ASM 字节码增强、大量 JSP 页面）仍然可能导致 Metaspace OOM。用 `-XX:MaxMetaspaceSize` 设置上限。
+1. **大小难以预估**。类的数量取决于加载的 JAR 数量、反射使用程度、动态代理数量。一个使用大量框架的应用可能需要 256MB 永久代，另一个只需要 64MB。开发者必须手动调整 `MaxPermSize`，调大了浪费，调小了 OOM。
 
-### 监控 Metaspace
+2. **Full GC 才能回收**。永久代的垃圾回收和老年代绑定——只有 Full GC 才会顺带回收永久代。如果永久代满了但还没触发 Full GC，就会直接 OOM。
+
+Metaspace 用本地内存，默认不设上限，由操作系统管理。类卸载时自动回收。这解决了预估困难的问题。
+
+### Metaspace OOM 的真实场景
+
+Metaspace 不是无限的。以下场景会导致 Metaspace OOM：
+
+**场景一：CGLIB 动态代理失控**
+
+```java
+// Spring AOP 每次创建代理都会生成新类
+// 如果代理类没有被正确缓存，Metaspace 会持续增长
+while (true) {
+    Enhancer enhancer = new Enhancer();
+    enhancer.setSuperclass(Target.class);
+    enhancer.setCallback((MethodInterceptor) (obj, method, args, proxy) -> 
+        proxy.invokeSuper(obj, args));
+    enhancer.create();  // 每次生成一个新类 → Metaspace 增长
+}
+```
+
+**场景二：Groovy 脚本反复编译**
+
+```java
+// Groovy 的 GroovyShell 每次 eval 都会编译生成新类
+GroovyShell shell = new GroovyShell();
+while (true) {
+    shell.evaluate("println 'hello'");  // 每次生成一个新的 Script 类
+}
+```
+
+**场景三：大量 JSP 页面**
+
+Tomcat 部署了大量 JSP 应用，每个 JSP 编译成一个 Servlet 类。如果应用有数千个 JSP，Metaspace 需要数百 MB。
+
+**监控 Metaspace：**
 
 ```bash
 # 查看 Metaspace 使用情况
 jstat -gcmetacapacity <pid>
 
-# 输出示例
-#   MCMN    MCMX      MC       CCSMN   CCSMX    CCSC
-#   0.0   1048576.0  300352.0   0.0   1048576.0  36864.0
+# 更详细的 Metaspace 分解
+jcmd <pid> VM.metaspace
 ```
 
-### 实际案例：Metaspace OOM
+---
+
+## 2.5 堆外内存：JVM 规范之外的灰色地带
+
+堆外内存（Direct Memory）不在 JVM 运行时数据区的规范中，但在实际工程中经常成为 OOM 的元凶。
+
+### 什么是堆外内存
+
+普通 Java 对象分配在堆上，由 GC 自动回收。堆外内存是通过 `Unsafe.allocateMemory()` 或 `ByteBuffer.allocateDirect()` 分配的**本地内存**，不受 GC 直接管理。
+
+```
+普通对象:
+  new byte[1024]  →  分配在 Eden  →  GC 自动回收
+
+堆外内存:
+  ByteBuffer.allocateDirect(1024)  →  分配在本地内存  →  DirectByteBuffer 被 GC 时通过 Cleaner 释放
+```
+
+### 为什么 NIO 需要堆外内存
+
+传统的 I/O 操作需要在用户空间（堆）和内核空间之间拷贝数据：
+
+```
+传统 I/O（两次拷贝）:
+  磁盘 → 内核缓冲区 → 用户缓冲区(堆) → 内核缓冲区 → 网卡
+         read()         write()
+```
+
+使用堆外内存后，可以避免一次用户空间的拷贝：
+
+```
+Direct I/O（一次拷贝）:
+  磁盘 → 内核缓冲区(直接内存) → 网卡
+         sendfile() 系统调用
+```
+
+这就是 Netty 和 NIO 使用 `DirectByteBuffer` 的原因——减少一次内存拷贝，对高吞吐场景意义重大。
+
+### 堆外内存的坑
+
+**坑一：不受 Xmx 限制**
+
+`-Xmx4g` 只限制堆大小。堆外内存另外计算。一个应用可能堆只用了 2GB，但堆外内存用了 3GB，总内存 5GB。
+
+```bash
+# 查看总内存使用
+jcmd <pid> VM.native_memory summary
+
+# 输出示例:
+#                    Total:  reserved=6GB  +  committed=4GB
+#        Java Heap (reserved=2GB, committed=2GB)
+#        Class (reserved=1GB, committed=500MB)
+#        Thread (reserved=500MB, committed=500MB)
+#        Internal (reserved=1GB, committed=1GB)   ← 这里包含堆外内存
+```
+
+**坑二：回收延迟**
+
+`DirectByteBuffer` 本身是堆上的小对象，但它关联的堆外内存可能很大。只有当 `DirectByteBuffer` 被 GC 回收时，堆外内存才通过 Cleaner 释放。如果 GC 不频繁，堆外内存可能长时间不释放。
 
 ```java
-// 动态生成大量类 → Metaspace OOM
-// 使用 CGLIB 或 ASM 不断生成新的代理类
+// 危险：在循环中分配大量 DirectByteBuffer
 while (true) {
-    Enhancer enhancer = new Enhancer();
-    enhancer.setSuperclass(Target.class);
-    enhancer.setCallback((MethodInterceptor) (obj, method, args, proxy) -> proxy.invokeSuper(obj, args));
-    enhancer.create();  // 每次生成一个新类
+    ByteBuffer buf = ByteBuffer.allocateDirect(10 * 1024 * 1024);  // 10MB
+    // buf 在下次 GC 前不会被释放
+    // 如果循环速度快于 GC → 堆外内存持续增长 → OOM
 }
 ```
 
-解决方案：`-XX:MaxMetaspaceSize=256m`，或排查为什么不停生成新类。
+**坑三：监控困难**
 
----
-
-## 2.5 直接内存（Direct Memory）
-
-直接内存不在 JVM 运行时数据区的规范中，但实际使用广泛。
-
-### 什么是直接内存
-
-普通对象分配在堆上（Heap），由 GC 管理。直接内存是**通过 `Unsafe.allocateMemory()` 或 `ByteBuffer.allocateDirect()` 分配的堆外内存**，不经过 GC，需要手动释放。
-
-```
-普通 I/O:
-  磁盘 → 内核缓冲区 → 用户缓冲区(堆) → 内核缓冲区 → 网卡
-  （两次内核态/用户态拷贝）
-
-Direct I/O (零拷贝):
-  磁盘 → 直接内存 → 网卡
-  （零次拷贝，通过 sendfile 系统调用）
-```
-
-### NIO 与直接内存
-
-Java NIO 的 `DirectByteBuffer` 使用直接内存：
-
-```java
-// 分配直接内存
-ByteBuffer buffer = ByteBuffer.allocateDirect(1024 * 1024);  // 1MB 堆外内存
-
-// 这块内存不受 GC 直接管理
-// 当 DirectByteBuffer 对象被 GC 回收时，通过 Cleaner 释放堆外内存
-```
-
-### 直接内存的坑
-
-- **不受 Xmx 限制**：`-Xmx4g` 只限制堆大小，直接内存另外计算
-- **OOM 风险**：分配过多直接内存会导致物理内存耗尽
-- **监控困难**：`jstat` 看不到直接内存使用量
+`jstat` 看不到堆外内存。`jmap -histo` 只能看到堆上的 `DirectByteBuffer` 对象（很小），看不到实际分配的堆外内存大小。
 
 ```bash
-# 查看直接内存使用
+# 正确的监控方式
 jcmd <pid> VM.native_memory summary
+
+# 或者使用 NMT（Native Memory Tracking）
+# 启动时加参数: -XX:NativeMemoryTracking=summary
 ```
 
-### 直接内存参数
+### 堆外内存参数
 
 | 参数 | 说明 |
 |------|------|
-| `-XX:MaxDirectMemorySize=256m` | 限制直接内存大小（默认等于 `-Xmx`） |
+| `-XX:MaxDirectMemorySize=256m` | 限制堆外内存大小（默认等于 `-Xmx`） |
+| `-XX:NativeMemoryTracking=summary` | 开启 NMT 监控 |
 
 ---
 
-## 2.6 StringTable 与字符串驻留
+## 2.6 StringTable：字符串驻留的代价
 
-### 字符串常量池
+### 字符串常量池的工作原理
 
 ```java
 String a = "hello";
@@ -326,50 +381,72 @@ String b = "hello";
 
 JVM 维护一个**字符串常量池（StringTable）**，存储所有字面量字符串。相同的字符串只存一份，所有引用共享。
 
-StringTable 本质上是一个 **HashTable**，默认桶数 60013（可通过 `-XX:StringTableSize` 调整）。
+StringTable 本质上是一个 HashTable，通过字符串的 hashCode 定位桶。`-XX:StringTableSize` 控制桶数（默认 60013），桶数越多，哈希冲突越少，查找越快。
 
-### intern() 方法
+### intern() 的行为与陷阱
 
 ```java
-String a = new String("hello");  // 堆上新对象
-String b = a.intern();           // 将 "hello" 放入常量池（如果不存在）
+String a = new String("hello");  // 堆上新对象（a ≠ "hello"）
+String b = a.intern();           // 将 "hello" 放入常量池
 String c = "hello";              // 直接引用常量池
 b == c  // true
 ```
 
-`intern()` 的行为：
-- 如果 StringTable 中已有该字符串 → 返回已有引用
-- 如果没有 → 将引用放入 StringTable，返回该引用
+`intern()` 的行为在 JDK 6 和 JDK 7+ 有本质区别：
 
-### JDK 7 的变化
+| | JDK 6 | JDK 7+ |
+|---|---|---|
+| StringTable 位置 | 永久代 | 堆 |
+| `intern()` 发现字符串不存在时 | 在永久代创建新对象 | 在堆中记录引用（不创建新对象） |
+| 内存影响 | 永久代空间有限，容易 OOM | 使用堆空间，可被 GC 回收 |
 
-JDK 7 之前，StringTable 在永久代中。JDK 7 将其移到了堆中，由 GC 管理。
+JDK 7+ 的变化意味着：`intern()` 不再往永久代塞数据，而是把堆中已有对象的引用记录到 StringTable。这大幅降低了 `intern()` 的内存风险。
 
-这意味着 `intern()` 创建的字符串不再占用永久代空间，可以被 GC 回收。但过度使用 `intern()` 仍然会导致 StringTable 膨胀，增加 GC 压力。
+### intern() 的正确使用场景
 
-### 实际性能影响
+**适合：大量重复字符串的去重**
 
 ```java
-// 不要用 intern() 存储大量不重复的字符串
-// 每个字符串都会在 StringTable 中留下记录，即使原对象已被 GC
-List<String> list = new ArrayList<>();
+// 从 CSV 读取 1000 万行，大量重复的城市名
+// 不用 intern(): 1000 万个 String 对象，其中 90% 是重复的
+// 用 intern():   1000 个不重复的城市名 + 1000 万个引用
+
+String city = getCityFromCsv();
+return city.intern();  // 相同城市名共享同一个对象
+```
+
+**不适合：大量不重复的字符串**
+
+```java
+// 每个字符串都不同 → intern() 浪费内存（StringTable 本身也需要空间）
 for (int i = 0; i < 1_000_000; i++) {
-    list.add(new String("str" + i).intern());  // StringTable 膨胀！
+    String s = UUID.randomUUID().toString().intern();  // 错误用法！
 }
 ```
 
-### 字符串拼接的编译器优化
+### 字符串常量池的内存模型
 
-```java
-String s = "a" + "b" + "c";
-// 编译器直接优化为 String s = "abc";（常量折叠）
-
-String s = "a";
-s = s + "b";  // 编译为 new StringBuilder().append("a").append("b").toString()
+```
+堆（Heap）
+├── StringTable（HashTable，桶数组）
+│   ├── [0] → "hello" → "world"  （链表处理哈希冲突）
+│   ├── [1] → null
+│   ├── [2] → "foo"
+│   └── ...
+├── String 对象（value 字符数组）
+│   ├── String@0x1001 → char[]{'h','e','l','l','o'}
+│   ├── String@0x1002 → char[]{'w','o','r','l','d'}
+│   └── ...
+└── 其他对象
 ```
 
-JDK 9+ 引入 `invokedynamic` 指令优化字符串拼接（`StringConcatFactory`），性能接近手写 `StringBuilder`。
+`String a = "hello"` 的查找过程：
+1. 计算 `"hello".hashCode()` → 得到桶索引
+2. 在桶中遍历链表，找到值为 `"hello"` 的 String 对象
+3. 返回该对象的引用
+
+如果没找到，创建一个新的 String 对象，放入 StringTable。
 
 ---
 
-> 本章建立了 JVM 内存的完整世界观。下一章将深入对象模型——从 `new` 到对象消亡，覆盖对象创建、内存布局、Mark Word，这是 GC 和并发锁机制的关键前置知识。
+> 本章建立了 JVM 内存区域的完整认知。每个区域不是孤立的概念，而是有明确的职责边界、内部工作机制和出问题时的表现。下一章将深入对象模型——从 `new` 到对象消亡，覆盖对象创建、内存布局、Mark Word，这些知识直接服务于 GC（第四章）和并发锁（第三卷 synchronized）。
