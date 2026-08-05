@@ -372,7 +372,7 @@ ALTER TABLE orders ADD INDEX idx_user_status (user_id, status);
 
 ### 8.4.2 SQL 慢查询诊断：EXPLAIN 实战
 
-慢查询是最常见的性能问题。发现慢 SQL 后，第一步是用 `EXPLAIN` 分析执行计划：
+一个接口慢，你用 Arthas trace 了一下，发现 80% 的时间花在一条 SQL 上。这条 SQL 为什么慢？答案在 `EXPLAIN` 的输出里。很多开发者看到 EXPLAIN 的十几列就头大，其实只需要关注四列。
 
 ```sql
 EXPLAIN SELECT * FROM orders WHERE user_id = 123 AND status = 'PAID';
