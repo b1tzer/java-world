@@ -370,7 +370,49 @@ ALTER TABLE orders ADD INDEX idx_user_status (user_id, status);
 | **验证** | 压测对比、A/B 测试 | 对比改动前后的指标 |
 | **监控** | 持续观测，防止劣化 | 设置告警阈值 |
 
-### 8.4.2 没有测量就没有优化
+### 8.4.2 SQL 慢查询诊断：EXPLAIN 实战
+
+慢查询是最常见的性能问题。发现慢 SQL 后，第一步是用 `EXPLAIN` 分析执行计划：
+
+```sql
+EXPLAIN SELECT * FROM orders WHERE user_id = 123 AND status = 'PAID';
+```
+
+EXPLAIN 输出的关键列：
+
+| 列 | 含义 | 关注点 |
+|----|------|--------|
+| `type` | 访问类型 | `ALL`(全表扫描) < `index` < `range` < `ref` < `eq_ref` < `const` |
+| `rows` | 预估扫描行数 | 越小越好，全表扫描可能显示百万行 |
+| `key` | 实际使用的索引 | `NULL` 表示没用索引 |
+| `Extra` | 额外信息 | `Using filesort`、`Using temporary` 是性能红灯 |
+
+**反面示例 vs 正面示例**：
+
+```sql
+-- ❌ 反面：type=ALL，全表扫描，rows=500000
+EXPLAIN SELECT * FROM orders WHERE user_id = 123;
+-- 没有索引，扫描 50 万行
+
+-- 加索引
+ALTER TABLE orders ADD INDEX idx_user_id (user_id);
+
+-- ✅ 正面：type=ref，使用索引，rows=3
+EXPLAIN SELECT * FROM orders WHERE user_id = 123;
+-- 只扫描 3 行
+```
+
+**Extra 列的红灯信号**：
+
+| Extra 值 | 含义 | 解决方案 |
+|----------|------|---------|
+| `Using filesort` | 额外排序操作 | 检查 ORDER BY 是否命中索引 |
+| `Using temporary` | 使用临时表 | 检查 GROUP BY / DISTINCT 是否合理 |
+| `Using index` | 覆盖索引（✅ 好信号） | 查询列全在索引中，无需回表 |
+
+**经验法则**：`type` 至少达到 `range` 级别，`rows` 控制在千以内，避免 `Using filesort` 和 `Using temporary`。
+
+### 8.4.3 没有测量就没有优化
 
 ```java
 // ❌ 错误：凭感觉优化

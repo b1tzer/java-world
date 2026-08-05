@@ -443,7 +443,25 @@ public class PaymentService {
 | 恢复方式 | 下次调用自动重试 | 半开状态探测恢复 | 流量下降自动恢复 |
 | 典型工具 | try-catch + 默认逻辑 | Resilience4j / Sentinel | Sentinel / Nginx limit_req |
 
-### 4.5.5 降级演练：Chaos Engineering
+### 4.5.5 优雅停机（Graceful Shutdown）
+
+高可用系统讨论了"故障发生后如何恢复"，但有一个高频的"人为故障"常被忽略：**发布部署**。
+
+**为什么发布会导致 5xx？** 滚动发布时，旧实例被 kill 的瞬间可能有数百个请求正在处理。如果直接 `kill -9`，这些请求全部失败。在高可用系统中，发布频率远高于故障频率——每次发布零 5xx，是高可用的"最后一公里"。
+
+Spring Boot 的优雅停机配置：
+
+```yaml
+server:
+  shutdown: graceful                    # 开启优雅停机
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s     # 最多等待 30 秒
+```
+
+流程：收到 SIGTERM → 停止接收新请求 → 等待正在处理的请求完成（最多 30 秒）→ 强制关闭。Kubernetes 中配合 `preStop` hook 和 `terminationGracePeriodSeconds` 使用，确保负载均衡器先摘除实例再停机。
+
+### 4.5.6 降级演练：Chaos Engineering
 
 > **如果你从没演练过降级，那你的降级方案大概率是不能用的。**
 

@@ -481,6 +481,53 @@ public void reconcile() {
 
 > **最佳实践**：Canal 异步同步 + 定时对账的组合是业界主流方案。Canal 保证实时性，对账保证最终一致性，两者互补。
 
+### 6.6.6 读写分离的主从延迟问题
+
+3.4 节实现了读写分离，但没有讨论一个高频 Bug 来源：**主从延迟**。
+
+用户下单后立即查询订单，写请求走主库，读请求走从库。如果主从之间有 100ms~1s 的延迟，用户会看到"订单不存在"。这是一个真实且常见的生产问题。
+
+**三种应对策略**：
+
+**策略一：关键读走主库**
+
+用 `@Master` 注解标记需要读主库的方法：
+
+```java
+@Target({ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Master {}
+
+// 写操作后紧跟的读操作，强制走主库
+@Master
+public Order getOrderAfterCreate(Long orderId) {
+    return orderRepository.findById(orderId);  // 走主库
+}
+```
+
+**策略二：写后短暂强制读主库（ThreadLocal 标记）**
+
+```java
+// 在切面中，写操作完成后设置 ThreadLocal 标记
+@After("@annotation(Transactional)")
+public void afterWrite() {
+    ReadWriteContext.forceMaster(Duration.ofSeconds(2));  // 2 秒内读主库
+}
+
+// 数据源路由时检查标记
+@Override
+protected Object determineCurrentLookupKey() {
+    if (ReadWriteContext.isForceMaster()) return "master";
+    return ReadWriteContext.isRead() ? "slave" : "master";
+}
+```
+
+**策略三：接受延迟（非关键场景）**
+
+对于个人中心、商品列表等非关键场景，1 秒的延迟可以接受。不需要特殊处理，用户刷新一下就能看到最新数据。
+
+**选择建议**：支付结果、订单状态等关键场景用策略一；写后立即读的场景用策略二；非关键场景用策略三。不要所有读都走主库——那就失去了读写分离的意义。
+
 ---
 
 > **本章小结**：数据架构的核心挑战是"性能"与"一致性"的博弈。缓存提升性能但引入一致性问题，分库分表提升容量但引入复杂度，冷热分离优化成本但引入路由逻辑。没有完美的方案，只有适合业务场景的选择。
