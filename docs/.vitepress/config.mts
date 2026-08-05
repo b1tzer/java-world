@@ -6,14 +6,25 @@ export default defineConfig({
   lang: 'zh-CN',
   base: '/java-world/',
   lastUpdated: true,
+  sitemap: {
+    hostname: 'https://thestack.xpro.wang/java-world/',
+  },
 
   head: [
-    ['link', { rel: 'icon', href: '/java-world/favicon.ico' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/java-world/favicon.svg' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:title', content: 'Java World' }],
+    ['meta', { property: 'og:description', content: '从语言到架构的 Java 完整知识体系 — 七卷五十六章' }],
+    ['meta', { property: 'og:url', content: 'https://thestack.xpro.wang/java-world/' }],
+    ['meta', { property: 'og:image', content: 'https://thestack.xpro.wang/java-world/logo.svg' }],
+    ['meta', { name: 'twitter:card', content: 'summary' }],
+    ['meta', { name: 'theme-color', content: '#2563eb' }],
+    ['meta', { name: 'viewport', content: 'width=device-width,initial-scale=1' }],
   ],
 
   themeConfig: {
     siteTitle: 'Java World',
-    logo: '/logo.svg',
+    logo: '/java-world/logo.svg',
 
     nav: [
       { text: '首页', link: '/' },
