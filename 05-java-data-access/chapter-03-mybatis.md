@@ -362,7 +362,38 @@ public class UserService {
 
 这不是 bug，而是设计决策。Spring 的 `SqlSessionTemplate` 在每次 Mapper 调用时获取新的 `SqlSession`（从 `SqlSessionFactory` 中获取），调用完成后立即关闭。这是为了保证每个数据库操作都在正确的事务上下文中执行。
 
-**实践建议：** 在 Spring 环境中，不要依赖 MyBatis 的一级缓存。如果需要跨请求的缓存，使用 Spring Cache（如 Redis、Caffeine）作为二级缓存的替代方案。
+**实践建议：** 在 Spring 环境中，不要依赖 MyBatis 的一级缓存。如果需要跨请求的缓存，使用 Spring Cache（如 Redis、Caffeine）作为替代。
+
+### 3.4.5 二级缓存的陷阱
+
+二级缓存看似美好——跨 SqlSession 共享，减少数据库调用。但它有几个隐蔽的坑：
+
+**陷阱一：跨 namespace 脏读**
+
+二级缓存是 namespace 级别的（一个 Mapper 一个缓存）。如果两个 Mapper 操作同一张表，缓存不会互相通知：
+
+```java
+// UserMapper.xml
+<select id="getById" resultType="User">SELECT * FROM user WHERE id = #{id}</select>
+
+// AdminMapper.xml（也操作 user 表）
+<update id="updateUser">UPDATE user SET name = #{name} WHERE id = #{id}</update>
+
+// 场景：
+User u1 = userMapper.getById(1);     // 查到 name=Tom，缓存
+adminMapper.updateUser(1, "Jerry");   // 更新数据库，但 UserMapper 的缓存不知道！
+User u2 = userMapper.getById(1);     // 命中缓存，返回 Tom（脏数据！）
+```
+
+**陷阱二：跨 SqlSessionFactory 不共享**
+
+如果有多个数据源（多库场景），每个 `SqlSessionFactory` 有独立的二级缓存，互不可见。
+
+**陷阱三：事务提交后才写入缓存**
+
+二级缓存的数据在事务提交后才真正写入缓存。如果事务回滚，缓存不会有脏数据——但如果在事务内读了数据，事务外又读了，两次结果可能不一致。
+
+**结论：生产环境慎用 MyBatis 二级缓存。** 用 Spring Cache + Redis 代替——缓存失效、更新通知、分布式一致性都有成熟的解决方案。
 
 ---
 

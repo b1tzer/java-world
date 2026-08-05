@@ -213,7 +213,64 @@ LongBuffer longBuf = LongBuffer.allocate(32);
 
 ---
 
-## 4.4 Selector：一个线程管理万千连接
+## 4.4 零拷贝：NIO 的性能杀手锏
+
+传统 I/O 的一个痛点是数据拷贝次数太多。以"从文件读取数据发送到网络"为例：
+
+```
+传统 I/O（4 次拷贝 + 4 次上下文切换）：
+  磁盘 → 内核缓冲区 → 用户缓冲区 → Socket 缓冲区 → 网卡
+         read()         用户态        write()
+         (内核→用户)    处理数据       (用户→内核)
+```
+
+4 次拷贝中有 2 次是"多余的"——数据从内核缓冲区拷贝到用户缓冲区，处理完又拷贝回内核缓冲区。用户空间只是"过了一下手"，什么也没做。
+
+零拷贝的核心思想：**让数据留在内核空间，不拷贝到用户空间**。
+
+### FileChannel.transferTo()
+
+```java
+// 传统方式：数据经过用户空间
+FileChannel fileChannel = FileInputStream.open().getChannel();
+ByteBuffer buffer = ByteBuffer.allocate(1024);
+fileChannel.read(buffer);        // 内核 → 用户
+socketChannel.write(buffer);     // 用户 → 内核
+
+// 零拷贝：数据不经过用户空间
+FileChannel fileChannel = FileInputStream.open().getChannel();
+fileChannel.transferTo(0, fileChannel.size(), socketChannel);
+// 底层调用 sendfile() 系统调用
+// 磁盘 → 内核缓冲区 → 网卡（2 次拷贝，0 次用户态切换）
+```
+
+`transferTo()` 底层调用操作系统的 `sendfile()` 系统调用，数据直接从内核的文件缓冲区传到 Socket 缓冲区，不经过用户空间。
+
+### 零拷贝的适用场景
+
+| 场景 | 是否适合 | 原因 |
+|------|---------|------|
+| 文件服务器（Nginx、静态资源） | ✅ 非常适合 | 大文件传输，数据不需要修改 |
+| 消息队列（Kafka） | ✅ 非常适合 | 消息从磁盘直接发到网络 |
+| 数据压缩/加密 | ❌ 不适合 | 数据需要在用户空间处理 |
+| 小文件传输 | ⚠️ 收益有限 | 系统调用开销可能抵消零拷贝收益 |
+
+Kafka 的高吞吐很大程度上归功于零拷贝——消费者拉取消息时，数据从磁盘直接通过 `transferTo()` 发送到网络，不经过 JVM 堆内存。
+
+### DirectByteBuffer 与零拷贝
+
+`ByteBuffer.allocateDirect()` 分配的堆外内存也和零拷贝有关。普通堆内存（`allocate()`）在 I/O 操作时，JVM 需要先将数据从堆拷贝到临时的直接内存（因为操作系统不能直接访问 Java 堆）。`allocateDirect()` 跳过了这一步。
+
+```
+allocate()：       堆内存 → 临时直接内存 → 内核缓冲区 → 网卡
+allocateDirect()： 直接内存 → 内核缓冲区 → 网卡
+```
+
+所以 NIO 编程中，长期存活的 Buffer 应该用 `allocateDirect()`，短期临时的用 `allocate()`。
+
+---
+
+## 4.5 Selector：一个线程管理万千连接
 
 ### 4.4.1 多路复用器是什么
 
@@ -302,9 +359,9 @@ ClientState state = (ClientState) key.attachment();
 
 ---
 
-## 4.5 NIO Reactor 模式
+## 4.6 NIO Reactor 模式
 
-### 4.5.1 从 Selector 到 Reactor
+### 4.7.1 从 Selector 到 Reactor
 
 直接使用 Selector 的代码虽然能工作，但在生产环境中需要考虑：
 - 事件分发的线程安全
@@ -313,7 +370,7 @@ ClientState state = (ClientState) key.attachment();
 
 **Reactor 模式**是对 Selector 使用方式的标准化抽象。
 
-### 4.5.2 单线程 Reactor
+### 4.7.2 单线程 Reactor
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -380,7 +437,7 @@ public class NioEchoServer {
 }
 ```
 
-### 4.5.3 多线程 Reactor
+### 4.7.3 多线程 Reactor
 
 单线程 Reactor 的问题是：**业务逻辑处理会阻塞 Selector 线程**，导致其他连接的事件无法及时处理。
 
@@ -406,7 +463,7 @@ public class NioEchoServer {
         └──────────┴──────────┘
 ```
 
-### 4.5.4 主从多 Reactor 模式
+### 4.7.4 主从多 Reactor 模式
 
 大型框架（如 Netty）采用的模式：
 
@@ -431,9 +488,9 @@ public class NioEchoServer {
 
 ---
 
-## 4.6 NIO 的真实限制
+## 4.7 NIO 的真实限制
 
-### 4.6.1 编程复杂度
+### 4.7.1 编程复杂度
 
 用原生 NIO 写一个生产级的网络服务器，需要处理：
 
@@ -450,7 +507,7 @@ public class NioEchoServer {
 
 一个简单的 NIO 服务器，代码量轻松超过 500 行，而等价的 BIO 版本只需 50 行。
 
-### 4.6.2 epoll 空轮询 Bug
+### 4.7.2 epoll 空轮询 Bug
 
 这是 JDK 中一个著名的 Bug（JDK-6670302）：
 
@@ -489,7 +546,7 @@ while (true) {
 }
 ```
 
-### 4.6.3 其他痛点
+### 4.7.3 其他痛点
 
 | 问题 | 描述 |
 |------|------|
@@ -499,7 +556,7 @@ while (true) {
 | **FileChannel 不支持非阻塞** | 文件 I/O 无法用 Selector 管理 |
 | **跨平台行为不一致** | Windows 的 `select` 实现和 Linux 的 `epoll` 性能差距大 |
 
-### 4.6.4 从 NIO 到 Netty
+### 4.7.4 从 NIO 到 Netty
 
 正是因为原生 NIO 的这些问题，社区才催生了 **Netty**：
 

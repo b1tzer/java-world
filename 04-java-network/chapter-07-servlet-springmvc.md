@@ -428,7 +428,42 @@ protected void doDispatch(HttpServletRequest request,
 | ArgumentResolver | `HandlerMethodArgumentResolver` | Controller 方法参数解析 |
 | ReturnValueHandler | `HandlerMethodReturnValueHandler` | Controller 返回值处理 |
 
-## 7.5 Web 框架如何隐藏网络复杂度
+## 7.5 Servlet 异步支持：打破"一个请求占一个线程"
+
+Servlet 3.0 引入了异步处理，允许在不占用 Tomcat 线程的情况下处理耗时操作。
+
+### 同步模型的问题
+
+```java
+// 传统同步：一个请求占一个线程，直到响应完成
+@GetMapping("/order/{id}")
+public Order getOrder(@PathVariable Long id) {
+    Order order = orderService.findById(id);           // 500ms
+    User user = userService.getUser(order.getUserId()); // 800ms
+    return enrichOrder(order, user);
+    // Tomcat 线程被阻塞 1.3 秒
+}
+```
+
+### 异步释放线程
+
+```java
+// Callable：Tomcat 线程立即释放，耗时操作在异步线程池执行
+@GetMapping("/order/{id}")
+public Callable<Order> getOrder(@PathVariable Long id) {
+    return () -> {
+        Order order = orderService.findById(id);
+        User user = userService.getUser(order.getUserId());
+        return enrichOrder(order, user);
+    };
+}
+```
+
+Spring WebFlux 更进一步——全链路非阻塞。但代价是代码从命令式变成响应式，调试更难。JDK 21 虚拟线程提供了一个折中：用同步代码风格获得非阻塞性能。
+
+---
+
+## 7.6 Web 框架如何隐藏网络复杂度
 
 当你写下以下代码时，底层到底发生了什么？
 
@@ -444,7 +479,7 @@ public class UserController {
 }
 ```
 
-### 7.5.1 从注解到网络的完整链路
+### 7.6.1 从注解到网络的完整链路
 
 这短短几行代码，背后隐藏着从 Socket 到 HTTP 的完整协议栈：
 
@@ -497,7 +532,7 @@ Content-Type: application/json
 {"id":1,"name":"张三","email":"zhangsan@example.com"}
 ```
 
-### 7.5.2 连接管理的隐藏细节
+### 7.6.2 连接管理的隐藏细节
 
 HTTP Keep-Alive 是 Web 性能优化的基础，但开发者通常不需要关心：
 
@@ -516,7 +551,7 @@ public User getUser(@PathVariable Long id) {
 // 5. 超时或达到上限后关闭连接 (四次挥手)
 ```
 
-### 7.5.3 Spring Boot 自动配置的魔法
+### 7.6.3 Spring Boot 自动配置的魔法
 
 Spring Boot 通过自动配置，将 Tomcat 的初始化完全隐藏：
 
@@ -539,7 +574,7 @@ public class MyApplication {
 // 7. 启动 Tomcat, 监听 8080 端口
 ```
 
-### 7.5.4 抽象的价值与代价
+### 7.6.4 抽象的价值与代价
 
 | 维度 | 直接使用 Servlet | 使用 Spring MVC |
 |------|-----------------|----------------|
