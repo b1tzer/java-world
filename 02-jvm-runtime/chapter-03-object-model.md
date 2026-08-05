@@ -130,7 +130,7 @@ hash: 对象的 hashCode (首次调用 hashCode() 时计算并存储)
 
 ### wait/notify 的完整流程
 
-`wait()` 和 `notify()` 是 Monitor 机制的一部分，但它们的操作路径经常被误解：
+很多人觉得 `wait/notify` 就是“等一下”和“醒一醒”。没那么简单。它们是 Monitor 机制的一部分，操作路径比大多数人想的要复杂——线程从 `wait()` 到真正重新执行，中间要经过三个队列的转换。
 
 ```
 线程 A 调用 obj.wait():
