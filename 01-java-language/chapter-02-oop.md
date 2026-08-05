@@ -218,7 +218,7 @@ Java 通过一些设计来限制继承的滥用：
 
 ## 2.4 Object：所有对象的公共契约
 
-Java 中所有类都直接或间接继承 `Object`。`Object` 定义了每个 Java 对象都必须具备的基础行为。第一章讲了 `equals()` 和 `hashCode()`，这里补全其他关键方法。
+所有类最终都继承 `Object`——这不是选择，是 Java 的设计。`Object` 定义了一套"公共契约"：每个对象都能告诉你它是什么（`getClass`）、长什么样（`toString`）、能不能复制（`clone`）。第一章已经讲了 `equals` 和 `hashCode`，这里把剩下的几个关键方法走一遍。
 
 ### toString()
 
@@ -291,7 +291,7 @@ clazz.getName();      // "com.example.User"
 clazz.getDeclaredFields();  // 获取所有字段
 ```
 
-反射和第二卷类加载机制会详细展开。
+这是反射的起点——第六卷 Spring 会大量用到它。
 
 ---
 
