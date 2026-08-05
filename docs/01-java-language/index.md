@@ -4,7 +4,7 @@
 
 ## 章节
 
-- [类型系统](chapter-01-type-system.md) — 基本类型与引用类型、对象模型、equals/hashCode、String 不可变
-- [面向对象](chapter-02-oop.md) — 封装、继承、多态、SOLID、组合优于继承
-- [泛型](chapter-03-generics.md) — 类型擦除、通配符与 PECS、桥接方法
-- [注解与 Lambda](chapter-04-annotation-lambda.md) — 注解生命周期、APT、函数式接口、invokedynamic、Stream
+- [类型系统](/01-java-language/chapter-01-type-system) — 基本类型与引用类型、对象模型、equals/hashCode、String 不可变
+- [面向对象](/01-java-language/chapter-02-oop) — 封装、继承、多态、SOLID、组合优于继承
+- [泛型](/01-java-language/chapter-03-generics) — 类型擦除、通配符与 PECS、桥接方法
+- [注解与 Lambda](/01-java-language/chapter-04-annotation-lambda) — 注解生命周期、APT、函数式接口、invokedynamic、Stream

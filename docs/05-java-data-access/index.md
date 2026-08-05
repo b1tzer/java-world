@@ -4,10 +4,10 @@
 
 ## 章节
 
-- [持久化思想](chapter-01-persistence-thought.md) — 对象-关系阻抗失配、三种层次
-- [JDBC](chapter-02-jdbc.md) — 核心接口、PreparedStatement、性能瓶颈
-- [MyBatis](chapter-03-mybatis.md) — Mapper 动态代理、缓存机制、插件机制
-- [ORM 深入](chapter-04-orm-deep.md) — MyBatis vs Hibernate、Entity 生命周期、N+1 问题
-- [数据库核心原理](chapter-05-db-principles.md) — B+Tree 索引、EXPLAIN、锁、事务隔离级别
-- [Spring 事务](chapter-06-spring-transaction.md) — @Transactional、传播机制、失效场景
-- [性能优化](chapter-07-performance.md) — HikariCP、批处理、链路分析
+- [持久化思想](/05-java-data-access/chapter-01-persistence-thought) — 对象-关系阻抗失配、三种层次
+- [JDBC](/05-java-data-access/chapter-02-jdbc) — 核心接口、PreparedStatement、性能瓶颈
+- [MyBatis](/05-java-data-access/chapter-03-mybatis) — Mapper 动态代理、缓存机制、插件机制
+- [ORM 深入](/05-java-data-access/chapter-04-orm-deep) — MyBatis vs Hibernate、Entity 生命周期、N+1 问题
+- [数据库核心原理](/05-java-data-access/chapter-05-db-principles) — B+Tree 索引、EXPLAIN、锁、事务隔离级别
+- [Spring 事务](/05-java-data-access/chapter-06-spring-transaction) — @Transactional、传播机制、失效场景
+- [性能优化](/05-java-data-access/chapter-07-performance) — HikariCP、批处理、链路分析
