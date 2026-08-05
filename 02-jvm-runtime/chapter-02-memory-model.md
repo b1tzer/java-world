@@ -64,6 +64,26 @@ public class UserService {
 
 这也解释了 **Lambda 表达式为什么能访问外部变量但不能修改**：Lambda 捕获的是变量的**值的拷贝**（Slot 中的值），不是引用。如果允许修改，会导致 Lambda 内部的修改对调用方不可见——违反了 Java 的值传递语义。
 
+### 动态链接的作用
+
+动态链接指向运行时常量池中该方法的符号引用。它的作用是：方法执行时，通过动态链接找到目标方法的字节码入口地址。
+
+这和第一章讲的"解析阶段"直接相关。静态方法、final 方法在类加载时就解析为直接引用（静态解析），但虚方法和接口方法的解析是延迟的——每次调用时通过动态链接查找实际目标。这就是多态在栈帧层面的支撑：
+
+```
+// 编译时：invokevirtual 的目标是父类方法的符号引用
+// 运行时：通过动态链接，找到子类重写后的方法入口
+
+class Animal { void speak() { } }
+class Dog extends Animal { void speak() { } }
+
+Animal a = new Dog();
+a.speak();
+// 栈帧的动态链接指向 Dog.speak() 的字节码，而非 Animal.speak()
+```
+
+如果方法被 JIT 编译，动态链接会直接指向编译后的机器码入口，跳过字节码解释。
+
 ### 栈溢出的真实场景
 
 每个线程的栈大小由 `-Xss` 控制（默认因平台而异，通常 512KB~1MB）。栈溢出不只是"无限递归"这么简单——在实际项目中，更常见的触发场景是：
@@ -141,6 +161,22 @@ User user = new User("Tom");
 
 **TLAB 是关键优化**。没有 TLAB，多线程同时在 Eden 分配对象需要加锁（CAS），TLAB 让每个线程有自己的"私人领地"，分配只需要移动指针。`-XX:+UseTLAB` 默认开启。
 
+TLAB 用完后，线程需要在 Eden 共享区分配对象。这个过程需要 CAS 保证原子性：
+
+```
+// 伪代码：Eden 共享区的对象分配
+while (true) {
+    address = freePointer;                    // 读取当前分配指针
+    newAddress = address + objectSize;        // 计算新位置
+    if (CAS(&freePointer, address, newAddress)) {  // CAS 更新指针
+        break;  // 分配成功
+    }
+    // CAS 失败 → 其他线程先分配了 → 重试
+}
+```
+
+CAS（Compare-And-Swap）是第三卷并发编程的核心概念，这里先建立直觉：多个线程同时移动分配指针，只有一个能成功，失败的重试。TLAB 的价值正在于避免这个 CAS 竞争——大部分对象在 TLAB 内分配，只有 TLAB 耗尽时才需要 CAS。
+
 ### 大对象为什么直接进老年代
 
 超过 `-XX:PretenureSizeThreshold` 的大对象直接分配在老年代，避免大对象在 Eden 和 Survivor 之间来回复制——复制算法的代价与对象大小成正比。
@@ -157,7 +193,24 @@ JVM 不是死板地等到对象年龄达到 15 才晋升。有一个**动态年�
 
 > 如果 Survivor 区中某个年龄及以下的所有对象大小之和超过 Survivor 空间的一半，年龄 ≥ 该年龄的对象直接晋升老年代。
 
-为什么需要这个规则？假设 Survivor 只有 100MB，某次 Minor GC 后有 60MB 的对象年龄都是 3。如果不晋升，下次 Minor GC 时 Survivor 可能放不下存活对象，导致直接进入老年代（HandlePromotionFailure 失败）。动态年龄判定提前晋升，避免了这种"被动晋升"的风险。
+为什么需要这个规则？举个具体例子：
+
+```
+Survivor 区大小 = 100MB
+
+某次 Minor GC 后，存活对象分布：
+  年龄 1: 10MB
+  年龄 2: 15MB
+  年龄 3: 20MB
+  年龄 4: 18MB
+  ─────────────
+  累计: 年龄 1+2+3 = 45MB（< 50MB，不触发）
+  累计: 年龄 1+2+3+4 = 63MB（> 50MB，触发！）
+
+→ 年龄 ≥ 4 的对象直接晋升老年代
+```
+
+JVM 从年龄 1 开始累加，当累加到某个年龄的累计大小超过 Survivor 一半时，该年龄及以上全部晋升。如果不晋升，下次 Minor GC 时 Survivor 可能放不下存活对象，导致对象直接被送入老年代（HandlePromotionFailure 失败）。动态年龄判定提前晋升，避免了这种"被动晋升"的风险。
 
 ### 堆内存的监控
 
@@ -202,6 +255,33 @@ jstat -gcutil <pid> 1000
 ```
 
 JDK 7 之后，`static Object obj = new Object()` 中，`obj` 这个引用本身在**堆**中，不在方法区。方法区只存类的结构信息。
+
+### CodeCache：JIT 编译的物理存储
+
+方法区中有一个容易被忽略但极其重要的区域——**CodeCache**，存储 JIT 编译后的机器码和 JNI 编译的本地代码。
+
+```
+方法区
+├── 类元数据（Metaspace）
+├── 运行时常量池
+└── CodeCache
+    ├── C1 编译的机器码
+    ├── C2 编译的机器码
+    └── JNI 本地代码
+```
+
+CodeCache 有固定大小限制（`-XX:ReservedCodeCacheSize`，默认 240MB~480MB 取决于 JVM 版本）。**CodeCache 满了会怎样？** JVM 会停止 JIT 编译，所有代码退回解释执行——性能可能骤降 10~100 倍。这是生产环境中一种隐蔽的性能问题：没有 OOM、没有异常日志，但服务突然变慢。
+
+```bash
+# 监控 CodeCache 使用情况
+jstat -compiler <pid>
+
+# 或通过 JMX
+# java.lang:type=Compilation → TotalCompilationTime
+# 看 CodeCache 的 JMX Bean
+```
+
+如果 CodeCache 经常接近满，需要增大 `-XX:ReservedCodeCacheSize` 或检查是否有大量方法被编译（可能是动态生成代码过多）。
 
 ### PermGen → Metaspace 的演进
 
@@ -284,6 +364,21 @@ jcmd <pid> VM.metaspace
 堆外内存:
   ByteBuffer.allocateDirect(1024)  →  分配在本地内存  →  DirectByteBuffer 被 GC 时通过 Cleaner 释放
 ```
+
+Cleaner 的工作原理基于**虚引用（PhantomReference）**——第四章会详细讲四种引用类型，这里先建立直觉：
+
+```
+DirectByteBuffer（堆上，小对象）
+  └─ 持有一个 Cleaner 对象
+       └─ Cleaner 关联一个虚引用 + 回收动作（释放本地内存）
+
+当 DirectByteBuffer 不再被任何 GC Root 引用 → GC 回收它
+  → 虚引用被放入 ReferenceQueue
+  → Cleaner 线程从队列中取出虚引用
+  → 执行回收动作：Unsafe.freeMemory(address)
+```
+
+关键点：堆外内存的释放依赖 GC 触发。如果 GC 不频繁，大量 DirectByteBuffer 堆积在堆中，对应的堆外内存就一直不释放。这就是为什么 NIO 框架（如 Netty）会主动管理堆外内存，而不是依赖 GC。
 
 ### 为什么 NIO 需要堆外内存
 
@@ -389,6 +484,24 @@ b == c  // true
 | 内存影响 | 永久代空间有限，容易 OOM | 使用堆空间，可被 GC 回收 |
 
 JDK 7+ 的变化意味着：`intern()` 不再往永久代塞数据，而是把堆中已有对象的引用记录到 StringTable。这大幅降低了 `intern()` 的内存风险。
+
+### G1 字符串去重
+
+G1 收集器提供了一个专门的字符串去重优化：`-XX:+UseStringDeduplication`。它的原理是在 GC 过程中，发现多个 `String` 对象的 `char[]` 内容相同，就让它们共享同一个 `char[]`。
+
+```
+去重前：
+  String@0x1001 → char[]{'h','e','l','l','o'}  （20 字节）
+  String@0x1002 → char[]{'h','e','l','l','o'}  （20 字节）
+
+去重后：
+  String@0x1001 → char[]{'h','e','l','l','o'}  （20 字节）
+  String@0x1002 → char[]{'h','e','l','l','o'}  （同一个 char[]）
+```
+
+与 `intern()` 的区别：`intern()` 去重的是 `String` 对象本身（指向同一个 String），G1 去重的是底层 `char[]` 数组（String 对象还是不同的，但共享 char[]）。G1 去重是自动的，不需要修改代码，开销很低。
+
+适合场景：应用中存在大量重复字符串（如从数据库读取的枚举值、城市名、状态码），且使用 G1 收集器。
 
 ### intern() 的正确使用场景
 

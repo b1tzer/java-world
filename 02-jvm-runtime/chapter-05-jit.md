@@ -74,6 +74,26 @@ JVM 使用**方法调用计数器**和**回边计数器**来判断代码是否"�
 
 两个计数器任一达到阈值，就触发编译。
 
+### On-Stack Replacement（OSR）
+
+分层编译有一个实际问题：一个方法正在执行中（比如一个很长的循环），此时达到了编译阈值。方法还在栈上执行，总不能等它返回再用编译后的版本吧？
+
+OSR 解决的就是这个问题——**方法还在执行中，就切换到编译后的机器码**。
+
+```
+方法正在解释执行（Level 0）
+  ↓ 循环次数达到阈值
+JVM 编译该方法的循环体为机器码
+  ↓ 在循环的下一次迭代入口处切换
+从解释执行切换到机器码执行（Level 4）
+  ↓ 方法返回时
+回到正常的分层编译流程
+```
+
+OSR 的触发依赖**回边计数器**（循环体执行次数），而非方法调用计数器。这就是为什么一个只调用一次但内部有大量循环的方法也能被 JIT 编译。
+
+OSR 编译的代码质量通常略低于正常编译——因为它需要在循环入口处插入"从解释器栈帧过渡到编译代码栈帧"的桥接代码。但对于长时间运行的循环，OSR 带来的性能提升远大于这个开销。
+
 ### Profiling 收集的信息
 
 | 信息类型 | 用途 | 示例 |
@@ -145,17 +165,38 @@ public void process() { /* 100 行代码 */ }  // 字节码 > 325 字节
 
 虚方法（`invokevirtual`）的目标在编译期不确定——可能是子类的实现。JIT 通过 profiling 收集的信息做**去虚化**：
 
+JIT 通过两种手段做去虚化：
+
+**1. 基于 Class Hierarchy Analysis（CHA）**
+
+如果一个虚方法或接口方法在当前类层次中只有一个实现，JVM 可以在编译时直接内联，不需要等 profiling：
+
+```java
+// 类层次分析：当前只有 FinalClass 实现了 Interface
+// Interface.method() → 直接内联 FinalClass.method()
+// 因为没有其他实现，编译时就能确定目标
+
+// 如果后来加载了新实现 → 去优化
+```
+
+CHA 对 `final` 类和 `final` 方法最可靠——它们不可能有子类/重写，编译时目标确定，无需去优化。这是为什么将不会被继承的方法标记为 `final` 能帮助 JIT 优化。
+
+**2. 基于 Profiling 的去虚化**
+
+对于有多个实现的方法，JIT 通过 profiling 发现某个实现占绝对多数（如 99%），就可以做"推测性去虚化"：
+
 ```java
 interface Parser {
     String parse(String input);
 }
 
-// 运行时只有一个实现：JsonParser
+// 运行时 99% 的调用是 JsonParser
 Parser parser = getParser();
 parser.parse(data);  // invokeinterface
 
-// JIT 发现只有一个实现 → 直接内联 JsonParser.parse()
-// 如果后来加载了新的实现 → 去优化
+// JIT 发现 99% 是 JsonParser → 内联 JsonParser.parse()
+// 在内联代码前插入类型检查（Guard）
+// 如果遇到其他实现 → 去优化
 ```
 
 ---
@@ -280,6 +321,29 @@ for (int i = 0; i < arr.length; i++) {
 
 向量化需要满足条件：循环体简单、数据对齐、没有循环依赖。
 
+### 如何验证是否被向量化
+
+JIT 编译日志可以告诉你是否做了向量化：
+
+```bash
+# 开启编译日志
+-XX:+PrintCompilation
+-XX:+UnlockDiagnosticVMOptions
+-XX:+LogCompilation
+-XX:LogFile=jit.log
+
+# 在日志中搜索 "vector" 或 "SuperWord"
+```
+
+更直观的方式是使用 JMH 的 `perfasm` 集成，查看编译后的机器码：
+
+```bash
+# 使用 JMH 查看生成的汇编指令
+java -jar benchmarks.jar -prof perfasm
+```
+
+在输出中搜索 `vmovdqu`（SSE）或 `vmovdqa`（AVX）等 SIMD 指令，确认循环是否被向量化。如果看到标量的 `add`/`mov` 指令而非 SIMD 指令，说明向量化失败——检查循环体是否有数据依赖或方法调用。
+
 ---
 
 ## 5.6 去优化（Deoptimization）
@@ -334,7 +398,47 @@ parser.parse(data);
 
 ---
 
-## 5.7 实战：观察 JIT 编译
+## 5.7 JIT 相关的生产问题
+
+JIT 在生产环境中可能引发三类隐蔽问题：
+
+### 问题一：CodeCache 满
+
+JIT 编译的机器码存储在 CodeCache 中（第二章 2.4 节）。如果 CodeCache 满了（默认 240MB~480MB），JVM 会停止 JIT 编译，所有代码退回解释执行。
+
+**症状：** 服务运行一段时间后突然变慢，没有 OOM、没有 GC 问题、CPU 使用率正常——但响应时间骤增。
+
+**排查：**
+
+```bash
+# 检查 CodeCache 使用情况
+jstat -compiler <pid>
+
+# 或通过 JFR 观察 Compilation 事件
+# 如果看到 "CodeCache is full" 日志 → 确认是 CodeCache 问题
+```
+
+**修复：** 增大 `-XX:ReservedCodeCacheSize`（如 512MB），或检查是否有大量动态生成的代码（如 Groovy 脚本、反射代理）。
+
+### 问题二：编译线程占用 CPU
+
+JIT 编译在后台线程中执行。当大量方法同时达到编译阈值时（如服务刚启动后的预热阶段），编译线程可能占用显著的 CPU 资源。
+
+**症状：** 服务启动后前几分钟 CPU 使用率偏高，之后恢复正常。
+
+**通常不需要处理**——这是正常的预热行为。如果影响启动速度，可以通过 `-XX:+TieredCompilation -XX:TieredStopAtLevel=1` 先只做 C1 编译（快速），等服务稳定后再允许 C2 编译。
+
+### 问题三：逆优化风暴
+
+当大量类同时被加载（如应用部署后初始化、热部署），之前编译的代码可能批量去优化。去优化后代码退回解释执行，需要重新 profiling 和编译。
+
+**症状：** 部署后短暂的性能抖动（1~3 分钟），之后恢复正常。
+
+**排查：** 观察 `-Xlog:compilation*=info` 中的 `made not compilable` 和 `deoptimization` 事件数量。
+
+---
+
+## 5.8 实战：观察 JIT 编译
 
 ### 打印编译日志
 

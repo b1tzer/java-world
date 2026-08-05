@@ -69,12 +69,31 @@ Mark Word 是对象头的核心，存储了：
 
 ## 3.3 Mark Word 与锁状态
 
-Mark Word 不是固定不变的。当对象被同步操作时，Mark Word 的内容会根据锁状态变化：
+Mark Word 不是固定不变的。当对象被同步操作时，Mark Word 的内容会根据锁状态变化。
+
+64 位 JVM 中 Mark Word 的位布局：
+
+```
+64 位 Mark Word（共 64 bit）:
+┌───────────────────────────────────────────────────────────────┐
+│  unused:25 │ hash:31 │ age:4 │ biased_lock:1 │ lock:2        │
+│  (25 bit)  │ (31 bit)│(4 bit)│   (1 bit)     │ (2 bit)       │
+└───────────────────────────────────────────────────────────────┘
+
+lock 标志位: 01=无锁/偏向, 00=轻量级锁, 10=重量级锁, 11=GC 标记
+biased_lock: 1=启用偏向锁, 0=未启用
+age: 对象经历的 Minor GC 次数, 达到阈值(默认15)晋升老年代
+hash: 对象的 hashCode (首次调用 hashCode() 时计算并存储)
+```
+
+注意：当对象被加锁后，Mark Word 的内容会被覆盖——hashCode 和分代年龄的空间被用来存储锁信息。这就是为什么**加锁的对象调用 hashCode() 时需要特殊处理**（轻量级锁从栈帧的锁记录中恢复，重量级锁存储在 Monitor 中）。
+
+不同锁状态下 Mark Word 的内容：
 
 | 锁状态 | Mark Word 内容 | 标志位 |
 |--------|---------------|--------|
 | 无锁 | hashCode + 分代年龄 | 01 |
-| 偏向锁 | ThreadID + Epoch + 分代年龄 | 01 |
+| 偏向锁 | ThreadID(54bit) + Epoch(2bit) + 分代年龄 | 01 |
 | 轻量级锁 | 指向栈中锁记录的指针 | 00 |
 | 重量级锁 | 指向 Monitor 的指针 | 10 |
 | GC 标记 | 空 | 11 |
@@ -109,6 +128,37 @@ Mark Word 不是固定不变的。当对象被同步操作时，Mark Word 的内
 2. **释放锁**（monitorexit）：`_count--`。当 `_count` 为 0 时，释放 Monitor，`_EntryList` 中的一个线程被唤醒。
 3. **等待/通知**（wait/notify）：线程调用 `wait()` 后进入 `_WaitSet` 并释放 Monitor。`notify()` 从 `_WaitSet` 唤醒一个线程，该线程需重新竞争 Monitor。
 
+### wait/notify 的完整流程
+
+`wait()` 和 `notify()` 是 Monitor 机制的一部分，但它们的操作路径经常被误解：
+
+```
+线程 A 调用 obj.wait():
+  1. 线程 A 必须是 obj 的 Monitor 的 _owner（必须持有锁）
+  2. 线程 A 释放 Monitor（_owner = null, _count = 0）
+  3. 线程 A 进入 _WaitSet（等待被 notify）
+  4. 线程 A 变为 WAITING 状态
+
+线程 B 调用 obj.notify():
+  1. 线程 B 必须是 obj 的 Monitor 的 _owner
+  2. 从 _WaitSet 中取出一个线程（如线程 A）
+  3. 线程 A 从 _WaitSet 移到 _EntryList
+  4. 线程 A 变为 BLOCKED 状态（等待重新获取锁）
+  5. 线程 B 释放 Monitor 后，_EntryList 中的线程竞争锁
+  6. 线程 A 重新成为 _owner，从 wait() 返回
+```
+
+关键点：`notify()` 后线程不会立即执行——它从 `_WaitSet` 移到 `_EntryList`，需要重新竞争锁。这就是为什么 `wait()` 必须在 `synchronized` 块中调用，并且通常用 `while` 循环检查条件：
+
+```java
+synchronized (obj) {
+    while (!condition) {   // 用 while 而非 if，防止虚假唤醒
+        obj.wait();
+    }
+    // 条件满足，继续执行
+}
+```
+
 Monitor 是重量级的数据结构，依赖操作系统的 Mutex 实现。这就是为什么 JVM 默认不直接使用它，而是先尝试偏向锁和轻量级锁——只有在竞争激烈时才升级到重量级锁。第三卷 `synchronized` 章节会详细展开锁升级的完整过程。
 
 ---
@@ -129,6 +179,18 @@ Eden 区
 ```
 
 `-XX:+UseTLAB` 默认开启。这就是为什么 Java 多线程创建对象这么快——大部分情况下不需要真正的同步。
+
+### TLAB 的关键参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `-XX:+UseTLAB` | 开启 | 是否使用 TLAB |
+| `-XX:TLABSize` | 自适应 | 单个 TLAB 的初始大小 |
+| `-XX:MinTLABSize` | 2KB | TLAB 最小大小 |
+| `-XX:TLABRefillWasteFraction` | 64 | TLAB 浪费比例阈值 |
+| `-XX:+ResizeTLAB` | 开启 | 允许 JVM 动态调整 TLAB 大小 |
+
+TLAB 有一个"碎片化"问题：TLAB 内部用指针碰撞分配对象，当剩余空间不够下一个对象时，剩余空间被浪费（padding 填充）。`TLABRefillWasteFraction` 控制浪费的容忍度——如果浪费比例超过阈值，JVM 会申请一个新的 TLAB，而不是在剩余空间中硬塞。`-XX:+ResizeTLAB` 让 JVM 根据线程的分配速率动态调整 TLAB 大小，分配速率高的线程获得更大的 TLAB。
 
 ---
 
@@ -172,6 +234,20 @@ int sum = x + y;
 **3. 锁消除。** 如果对象不逃逸出方法，不可能被其他线程访问，那么对它的同步操作可以安全去除。
 
 这三种优化都依赖逃逸分析的结果。JIT 编译器会在编译时分析对象的使用范围，决定是否应用这些优化。
+
+### 逃逸分析的局限
+
+逃逸分析并非万能，有几个实际局限：
+
+1. **栈上分配在 HotSpot 中实现不完善。** HotSpot 的 C2 编译器做逃逸分析后，真正走"栈上分配"路径的情况很少——大部分优化走的是标量替换（更彻底，连栈上的对象都不创建）。栈上分配需要 GC 配合（对象头需要特殊标记以区分栈上对象和堆对象），实现复杂度高。
+
+2. **分析本身有开销。** 逃逸分析需要遍历方法的 IR（中间表示），对于大型方法可能增加编译时间。JVM 只对热点方法做逃逸分析。
+
+3. **逃逸是保守估计。** 如果分析器无法确定对象是否逃逸（比如通过数组间接引用），会保守地认为逃逸，放弃优化。
+
+4. **跨方法逃逸分析有限。** HotSpot 的逃逸分析主要在方法内进行，跨方法的分析能力有限。如果对象在方法 A 创建、传给方法 B 使用，即使方法 B 也不逃逸，也可能无法优化。
+
+`-XX:+DoEscapeAnalysis` 默认开启，`-XX:+EliminateAllocations`（标量替换）默认开启，`-XX:+EliminateLocks`（锁消除）默认开启。一般不需要手动调整。
 
 ---
 

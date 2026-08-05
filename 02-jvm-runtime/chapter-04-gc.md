@@ -107,6 +107,26 @@ User user = weak.get();  // 很可能已经是 null
 
 基于经验假设：**绝大多数对象朝生夕灭**。据统计，90% 以上的对象在创建后很快就会被回收。
 
+### 跨代引用问题
+
+分代带来了新问题：如果老年代有对象引用了新生代的对象，Minor GC 时如何找到这个被引用的新生代对象？最笨的办法是扫描整个老年代——但老年代通常很大，扫描耗时。
+
+解决方案：**记忆集（Remembered Set）+ 卡表（Card Table）**。
+
+```
+卡表（Card Table）：
+  堆被划分为 512 字节的"卡页"（Card Page）
+  每个卡页对应卡表中的 1 字节（标记位）
+
+  当老年代对象修改引用、指向新生代对象时：
+  → 写屏障（Write Barrier）将对应卡页的标记位设为 "dirty"
+  → Minor GC 时只扫描 dirty 的卡页，而非整个老年代
+```
+
+写屏障是 JVM 在引用赋值操作前后插入的代码（类似 AOP 的环绕通知），保证卡表的准确性。这不是程序员手动维护的，而是 JVM 自动处理的。
+
+G1 收集器更进一步，每个 Region 维护自己的 RSet（Remembered Set），记录"哪些外部 Region 有引用指向本 Region"。这比全堆共享一张卡表更精确，但 RSet 本身占用额外内存（约 5%~10% 堆空间）。
+
 因此，JVM 将堆分为两代：
 
 | 代 | 区域 | 特点 | 算法 |
@@ -246,12 +266,58 @@ ZGC 的染色指针利用了 64 位地址空间中未使用的位：
 
 ```
 64 位指针实际使用情况：
-  [4 位标志位] [1 位 Finalizable] [1 位 Remapped] [1 位 Marked0] [1 位 Marked1] [44 位地址] [保留]
+  [unused:16] [Finalizable:1] [Remapped:1] [Marked1:1] [Marked0:1] [地址:44]
+    16 bit      1 bit           1 bit        1 bit       1 bit      44 bit
 ```
 
 44 位地址空间 = 16TB 寻址能力，足够绝大多数场景。
 
+4 个标志位用于记录对象的 GC 状态（标记、转移、引用处理），不需要额外的数据结构（如 G1 的 RSet）。通过指针中的标志位，ZGC 可以在读取引用时判断对象是否需要转发——这就是**读屏障**的工作原理：
+
+```
+// 读屏障的工作流程
+Object ref = object.field;   // 读取引用时，ZGC 插入读屏障检查
+if (ref 需要转发) {
+    ref = 转发后的新地址;     // 自动更新为对象的新位置
+}
+// 后续代码使用更新后的引用
+```
+
+读屏障使得对象转移可以并发进行：ZGC 在后台将对象从一个 Region 复制到另一个 Region，应用线程读取引用时自动被转发到新地址。这是 ZGC 实现亚毫秒 STW 的关键——对象转移（最耗时的阶段）完全并发。
+
+### 分代 ZGC（JDK 21+）
+
+JDK 21 引入了分代 ZGC（`-XX:+UseZGC -XX:+ZGenerational`），将堆分为年轻代和老年代。分代 ZGC 的优势：
+
+- **更高的吞吐量**：年轻代回收频率高但速度快，减少全堆扫描
+- **更低的内存占用**：非分代 ZGC 需要更多内存空间来避免 Full GC
+- **更好的回收效率**：短命对象在年轻代被快速回收，不会污染老年代
+
+JDK 21 中分代 ZGC 是实验特性，JDK 23 中成为默认行为。
+
 ---
+
+### Shenandoah
+
+Shenandoah 是 Red Hat 主导的低延迟收集器，目标与 ZGC 类似（亚毫秒 STW），但实现路径不同：
+
+| | ZGC | Shenandoah |
+|---|---|---|
+| 主导方 | Oracle | Red Hat |
+| 核心技术 | 染色指针 + 读屏障 | 转发指针 + 读/写屏障 |
+| 对象头 | 不修改 | 在对象头前插入转发指针（Forwarding Pointer） |
+| 并发转移 | 读屏障转发 | 读/写屏障转发 |
+| 平台支持 | x86_64, AArch64 | x86_64, AArch64, RISC-V |
+
+Shenandoah 的核心创新是**Brooks Pointer（转发指针）**：每个对象头部前面额外加一个指针，指向对象的当前位置。对象被转移后，转发指针更新为新地址，其他线程通过转发指针找到新位置。
+
+```
+Shenandoah 的回收阶段：
+  初始标记（STW）→ 并发标记 → 最终标记（STW）→ 并发清理
+  → 并发转移 → 初始引用更新（STW）→ 并发引用更新
+```
+
+选型建议：ZGC 和 Shenandoah 目标相似，选择主要看 JDK 发行版——Oracle JDK 默认 ZGC，Red Hat/OpenJDK 更倾向 Shenandoah。JDK 17+ 两者都可用。
 
 ## 4.7 GC 日志分析
 
@@ -288,6 +354,59 @@ GC 日志是调优的第一手资料。
 | `user=0.15` | GC 线程总 CPU 时间 150ms（多线程累加） |
 
 ---
+
+### 从 GC 日志发现问题：实战案例
+
+下面是一个实际的 GC 日志分析过程：
+
+**现象：** 服务接口响应时间每隔几分钟飙升到 2 秒以上。
+
+**第一步：看 GC 日志中的停顿时间**
+
+```
+[10:30:15] Pause Young (Normal)  [Eden: 1024M->0B]  real=0.08 secs  ← 正常
+[10:30:45] Pause Young (Normal)  [Eden: 1024M->0B]  real=0.07 secs  ← 正常
+[10:31:15] Pause Mixed          [Eden: 1024M->0B  Old: 2048M->1800M]  real=0.15 secs
+[10:31:30] Pause Full (Allocation Failure)  [Old: 3500M->3500M]  real=2.1 secs  ← 问题！
+```
+
+**第二步：分析 Full GC 原因**
+
+`Allocation Failure` 意味着老年代空间不足，G1 无法在 Mixed GC 中回收足够空间，被迫 Full GC。老年代 3500M 几乎满。
+
+**第三步：用 jmap 看哪些对象占用了老年代**
+
+```bash
+jmap -histo:live <pid> | head -20
+
+# 输出:
+#  num     #instances         #bytes  class name
+#    1:       2500000      200000000  [B  (byte[])
+#    2:       1800000      144000000  java.lang.String
+#    3:         50000       40000000  com.example.CacheEntry
+```
+
+**第四步：定位代码**
+
+`CacheEntry` 数量异常多 → 检查代码发现一个本地缓存没有设置过期策略，对象持续堆积在老年代。
+
+**修复：** 为缓存添加 TTL 和最大条目数限制。修复后 Full GC 消失，接口响应时间稳定。
+
+### GC 选择决策树
+
+```
+你的应用是什么类型？
+├── 低延迟服务（Web、API、微服务）
+│   ├── 堆 < 4GB → G1（默认，够用）
+│   ├── 堆 4GB~16GB → G1 + 调优 MaxGCPauseMillis
+│   └── 堆 > 16GB 或要求亚毫秒停顿 → ZGC（JDK 17+）
+│
+├── 高吞吐批处理（数据处理、ETL）
+│   └── Parallel Scavenge（吞吐量优先，停顿可接受）
+│
+└── 小应用 / 客户端
+    └── Serial（单线程，简单高效）
+```
 
 ## 4.8 核心 GC 参数
 
