@@ -163,7 +163,7 @@ export default defineConfig({
 
     footer: {
       message: '基于 MIT 发布',
-      copyright: '© 2024 Java World'
+      copyright: '© 2026 Java World'
     },
 
     outline: { level: [2, 3], label: '本章目录' },
