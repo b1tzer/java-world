@@ -75,14 +75,15 @@ CPU 层 ─── 屏障映射到具体架构的一致性协议行为
 
 ### 5.2.1 屏障的作用回顾
 
-第 4 章 §4.6 讲过四类屏障。`volatile` 只用到其中三类：
+第 4 章 §4.6 完整定义了四类内存屏障（LoadLoad / LoadStore / StoreStore / StoreLoad）及其作用。`volatile` 用到其中三类，位置固定：
 
-| 屏障 | 作用 | 在 `volatile` 中的位置 |
-| :-- | :-- | :-- |
-| **LoadLoad** | 屏障前的读完成后，才能执行屏障后的读 | `volatile` 读之后 |
-| **LoadStore** | 屏障前的读完成后，才能执行屏障后的写 | `volatile` 读之后 |
-| **StoreStore** | 屏障前的写完成后，才能执行屏障后的写 | `volatile` 写之前 |
-| **StoreLoad** | 屏障前的写完成后，才能执行屏障后的读 | `volatile` 写之后 |
+| 屏障 | 在 `volatile` 中的插入点 |
+| :-- | :-- |
+| **StoreStore** | `volatile` 写**之前** |
+| **StoreLoad** | `volatile` 写**之后** |
+| **LoadLoad** + **LoadStore** | `volatile` 读**之后** |
+
+`LoadStore` 在其他屏障组合中也有出现，但 `volatile` 的核心行为只由这四种插入位置决定。下面分别看写侧和读侧。
 
 ### 5.2.2 写侧：`StoreStore` + `StoreLoad`
 

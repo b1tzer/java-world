@@ -255,7 +255,7 @@ Thread-C 状态迁移
 拿到锁，从 wait() 返回               RUNNABLE
 ```
 
-关键：**从 `_WaitSet` 出来的线程不会立即执行**，它先进 `_EntryList`，还要重新抢锁。这就是为什么 `wait()` 必须写在 `synchronized` 块里——醒来后要重新持锁才能继续。
+关键：**从 `_WaitSet` 出来的线程不会立即执行**，它先进 `_EntryList`，还要重新抢锁。`wait()` 必须写在 `synchronized` 块里的原因正在于此——醒来后要重新持锁才能继续。
 
 ### 6.3.4 `wait/notify` 的能力边界
 
