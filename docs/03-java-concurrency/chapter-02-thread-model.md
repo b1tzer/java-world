@@ -49,7 +49,7 @@
 2. **创建和切换开销更小**：线程创建比进程快 10-100 倍，上下文切换也更轻量
 3. **响应性更好**：GUI 程序中，后台线程处理耗时任务，UI 线程保持响应
 
-当然，共享也是一把双刃剑——多个线程同时读写共享变量，正是并发 bug 的根源。这一点我们在第 3 章（JMM）和后续章节中会详细讨论。
+当然，共享也是一把双刃剑——多个线程同时读写共享变量，正是并发 bug 的根源。这一点我们在第 4 章（JMM）和后续章节中会详细讨论。
 
 ---
 
@@ -76,7 +76,47 @@ t.start(); // JVM 调用 pthread_create() (Linux) 或 CreateThread() (Windows)
 - **Java 线程的并发度受 OS 线程数限制**
 - **线程切换涉及用户态/内核态切换**，有一定开销
 
-> **历史注脚**：早期的 JVM（如 Green Thread）采用 N:1 模型（多个 Java 线程映射到一个 OS 线程），由 JVM 自行调度。这种方式在多核时代完全失去了意义，已被淘汰。而 Go 语言的 goroutine 采用 M:N 模型，由 Go 运行时在少量 OS 线程上调度大量 goroutine，这在轻量级并发场景下有明显优势。Java 在 Project Loom（JDK 21+）中引入了 Virtual Thread 来应对这一差距。
+> **历史注脚**：早期的 JVM（如 Green Thread）采用 N:1 模型——多个 Java 线程映射到一个 OS 线程，由 JVM 自行调度。这种方式在多核时代完全失去了意义，早已被淘汰。而 Go 语言的 goroutine 采用 M:N 模型，由 Go 运行时在少量 OS 线程上调度大量 goroutine，这在轻量级并发场景下有明显优势。
+
+### 2.2.2 为什么不能无限制创建线程
+
+1:1 模型带来一个直接后果：Java 线程的规模上限，由操作系统对 OS 线程的资源约束决定。
+
+每个 OS 线程都需要分配独立的栈空间。在典型的 64 位 Linux 系统上：
+
+| 资源 | 默认值 | 说明 |
+| :-- | :-- | :-- |
+| 线程栈大小 | 1 MB（可通过 `-Xss` 调整） | 每个线程独占 |
+| `/proc/sys/kernel/threads-max` | 系统级上限 | 系统所有线程总数 |
+| `/proc/sys/vm/max_map_count` | ~65530 | 限制内存映射区域数 |
+| PID 上限 | `/proc/sys/kernel/pid_max` | 进程/线程共用 PID 空间 |
+
+粗略估算：1000 个线程 ≈ 1 GB 栈内存。再加上内核侧的 `task_struct`、内核栈等开销，实际占用更多。
+
+```java
+// 演示线程创建的极限
+public class ThreadLimit {
+    public static void main(String[] args) {
+        int count = 0;
+        try {
+            while (true) {
+                new Thread(() -> {
+                    try { Thread.sleep(Long.MAX_VALUE); }
+                    catch (InterruptedException e) {}
+                }).start();
+                count++;
+            }
+        } catch (OutOfMemoryError e) {
+            System.out.println("最多创建 " + count + " 个线程");
+        }
+    }
+}
+// 典型输出（取决于系统配置）：最多创建 ~4000 个线程
+```
+
+这就是为什么在高并发场景下，需要线程池（`ExecutorService`）来复用线程，而不是为每个任务创建新线程。线程池的内容详见第 10 章。
+
+而 1:1 模型的另一条突围路径，是从根本上改变线程与 OS 资源的绑定关系——这就是 Java 21 引入 Virtual Thread 的动机。
 
 ### 2.2.3 Virtual Thread：JDK 21+ 的新选择
 
@@ -126,46 +166,9 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 | 调度 | OS 内核调度器 | JVM 内部 ForkJoinPool |
 | 适用场景 | CPU 密集型任务 | I/O 密集型任务（Web 服务、数据库查询） |
 
-> **注意**：虚拟线程并非万能药。对于 CPU 密集型任务，虚拟线程没有优势（因为平台线程数 ≈ CPU 核心数已经是最优配置）。虚拟线程的价值在于 I/O 密集型场景——用少量 OS 线程支撑海量并发连接。
-
-### 2.2.2 为什么不能无限制创建线程
-
-每个 OS 线程都需要分配独立的栈空间。在典型的 64 位 Linux 系统上：
-
-| 资源 | 默认值 | 说明 |
-| :-- | :-- | :-- |
-| 线程栈大小 | 1 MB（可通过 `-Xss` 调整） | 每个线程独占 |
-| `/proc/sys/kernel/threads-max` | 系统级上限 | 系统所有线程总数 |
-| `/proc/sys/vm/max_map_count` | ~65530 | 限制内存映射区域数 |
-| PID 上限 | `/proc/sys/kernel/pid_max` | 进程/线程共用 PID 空间 |
-
-粗略估算：1000 个线程 ≈ 1 GB 栈内存。再加上内核侧的 `task_struct`、内核栈等开销，实际占用更多。
-
-```java
-// 演示线程创建的极限
-public class ThreadLimit {
-    public static void main(String[] args) {
-        int count = 0;
-        try {
-            while (true) {
-                new Thread(() -> {
-                    try { Thread.sleep(Long.MAX_VALUE); }
-                    catch (InterruptedException e) {}
-                }).start();
-                count++;
-            }
-        } catch (OutOfMemoryError e) {
-            System.out.println("最多创建 " + count + " 个线程");
-        }
-    }
-}
-// 典型输出（取决于系统配置）：最多创建 ~4000 个线程
-```
-
-这就是为什么在高并发场景下，我们需要线程池（`ExecutorService`）来复用线程，而不是为每个任务创建新线程。线程池的内容将在第 5 章详细展开。
+> **注意**：虚拟线程并非万能药。对于 CPU 密集型任务，虚拟线程没有优势（因为平台线程数 ≈ CPU 核心数已经是最优配置）。虚拟线程的价值在于 I/O 密集型场景——用少量 OS 线程支撑海量并发连接。虚拟线程的完整机制、pinning 陷阱与结构化并发详见第 12 章。
 
 ---
-
 ## 2.3 创建线程的方式演进
 
 Java 创建异步执行单元的方式经历了四个阶段的演进，每一步都是对前一步局限性的回应。
@@ -479,13 +482,13 @@ if (deadlockedThreads != null) {
 
 理解了线程"是什么"和"怎么创建"之后，下一章我们将深入探讨一个更根本的问题：**当多个线程同时运行时，它们如何看到彼此的数据？** 这就是 Java 内存模型（JMM）要回答的问题。
 
-> **与 Project Loom 的关系**：本章介绍的 1:1 线程模型和线程状态机是理解传统 Java 并发的基础。Virtual Thread 改变了线程的调度方式（由 JVM 而非 OS 调度），但 JMM 的规则（第 3 章）、线程安全的编程范式（第 4-8 章）依然完全适用。无论底层是平台线程还是虚拟线程，happens-before 规则不变，`volatile` 和 `synchronized` 的语义不变。
+> **与 Project Loom 的关系**：本章介绍的 1:1 线程模型和线程状态机是理解传统 Java 并发的基础。Virtual Thread 改变了线程的调度方式（由 JVM 而非 OS 调度），但 JMM 的规则（第 4 章）、线程安全的编程范式（第 5-9 章）依然完全适用。无论底层是平台线程还是虚拟线程，happens-before 规则不变，`volatile` 和 `synchronized` 的语义不变。
 
 ---
 
 > **纵横联系**
 >
 > - **向前（第1章）**：第 1 章解释了"为什么需要并发"，本章回答了"并发的执行单元是什么"
-> - **向后（第3章）**：JMM 解释了多线程共享数据时的可见性和有序性问题，是理解 `volatile`、`synchronized`、`happens-before` 的理论基础
-> - **向后（第5章）**：线程池是对线程生命周期的管理抽象，理解本章的线程开销是理解线程池必要性的前提
+> - **向后（第4章）**：JMM 解释了多线程共享数据时的可见性和有序性问题，是理解 `volatile`、`synchronized`、`happens-before` 的理论基础
+> - **向后（第10章）**：线程池是对线程生命周期的管理抽象，理解本章的线程开销是理解线程池必要性的前提
 > - **第二卷《JVM Runtime》**：HotSpot 的线程实现、栈帧结构、线程本地分配缓冲区（TLAB）等内容，与本章的 1:1 模型直接相关

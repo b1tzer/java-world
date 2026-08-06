@@ -6,7 +6,7 @@ titleTemplate: 从语言到架构的完整知识体系
 hero:
   name: Java World
   text: 从语言到架构的完整知识体系
-  tagline: 七卷五十六章，构建 Java 后端工程师的完整能力栈
+  tagline: 七卷五十八章，构建 Java 后端工程师的完整能力栈
   actions:
     - theme: brand
       text: 开始阅读
@@ -26,7 +26,7 @@ features:
     link: /02-jvm-runtime/
   - icon: 🔒
     title: 第三卷 Java 并发
-    details: JMM、volatile、synchronized、AQS、CAS、并发集合、线程池——理解多线程为什么正确
+    details: 线程、ThreadLocal、JMM、volatile、synchronized、CAS、AQS、并发集合、线程池、异步编程、虚拟线程——理解多线程为什么正确
     link: /03-java-concurrency/
   - icon: 🌐
     title: 第四卷 网络与通信

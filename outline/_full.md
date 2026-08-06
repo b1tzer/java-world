@@ -34,7 +34,7 @@
 
 **第二卷《JVM Runtime》**——回答"一行代码如何被 JVM 执行"。覆盖字节码与类加载、内存模型、对象布局、GC、JIT、线上排查。共 6 章。
 
-**第三卷《Java 并发》**——回答"多线程如何正确高效地共享资源"。按 JMM → volatile → synchronized → CAS → AQS → 并发集合 → 线程池 → 异步编程组织。共 11 章。
+**第三卷《Java 并发》**——回答"多线程如何正确、高效地共享资源"。按 竞争本质 → 线程 → 线程封闭 → JMM → volatile → synchronized → CAS → AQS → 并发集合 → 线程池 → 异步编程 → 虚拟线程 → 诊断 组织。共 13 章。
 
 **第四卷《Java 网络与通信》**——回答"数据如何从一个 JVM 到另一个 JVM"。覆盖 TCP/IP → Socket → NIO → Netty → HTTP → Servlet/Spring MVC → RPC → 长连接。共 10 章。
 
@@ -135,19 +135,104 @@
    - Arthas 核心命令
    - JVM 核心参数速查
 
-### 第三卷 Java 并发（11 章，不调整）
+### 第三卷 Java 并发（13 章）
 
-1. 为什么需要并发
-2. Java 线程模型
-3. Java 内存模型（JMM）
-4. volatile
-5. synchronized
-6. 原子类与 CAS
-7. Lock 与 AQS
-8. 并发集合
-9. 线程池
-10. 并发编程模型：异步与响应式
-11. 并发问题诊断与性能优化
+1. **并发的本质：从竞争到协作**
+   - 单核到多核的必然
+   - 并发（Concurrency）与并行（Parallelism）的界线
+   - 三种竞争：共享可变状态 / 资源竞争 / 时序依赖
+   - Java 并发的两条主线：同步（Synchronization）与协调（Coordination）
+
+2. **线程：Java 的执行单元**
+   - 进程与线程：资源与执行的分离
+   - Java Thread 与 OS Thread：1:1 模型的代价
+   - 线程六种状态与真实触发条件
+   - 创建方式演进：`Thread` → `Runnable`
+   - 中断（Interruption）：优雅停止的唯一路径
+
+3. **线程封闭：`ThreadLocal` 与无共享编程**
+   - 共享 vs 封闭：应对竞争的两条路
+   - `Thread.threadLocals` 与 `ThreadLocalMap` 存储结构
+   - 弱引用 + 线性探测：内存泄漏与 `remove()` 的必要性
+   - `InheritableThreadLocal` 与父子线程传递
+   - 线程池场景的失效与 `TransmittableThreadLocal`
+
+4. **Java 内存模型（JMM）：并发的理论骨架**
+   - 硬件视角：CPU 缓存、写缓冲、指令重排
+   - JMM 作为规范，不是内存布局
+   - 三大问题：原子性 / 可见性 / 有序性
+   - happens-before：JMM 的语义合约
+   - `final` 的特殊语义与安全发布
+
+5. **`volatile`：最轻的同步**
+   - 可见性与有序性的两条保证
+   - 内存屏障：`LoadLoad` / `LoadStore` / `StoreLoad` / `StoreStore`
+   - DCL 单例为什么必须加 `volatile`
+   - `volatile` 与 `Atomic` 的分工
+
+6. **`synchronized`：JVM 内置锁**
+   - 三种加锁位置
+   - `monitorenter` / `monitorexit` 的字节码视角
+   - 与对象头 Mark Word 的连接（引用第二卷）
+   - 锁升级：无锁 → 轻量级 → 重量级（偏向锁作为历史注解）
+   - `wait` / `notify`：Monitor 的协作原语
+   - 三个常见误用
+
+7. **CAS 与原子类：无锁的起点**
+   - CAS 指令：`cmpxchg` 与总线锁
+   - Java 层入口：`Unsafe` 与 `VarHandle`
+   - 三大问题：ABA / 自旋消耗 / 单变量限制
+   - `Atomic` 家族：从 `AtomicLong` 到 `LongAdder` 的分段思想
+   - CAS vs `synchronized`：竞争强度决定选型
+
+8. **`LockSupport` 与 AQS：并发工具的骨架**
+   - `LockSupport.park` / `unpark`：许可证式挂起
+   - AQS 三件套：`state` / CLH 队列 / Node 状态机
+   - 独占模式与共享模式的两条 `acquire` 路径
+   - `Condition`：AQS 内部的等待队列
+   - 基于 AQS 的工具矩阵：`ReentrantLock` / `ReadWriteLock` / `StampedLock` / `Semaphore` / `CountDownLatch` / `CyclicBarrier`
+   - `Lock` vs `synchronized` 的三维对比
+
+9. **并发集合：为并发重新设计的数据结构**
+   - 普通集合的失败模式（`ArrayList` 越界 / `HashMap` 环形链表 / `size++` 丢失）
+   - `ConcurrentHashMap`：从分段锁（JDK 7）到桶锁（JDK 8）
+   - `CopyOnWriteArrayList` / `CopyOnWriteArraySet`：读无锁的代价
+   - `BlockingQueue` 家族
+   - `ConcurrentLinkedQueue`：Michael-Scott 无锁队列速览
+
+10. **线程池：任务调度的核心引擎**
+    - 无节制创建线程的三个代价
+    - `ThreadPoolExecutor` 七参数的耦合关系
+    - 任务流转的完整状态机
+    - 四种拒绝策略
+    - `LinkedBlockingQueue` 默认无界的陷阱
+    - `ScheduledThreadPoolExecutor`：定时任务底座
+    - `ForkJoinPool` 与工作窃取
+    - 参数配置方法论：CPU 密集 / IO 密集 / 混合负载
+
+11. **异步编程：从 `Future` 到 `CompletableFuture`**
+    - `Future` 的三个致命局限
+    - `CompletableFuture` 的两组 API：转换与合并
+    - 执行线程之谜：`ForkJoinPool.commonPool` 与自定义 Executor
+    - 异常传播：`exceptionally` / `handle` / `whenComplete` 的差异
+    - 常见反模式
+    - 其他并发范式速览：响应式（详见第四卷）、Actor 模型
+
+12. **虚拟线程与结构化并发（JDK 21）**
+    - 平台线程的规模瓶颈
+    - 虚拟线程：M:N 调度与 `continuation`
+    - 挂载与卸载：`synchronized` 的钉住（pinning）问题
+    - 何时不要用虚拟线程
+    - 结构化并发：`StructuredTaskScope` 与生命周期绑定
+    - `newVirtualThreadPerTaskExecutor` 与传统线程池的关系重估
+
+13. **并发问题诊断与性能调优**
+    - 死锁 / 活锁 / 饥饿的代码模式识别
+    - Thread Dump 的并发视角（通用方法引用第二卷）
+    - 锁竞争定位：JFR 的 `JavaMonitorEnter`、`async-profiler` lock 模式
+    - 伪共享（False Sharing）与 `@Contended`
+    - 上下文切换成本：`vmstat` / `pidstat` 解读
+    - 并发优化的四个方向：缩小锁粒度 / 无锁替代 / 读写分离 / 异步化
 
 ### 第四卷 Java 网络与通信（10 章，不调整）
 
@@ -291,9 +376,9 @@
 |----|------|------|
 | 第一卷 Java 语言 | 4 | 6→4（-2） |
 | 第二卷 JVM Runtime | 6 | 8→6（-2） |
-| 第三卷 并发 | 11 | 不变 |
+| 第三卷 并发 | 13 | 11→13（+2，拆出 ThreadLocal 与虚拟线程） |
 | 第四卷 网络 | 10 | 不变 |
 | 第五卷 数据访问 | 7 | 8→7（-1，剥离缓存） |
 | 第六卷 企业架构 | 9 | 12→9（-3） |
 | 第七卷 性能与架构 | 9 | 12→9（-3） |
-| **合计** | **56** | **65→56（-9）** |
+| **合计** | **58** | **65→58（-7）** |

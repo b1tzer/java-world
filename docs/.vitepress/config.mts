@@ -14,7 +14,7 @@ export default defineConfig({
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/java-world/favicon.svg' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Java World' }],
-    ['meta', { property: 'og:description', content: '从语言到架构的 Java 完整知识体系 — 七卷五十六章' }],
+    ['meta', { property: 'og:description', content: '从语言到架构的 Java 完整知识体系 — 七卷五十八章' }],
     ['meta', { property: 'og:url', content: 'https://thestack.xpro.wang/java-world/' }],
     ['meta', { property: 'og:image', content: 'https://thestack.xpro.wang/java-world/logo.svg' }],
     ['meta', { name: 'twitter:card', content: 'summary' }],

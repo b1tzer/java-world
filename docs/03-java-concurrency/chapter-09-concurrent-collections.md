@@ -1,14 +1,14 @@
-# 第8章 并发集合：高性能数据结构
+# 第9章 并发集合：高性能数据结构
 
 > 当多个线程同时读写同一个集合时，会发生什么？为什么 `HashMap` 在并发场景下可能让 CPU 跑满？`ConcurrentHashMap` 从 JDK 7 到 JDK 8 的锁结构发生了怎样的演进？有没有一种集合，读完全不加锁？本章从问题出发，逐层拆解 Java 并发集合的设计哲学与工程取舍。
 
 ---
 
-## 8.1 普通集合为什么不能并发使用
+## 9.1 普通集合为什么不能并发使用
 
 Java 标准库中的 `ArrayList`、`HashMap` 等集合**没有任何线程安全保证**。它们的文档明确写道："If multiple threads access an ArrayList instance concurrently, and at least one of the threads modifies the list structurally, it must be synchronized externally." 这不是建议，是生死线。
 
-### 8.1.1 ArrayList 的并发灾难
+### 9.1.1 ArrayList 的并发灾难
 
 `ArrayList.add()` 的核心逻辑看似简单：
 
@@ -33,7 +33,7 @@ public boolean add(E e) {
 
 更隐蔽的问题是**可见性**。即使没有写冲突，一个线程的写入对另一个线程可能根本不可见——因为没有内存屏障，CPU 缓存中的旧值不会被刷新。
 
-### 8.1.2 HashMap 的死循环（JDK 7）
+### 9.1.2 HashMap 的死循环（JDK 7）
 
 JDK 7 的 `HashMap` 在并发场景下有一个臭名昭著的 bug：**扩容时可能形成环形链表，导致 `get()` 死循环，CPU 100%**。
 
@@ -65,7 +65,7 @@ JDK 7 的 `HashMap` 在并发场景下有一个臭名昭著的 bug：**扩容时
 
 **JDK 8 的修复**：改用**尾插法**，保持链表原有顺序，从根源上避免了环形链表。但请注意：**JDK 8 的 HashMap 仍然不是线程安全的**，只是不会死循环了，数据丢失依然存在。
 
-### 8.1.3 问题总结
+### 9.1.3 问题总结
 
 | 集合类 | 并发问题 | 根因 |
 |--------|----------|------|
@@ -79,11 +79,11 @@ JDK 7 的 `HashMap` 在并发场景下有一个臭名昭著的 bug：**扩容时
 
 ---
 
-## 8.2 ConcurrentHashMap
+## 9.2 ConcurrentHashMap
 
 `ConcurrentHashMap` 是 Java 并发编程中使用频率最高的数据结构之一。它在保证线程安全的前提下，尽可能地提高了并发读写的吞吐量。从 JDK 7 到 JDK 8，它的实现经历了一次根本性的重构。
 
-### 8.2.1 JDK 7：Segment 分段锁
+### 9.2.1 JDK 7：Segment 分段锁
 
 JDK 7 的设计思想是**分段锁（Striped Locking）**——将整个 Map 分成若干段（Segment），每段独立加锁，不同段的操作可以并行。
 
@@ -116,7 +116,7 @@ final Segment<K,V>[] segments;  // 默认长度 16
 
 **缺点**：并发度受 Segment 数量限制（默认 16，构造后不可变）。即使只有两个 Segment 被访问，并发度也只有 16。对于热点 key 集中在少数 Segment 的场景，退化为全局锁。
 
-### 8.2.2 JDK 8：CAS + synchronized
+### 9.2.2 JDK 8：CAS + synchronized
 
 JDK 8 彻底抛弃了 Segment，回归到**单个 Node 数组 + 桶级别锁**的设计：
 
@@ -163,7 +163,7 @@ final V putVal(K key, V value, boolean onlyIfAbsent) {
 | 数据结构 | 链表 | 链表 + 红黑树（>8 转树） |
 | 锁实现 | ReentrantLock | synchronized |
 
-### 8.2.3 为什么 JDK 8 放弃了分段锁
+### 9.2.3 为什么 JDK 8 放弃了分段锁
 
 这个问题值得深入思考。放弃分段锁不是退步，而是**锁优化技术演进**的结果：
 
@@ -175,7 +175,7 @@ final V putVal(K key, V value, boolean onlyIfAbsent) {
 
 4. **代码简洁性**：Segment 的存在让整个数据结构变得复杂，调试和维护成本高。
 
-### 8.2.4 size() 的实现：分散计数
+### 9.2.4 size() 的实现：分散计数
 
 并发环境下，精确计数的代价很高。JDK 8 使用了**baseCount + CounterCell[]** 的分散计数方案（与 `LongAdder` 的思路一致）：
 
@@ -201,9 +201,9 @@ public int size() {
 
 ---
 
-## 8.3 CopyOnWrite 容器
+## 9.3 CopyOnWrite 容器
 
-### 8.3.1 核心思想：写时复制
+### 9.3.1 核心思想：写时复制
 
 `CopyOnWriteArrayList` 和 `CopyOnWriteArraySet` 的设计哲学是：**读操作完全无锁，写操作通过复制整个底层数组来实现隔离**。
 
@@ -244,7 +244,7 @@ public class CopyOnWriteArrayList<E> {
 }
 ```
 
-### 8.3.2 读写分离的代价
+### 9.3.2 读写分离的代价
 
 | 维度 | 优势 | 代价 |
 |------|------|------|
@@ -268,7 +268,7 @@ for (String s : list) {
 }
 ```
 
-### 8.3.3 适用场景
+### 9.3.3 适用场景
 
 **适合**：读远多于写的场景，如配置信息、事件监听器列表、路由表等。
 
@@ -293,11 +293,11 @@ public class EventBus {
 
 ---
 
-## 8.4 BlockingQueue：生产者-消费者模型的基础设施
+## 9.4 BlockingQueue：生产者-消费者模型的基础设施
 
 `BlockingQueue` 是 Java 并发包中最实用的接口之一。它的核心语义：**队列满时 put 阻塞，队列空时 take 阻塞**。天然适合生产者-消费者模式。
 
-### 8.4.1 接口定义
+### 9.4.1 接口定义
 
 ```java
 public interface BlockingQueue<E> extends Queue<E> {
@@ -315,7 +315,7 @@ public interface BlockingQueue<E> extends Queue<E> {
 }
 ```
 
-### 8.4.2 核心实现对比
+### 9.4.2 核心实现对比
 
 #### ArrayBlockingQueue：有界数组
 
@@ -387,7 +387,7 @@ public class CacheEntry implements Delayed {
 }
 ```
 
-### 8.4.3 实现对比总结
+### 9.4.3 实现对比总结
 
 | 实现类 | 边界 | 底层结构 | 锁机制 | put 阻塞 | take 阻塞 | 典型场景 |
 |--------|------|----------|--------|----------|-----------|----------|
@@ -397,7 +397,7 @@ public class CacheEntry implements Delayed {
 | PriorityBlockingQueue | 无界 | 数组堆 | 1 把锁 | 不阻塞 | 空时阻塞 | 优先级任务调度 |
 | DelayQueue | 无界 | PriorityQueue | 1 把锁 | 不阻塞 | 未到期阻塞 | 缓存过期、定时任务 |
 
-### 8.4.4 生产者-消费者示例
+### 9.4.4 生产者-消费者示例
 
 ```java
 public class ProducerConsumerDemo {
@@ -433,7 +433,7 @@ public class ProducerConsumerDemo {
 
 ---
 
-## 8.5 ConcurrentSkipListMap：有序并发 Map
+## 9.5 ConcurrentSkipListMap：有序并发 Map
 
 `ConcurrentHashMap` 不保证遍历顺序。如果你需要一个**线程安全且按 key 排序**的 Map，`ConcurrentSkipListMap` 是正确选择。
 
@@ -492,7 +492,7 @@ SortedMap<Integer, List<String>> highScores = byScore.tailMap(90);
 
 `ConcurrentSkipListMap` 的所有操作都是线程安全的，且遍历时不会抛出 `ConcurrentModificationException`（弱一致性）。它在需要**并发有序**的场景（如按用户名/ID 排序的索引、时间线索引、范围缓存）中是不可替代的。
 
-## 8.6 小结
+## 9.6 小结
 
 并发集合的设计本质上是在**安全性、并发度、内存开销**三者之间做取舍：
 
@@ -514,8 +514,8 @@ SortedMap<Integer, List<String>> highScores = byScore.tailMap(90);
 
 > **纵横联系**
 >
-> - 本章的 `ConcurrentHashMap` 使用了 CAS 操作和 `volatile` 语义，这些基础概念在第 3 章（JMM）和第 7 章（原子类与 CAS）中有深入讲解
+> - 本章的 `ConcurrentHashMap` 使用了 CAS 操作和 `volatile` 语义，这些基础概念在第 4 章（JMM）和第 7 章（CAS 与原子类）中有深入讲解
 > - `CopyOnWriteArrayList` 的弱一致性与 Java 内存模型的可见性保证直接相关，理解 happens-before 规则有助于理解其迭代器行为
-> - `BlockingQueue` 是线程池（第 9 章）的内部核心组件——`ThreadPoolExecutor` 的工作队列就是 `BlockingQueue`
+> - `BlockingQueue` 是线程池（第 10 章）的内部核心组件——`ThreadPoolExecutor` 的工作队列就是 `BlockingQueue`
 > - `ConcurrentHashMap` 的 `CounterCell` 分散计数思想与 `LongAdder`（第 7 章）完全一致，它们共享同一套代码
 > - `ConcurrentSkipListMap` 的跳表结构是一种概率平衡数据结构，与红黑树相比实现更简单且天然适合并发场景
