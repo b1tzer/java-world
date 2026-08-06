@@ -206,16 +206,16 @@ putstatic    count     // 3. 写入
 对于"多写"场景，需要使用更强的同步机制：
 
 ```java
-// 方案 1：使用 synchronized
+// 方案 1：使用 synchronized（第 5 章详解）
 synchronized void increment() {
     count++;
 }
 
-// 方案 2：使用 AtomicInteger
+// 方案 2：使用 AtomicInteger（第 7 章详解）
 AtomicInteger count = new AtomicInteger(0);
 count.incrementAndGet();
 
-// 方案 3：使用 LongAdder（高并发场景更优）
+// 方案 3：使用 LongAdder（高并发场景更优，第 7 章详解）
 LongAdder count = new LongAdder();
 count.increment();
 ```
@@ -373,52 +373,10 @@ public class SafePublish {
 
 ---
 
-## 4.5 volatile vs synchronized
+## 4.5 volatile 的陷阱与最佳实践
 
-### 4.5.1 全面对比
 
-| 特性 | volatile | synchronized |
-| :-- | :-- | :-- |
-| 原子性 | ❌ 不保证 | ✅ 保证代码块的原子性 |
-| 可见性 | ✅ 保证 | ✅ 保证（释放锁时刷新，获取锁时重新加载） |
-| 有序性 | ✅ 保证（禁止重排序） | ✅ 保证（happens-before） |
-| 阻塞 | ❌ 不会阻塞 | ✅ 会阻塞（竞争时） |
-| 性能 | 极高（CPU 指令级别） | 较高（涉及锁竞争时开销大） |
-| 适用场景 | 一写多读、状态标志 | 多写多读、复合操作 |
-| 能否修饰方法 | ❌ 只能修饰变量 | ✅ 可以修饰方法和代码块 |
-
-### 4.5.2 选择指南
-
-```text
-需要保证并发安全？
-    │
-    ├── 只有一个线程写，其他线程只读？
-    │   └── ✅ 使用 volatile
-    │
-    ├── 需要多个线程同时写？
-    │   └── ✅ 使用 synchronized 或 Lock
-    │
-    ├── 涉及复合操作（check-then-act、read-modify-write）？
-    │   └── ✅ 使用 synchronized 或原子类（CAS）
-    │
-    └── 需要跨方法的临界区？
-        └── ✅ 使用 synchronized 或 Lock
-```
-
-### 4.5.3 一个常见的误区
-
-有些人认为"既然 volatile 轻量，就尽量用 volatile 替代 synchronized"。这是错误的。volatile 和 synchronized 解决的是不同层次的问题：
-
-- volatile 解决的是**单个变量**的可见性和有序性问题
-- synchronized 解决的是**一段代码**的原子性问题
-
-它们不是替代关系，而是互补关系。在实际开发中，很多场景需要两者的配合——比如前面看到的 `AtomicInteger`，就是 volatile（可见性）+ CAS（原子性）的组合。
-
----
-
-## 4.6 volatile 的陷阱与最佳实践
-
-### 4.6.1 不要过度依赖 volatile
+### 4.5.1 不要过度依赖 volatile
 
 volatile 是一把"薄刃剑"——它很锋利（性能好），但也很薄（功能有限）。以下是常见的陷阱：
 
@@ -450,7 +408,7 @@ if (a == 1) {  // volatile 读
 }
 ```
 
-### 4.6.2 最佳实践清单
+### 4.5.2 最佳实践清单
 
 1. **一写多读**：优先考虑 volatile
 2. **多写**：使用 `synchronized`、`Lock` 或原子类
@@ -463,9 +421,8 @@ if (a == 1) {  // volatile 读
 
 > **纵向联系**
 >
-> - 本章的"可见性"和"有序性"概念，直接建立在第 2 章（Java 内存模型）的基础上。如果你跳过了 JMM 章节，建议先回去阅读。
-> - volatile 的内存屏障实现，在第 7 章（Java 内存模型深入）中会进一步展开，讨论 acquire/release 语义与 JMM 的 happens-before 规则。
-> - volatile 与 CAS 的配合，在第 8 章（原子操作与 CAS）中会详细分析 `Unsafe` 类的底层实现。
-> - synchronized 与 volatile 的对比，在第 5 章（synchronized）中会从锁升级的角度再次审视。
+> - 本章的"可见性"和"有序性"概念，直接建立在第 3 章（Java 内存模型）的基础上。如果你跳过了 JMM 章节，建议先回去阅读。
+> - volatile 与 CAS 的配合，在第 7 章（原子类与 CAS）中会详细分析。
+> - volatile 与 synchronized 的完整对比，在第 5 章 §5.8 中展开——学完 synchronized 之后再做对比，理解更清晰。
 
 ---

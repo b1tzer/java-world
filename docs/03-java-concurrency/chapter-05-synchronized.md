@@ -221,9 +221,107 @@ HotSpot 会根据竞争情况把实现分成偏向锁、轻量级锁、重量级
 
 ---
 
-## 5.3 synchronized 与对象头
+§5.2 介绍了 Monitor 的三个组成部分：`_owner`、`_EntryList` 和 `_WaitSet`。前两个负责互斥和阻塞等待，`_WaitSet` 则是 wait/notify 机制的基础。`synchronized` 解决了互斥问题——同一时刻只有一个线程能进入临界区。但很多时候，线程需要的不只是"独占"，而是"等待某个条件成立后再继续"。这就是 `wait/notify` 的用途。
 
-### 5.3.1 回顾：对象的内存布局
+
+## 5.3 wait/notify：线程间的通知机制
+
+`synchronized` 解决了互斥问题——同一时刻只有一个线程能进入临界区。但很多时候，线程需要的不只是"独占"，而是"等待某个条件成立后再继续"。这就是 `wait/notify` 的用途。
+
+### 5.3.1 基本用法
+
+```java
+synchronized (lock) {
+    while (!condition) {   // 用 while，不用 if
+        lock.wait();       // 释放锁，进入等待
+    }
+    // 条件满足，继续执行
+}
+```
+
+```java
+synchronized (lock) {
+    condition = true;
+    lock.notify();         // 唤醒一个等待的线程
+    // 或 lock.notifyAll() 唤醒所有等待的线程
+}
+```
+
+### 5.3.2 三个关键细节
+
+**1. 必须在 synchronized 块内调用**
+
+`wait()` 和 `notify()` 必须持有调用对象的 Monitor，否则抛 `IllegalMonitorStateException`。这不是语法限制，而是逻辑必须——`wait()` 的本质是"释放当前持有的锁并等待"，没有锁何谈释放？
+
+**2. 用 while 而不用 if**
+
+```java
+// ❌ 错误：用 if
+synchronized (queue) {
+    if (queue.isEmpty()) {
+        queue.wait();
+    }
+    // 唤醒后直接取，但 queue 可能又被其他线程清空了
+    Object item = queue.poll();
+}
+
+// ✅ 正确：用 while
+synchronized (queue) {
+    while (queue.isEmpty()) {   // 唤醒后重新检查条件
+        queue.wait();
+    }
+    Object item = queue.poll();
+}
+```
+
+原因有两个：**虚假唤醒**（spurious wakeup，操作系统可能在没有 `notify` 的情况下唤醒线程）和**竞争唤醒**（`notifyAll` 唤醒所有线程，但只有一个能拿到锁，其他线程醒来发现条件不满足，需要重新等待）。
+
+**3. notify() vs notifyAll()**
+
+`notify()` 只唤醒一个等待线程，`notifyAll()` 唤醒所有。选择取决于场景：
+
+| 场景 | 选择 | 原因 |
+|------|------|------|
+| 所有等待线程做同样的事 | `notify()` | 唤醒一个就够了，减少无效竞争 |
+| 等待不同条件的线程 | `notifyAll()` | 只唤醒一个可能唤醒了错误的线程 |
+| 不确定 | `notifyAll()` | 安全，多唤醒几个不会有正确性问题 |
+
+### 5.3.3 wait/notify 的线程状态转换
+
+```
+Thread-C 调用 wait():
+  RUNNABLE → WAITING
+  从 _owner 变为 _WaitSet 成员
+  释放 Monitor（_owner = null, _count = 0）
+
+Thread-B 调用 notify():
+  从 _WaitSet 取出 Thread-C
+  Thread-C 移到 _EntryList
+  Thread-C: WAITING → BLOCKED（等待重新获取锁）
+
+Thread-B 释放 Monitor:
+  _EntryList 中的线程竞争锁
+  Thread-C 重新成为 _owner
+  Thread-C: BLOCKED → RUNNABLE，从 wait() 返回
+```
+
+很多人以为 `notify()` 后被唤醒的线程会立即执行——不会。它只是从 `_WaitSet` 移到了 `_EntryList`，还需要重新竞争锁。这就是为什么 `wait()` 必须在 `synchronized` 块中——醒来后要重新获取锁才能继续。
+
+### 5.3.4 wait/notify 的局限
+
+`wait/notify` 是 Monitor 机制的基础能力，但它的功能比较原始：
+
+- 只有一个等待队列（`_WaitSet`），无法区分"等待非空"和"等待非满"
+- 不支持超时等待（`wait(timeout)` 有，但没有"等到某个条件成立或超时"的组合）
+- 不支持公平唤醒（`notify()` 随机唤醒一个，无法保证等待最久的线程先被唤醒）
+
+这些局限正是 `ReentrantLock` + `Condition` 要解决的问题——下一章会讲。`Condition` 可以创建多个等待队列，每个队列等待不同的条件，互不干扰。
+
+---
+
+## 5.4 synchronized 与对象头
+
+### 5.4.1 回顾：对象的内存布局
 
 在第二卷（JVM 对象模型）中，我们讨论过 Java 对象在内存中的布局：
 
@@ -246,7 +344,7 @@ HotSpot 会根据竞争情况把实现分成偏向锁、轻量级锁、重量级
 
 synchronized 的锁信息就存储在 **Mark Word** 中。Mark Word 是 64 位（64 位 JVM）的空间，不同的锁状态下存储不同的内容。
 
-### 5.3.2 Mark Word 的四种状态
+### 5.4.2 Mark Word 的四种状态
 
 在 64 位 JVM 中，Mark Word 的内容随锁状态变化：
 
@@ -272,7 +370,7 @@ synchronized 的锁信息就存储在 **Mark Word** 中。Mark Word 是 64 位�
 
 这意味着一个对象在任意时刻，其 Mark Word 的最低两位就能告诉 JVM 当前的锁状态。
 
-### 5.3.3 偏向锁的 Epoch 机制
+### 5.4.3 偏向锁的 Epoch 机制
 
 Epoch 是偏向锁的一个精巧设计。它是一个 2 位的计数器，用于批量撤销偏向：
 
@@ -280,7 +378,7 @@ Epoch 是偏向锁的一个精巧设计。它是一个 2 位的计数器，用�
 - 当偏向锁的对象的 `epoch` 与类的 `epoch` 不一致时，说明该偏向已经"过期"
 - JVM 可以通过递增类的 `epoch` 来批量撤销所有该类对象的偏向，而不需要逐个处理
 
-### 5.3.4 关于 JDK 15+ 默认关闭偏向锁
+### 5.4.4 关于 JDK 15+ 默认关闭偏向锁
 
 从 JDK 15 开始，偏向锁被**默认关闭**（`-XX:-UseBiasedLocking`）。原因是：
 
@@ -293,9 +391,9 @@ JDK 18 中偏向锁被标记为废弃（deprecated），计划在未来版本中
 
 ---
 
-## 5.4 锁升级机制
+## 5.5 锁升级机制
 
-### 5.4.1 升级路径
+### 5.5.1 升级路径
 
 synchronized 的锁状态会根据竞争情况**逐步升级**，但**不会降级**（严格来说，只有在 GC 时才会清除锁状态）：
 
@@ -305,7 +403,7 @@ synchronized 的锁状态会根据竞争情况**逐步升级**，但**不会降�
 
 这个设计的哲学是：**从最乐观的假设开始，逐步升级到更安全（但也更重）的同步机制**。
 
-### 5.4.2 无锁 → 偏向锁
+### 5.5.2 无锁 → 偏向锁
 
 **触发条件**：当一个线程第一次获取锁时。
 
@@ -336,7 +434,7 @@ synchronized 的锁状态会根据竞争情况**逐步升级**，但**不会降�
   再次进入：  检查 Thread ID == 我？ → ✅ → 直接执行
 ```
 
-### 5.4.3 偏向锁 → 轻量级锁
+### 5.5.3 偏向锁 → 轻量级锁
 
 **触发条件**：另一个线程尝试获取已被偏向的锁。
 
@@ -371,7 +469,7 @@ synchronized 的锁状态会根据竞争情况**逐步升级**，但**不会降�
 
 轻量级锁的核心思想：**在没有实际竞争的情况下，通过 CAS 操作在用户态完成加锁，避免操作系统内核态的开销**。
 
-### 5.4.4 轻量级锁 → 重量级锁
+### 5.5.4 轻量级锁 → 重量级锁
 
 **触发条件**：CAS 自旋失败，或竞争激烈。
 
@@ -391,7 +489,7 @@ synchronized 的锁状态会根据竞争情况**逐步升级**，但**不会降�
 
 重量级锁依赖操作系统的 **Mutex Lock**（互斥锁），涉及内核态的线程挂起和唤醒，开销最大。
 
-### 5.4.5 完整的锁升级流程图
+### 5.5.5 完整的锁升级流程图
 
 ```mermaid
 graph TD
@@ -423,7 +521,7 @@ graph TD
     style M fill:#f44336,color:white
 ```
 
-### 5.4.6 锁升级的不可逆性
+### 5.5.6 锁升级的不可逆性
 
 锁只能升级，不能降级。一旦升级为重量级锁，即使竞争消失，也不会自动降级为轻量级锁或偏向锁。
 
@@ -436,9 +534,9 @@ graph TD
 
 ---
 
-## 5.5 synchronized 的性能演进
+## 5.6 synchronized 的性能演进
 
-### 5.5.1 JDK 1.2 之前的 synchronized
+### 5.6.1 JDK 1.2 之前的 synchronized
 
 在 JDK 1.2 之前，`synchronized` 是一个"笨重"的机制：
 
@@ -448,7 +546,7 @@ graph TD
 
 这也是为什么 `java.util` 包中的早期集合类（如 `Vector`、`Hashtable`）虽然使用了 synchronized，但性能并不好——它们把 synchronized 加在了每一个方法上，粒度太粗。
 
-### 5.5.2 JDK 1.6 的重大改进
+### 5.6.2 JDK 1.6 的重大改进
 
 JDK 1.6 引入了一系列锁优化，让 synchronized 的性能得到了质的飞跃：
 
@@ -461,7 +559,7 @@ JDK 1.6 引入了一系列锁优化，让 synchronized 的性能得到了质的�
 | 锁粗化 | 合并相邻的同步块，减少加锁次数 | 循环中反复加锁/解锁 |
 | 锁消除 | 通过逃逸分析消除不可能竞争的锁 | 锁对象不逃逸当前线程 |
 
-### 5.5.3 自旋锁与自适应自旋
+### 5.6.3 自旋锁与自适应自旋
 
 **自旋锁**的思路：当线程无法获取锁时，不立即阻塞，而是执行一个忙等待（自旋），期望锁很快就会被释放。
 
@@ -481,7 +579,7 @@ JDK 1.6 引入了一系列锁优化，让 synchronized 的性能得到了质的�
 - 如果上次自旋成功获取了锁，这次就多自旋几次
 - 如果某个锁自旋很少成功，就跳过自旋，直接阻塞
 
-### 5.5.4 锁粗化（Lock Coarsening）
+### 5.6.4 锁粗化（Lock Coarsening）
 
 ```java
 // 优化前：循环中反复加锁/解锁
@@ -501,7 +599,7 @@ synchronized (lock) {
 
 JIT 编译器检测到连续的 `monitorenter`/`monitorexit` 操作作用于同一个锁对象时，会自动将锁的范围扩大（粗化），减少加锁/解锁的次数。
 
-### 5.5.5 锁消除（Lock Elimination）
+### 5.6.5 锁消除（Lock Elimination）
 
 **锁消除**是 JIT 编译器通过**逃逸分析**（Escape Analysis）实现的优化：如果一个锁对象不可能被其他线程访问，就直接消除这个锁。
 
@@ -561,7 +659,7 @@ public class LockEliminationDemo {
 }
 ```
 
-### 5.5.6 性能对比数据
+### 5.6.6 性能对比数据
 
 以下是一个简单的基准测试结果（JDK 17，4 核 CPU，低竞争场景）：
 
@@ -574,101 +672,6 @@ public class LockEliminationDemo {
 | 重量级锁（有竞争） | ~200 ns+ | 包含上下文切换 |
 
 这些数据说明：**在 JDK 1.6+ 中，synchronized 的性能已经非常优秀**。在低竞争场景下，偏向锁和轻量级锁的开销几乎可以忽略不计。只有在高竞争场景下，重量级锁的开销才变得显著。
-
----
-
-## 5.6 wait/notify：线程间的通知机制
-
-`synchronized` 解决了互斥问题——同一时刻只有一个线程能进入临界区。但很多时候，线程需要的不只是"独占"，而是"等待某个条件成立后再继续"。这就是 `wait/notify` 的用途。
-
-### 基本用法
-
-```java
-synchronized (lock) {
-    while (!condition) {   // 用 while，不用 if
-        lock.wait();       // 释放锁，进入等待
-    }
-    // 条件满足，继续执行
-}
-```
-
-```java
-synchronized (lock) {
-    condition = true;
-    lock.notify();         // 唤醒一个等待的线程
-    // 或 lock.notifyAll() 唤醒所有等待的线程
-}
-```
-
-### 三个关键细节
-
-**1. 必须在 synchronized 块内调用**
-
-`wait()` 和 `notify()` 必须持有调用对象的 Monitor，否则抛 `IllegalMonitorStateException`。这不是语法限制，而是逻辑必须——`wait()` 的本质是"释放当前持有的锁并等待"，没有锁何谈释放？
-
-**2. 用 while 而不用 if**
-
-```java
-// ❌ 错误：用 if
-synchronized (queue) {
-    if (queue.isEmpty()) {
-        queue.wait();
-    }
-    // 唤醒后直接取，但 queue 可能又被其他线程清空了
-    Object item = queue.poll();
-}
-
-// ✅ 正确：用 while
-synchronized (queue) {
-    while (queue.isEmpty()) {   // 唤醒后重新检查条件
-        queue.wait();
-    }
-    Object item = queue.poll();
-}
-```
-
-原因有两个：**虚假唤醒**（spurious wakeup，操作系统可能在没有 `notify` 的情况下唤醒线程）和**竞争唤醒**（`notifyAll` 唤醒所有线程，但只有一个能拿到锁，其他线程醒来发现条件不满足，需要重新等待）。
-
-**3. notify() vs notifyAll()**
-
-`notify()` 只唤醒一个等待线程，`notifyAll()` 唤醒所有。选择取决于场景：
-
-| 场景 | 选择 | 原因 |
-|------|------|------|
-| 所有等待线程做同样的事 | `notify()` | 唤醒一个就够了，减少无效竞争 |
-| 等待不同条件的线程 | `notifyAll()` | 只唤醒一个可能唤醒了错误的线程 |
-| 不确定 | `notifyAll()` | 安全，多唤醒几个不会有正确性问题 |
-
-### wait/notify 的线程状态转换
-
-```
-Thread-C 调用 wait():
-  RUNNABLE → WAITING
-  从 _owner 变为 _WaitSet 成员
-  释放 Monitor（_owner = null, _count = 0）
-
-Thread-B 调用 notify():
-  从 _WaitSet 取出 Thread-C
-  Thread-C 移到 _EntryList
-  Thread-C: WAITING → BLOCKED（等待重新获取锁）
-
-Thread-B 释放 Monitor:
-  _EntryList 中的线程竞争锁
-  Thread-C 重新成为 _owner
-  Thread-C: BLOCKED → RUNNABLE，从 wait() 返回
-```
-
-很多人以为 `notify()` 后被唤醒的线程会立即执行——不会。它只是从 `_WaitSet` 移到了 `_EntryList`，还需要重新竞争锁。这就是为什么 `wait()` 必须在 `synchronized` 块中——醒来后要重新获取锁才能继续。
-
-### wait/notify 的局限
-
-`wait/notify` 是 Monitor 机制的基础能力，但它的功能比较原始：
-
-- 只有一个等待队列（`_WaitSet`），无法区分"等待非空"和"等待非满"
-- 不支持超时等待（`wait(timeout)` 有，但没有"等到某个条件成立或超时"的组合）
-- 不支持公平唤醒（`notify()` 随机唤醒一个，无法保证等待最久的线程先被唤醒）
-
-这些局限正是 `ReentrantLock` + `Condition` 要解决的问题——下一章会讲。`Condition` 可以创建多个等待队列，每个队列等待不同的条件，互不干扰。
 
 ---
 
@@ -687,6 +690,50 @@ Thread-B 释放 Monitor:
 这些局限性催生了 `java.util.concurrent.locks` 包中的 `Lock` 接口和 `ReentrantLock`。它们提供了可中断获取、超时获取、公平锁、多个条件队列等能力。完整对比和 AQS 实现原理将在第 6 章展开。
 
 ---
+
+## 5.8 volatile vs synchronized：如何选择
+
+学完了 volatile（第 4 章）和 synchronized（本章），现在可以做一个完整的对比：
+
+### 全面对比
+
+| 特性 | volatile | synchronized |
+| :-- | :-- | :-- |
+| 原子性 | ❌ 不保证 | ✅ 保证代码块的原子性 |
+| 可见性 | ✅ 保证 | ✅ 保证（释放锁时刷新，获取锁时重新加载） |
+| 有序性 | ✅ 保证（禁止重排序） | ✅ 保证（happens-before） |
+| 阻塞 | ❌ 不会阻塞 | ✅ 会阻塞（竞争时） |
+| 性能 | 极高（CPU 指令级别） | 较高（涉及锁竞争时开销大） |
+| 适用场景 | 一写多读、状态标志 | 多写多读、复合操作 |
+| 能否修饰方法 | ❌ 只能修饰变量 | ✅ 可以修饰方法和代码块 |
+
+### 选择指南
+
+```text
+需要保证并发安全？
+    │
+    ├── 只有一个线程写，其他线程只读？
+    │   └── ✅ 使用 volatile
+    │
+    ├── 需要多个线程同时写？
+    │   └── ✅ 使用 synchronized 或 Lock
+    │
+    ├── 涉及复合操作（check-then-act、read-modify-write）？
+    │   └── ✅ 使用 synchronized 或原子类（CAS）
+    │
+    └── 需要跨方法的临界区？
+        └── ✅ 使用 synchronized 或 Lock
+```
+
+### 常见误区
+
+有些人认为"既然 volatile 轻量，就尽量用 volatile 替代 synchronized"。这是错误的。volatile 和 synchronized 解决的是不同层次的问题：
+
+- volatile 解决的是**单个变量**的可见性和有序性问题
+- synchronized 解决的是**一段代码**的原子性问题
+
+它们不是替代关系，而是互补关系。在实际开发中，很多场景需要两者的配合——比如 `AtomicInteger`，就是 volatile（可见性）+ CAS（原子性）的组合。
+
 
 > **纵向联系**
 >
