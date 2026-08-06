@@ -195,6 +195,145 @@ static final class Node {
 | CONDITION (-2) | 条件等待 | 在 Condition 队列中等待 |
 | PROPAGATE (-3) | 共享模式传播 | 用于共享锁的连续传播唤醒 |
 
+### 6.4.3 模板方法模式
+
+理解了 AQS 的内部结构之后，一个自然的问题是：**子类怎么和 AQS 协作？** 答案是模板方法模式。
+
+AQS 将同步器的工作划分为两层：
+
+**AQS 负责的（不变部分）**：
+- 管理 CLH 等待队列（入队、出队、节点状态维护）
+- 线程的 park/unpark（挂起与唤醒）
+- 中断处理
+- 超时处理
+- 公平性控制
+
+**子类负责的（变化部分）**：
+- `tryAcquire(int arg)` —— 如何获取同步状态
+- `tryRelease(int arg)` —— 如何释放同步状态
+- `tryAcquireShared(int arg)` —— 共享模式获取
+- `tryReleaseShared(int arg)` —— 共享模式释放
+- `isHeldExclusively()` —— 当前线程是否持有锁
+
+这种分离意味着：**你只需要关心"如何获取"这个业务逻辑，而不需要关心"获取失败后怎么办"这个通用机制**。这正是模板方法的精髓——AQS 的 `acquire()` 是模板方法，它定义了算法骨架（尝试获取 → 失败则入队 → 挂起 → 被唤醒后再试），而 `tryAcquire()` 是留给子类实现的抽象步骤。
+
+下面这张类图展示了 AQS 的模板方法结构以及主要子类如何实现那些抽象步骤：
+
+```mermaid
+classDiagram
+    class AbstractQueuedSynchronizer {
+        <<abstract>>
+        -volatile int state
+        -Node head
+        -Node tail
+        +acquire(int arg)$ 模板方法
+        +release(int arg)$ 模板方法
+        +acquireShared(int arg)$ 模板方法
+        +releaseShared(int arg)$ 模板方法
+        #tryAcquire(int arg)* 子类实现
+        #tryRelease(int arg)* 子类实现
+        #tryAcquireShared(int arg)* 子类实现
+        #tryReleaseShared(int arg)* 子类实现
+        #isHeldExclusively()* 子类实现
+        +getState() int
+        +setState(int newState)
+        +compareAndSetState(int expect, int update) boolean
+    }
+
+    class Sync {
+        <<abstract>>
+        +nonfairTryAcquire(int acquires) boolean
+    }
+
+    class NonfairSync {
+        #tryAcquire(int acquires) boolean
+    }
+
+    class FairSync {
+        #tryAcquire(int acquires) boolean
+    }
+
+    class ReentrantLock {
+        -Sync sync
+        +lock()
+        +unlock()
+        +tryLock() boolean
+        +lockInterruptibly()
+        +newCondition() Condition
+    }
+
+    class Semaphore {
+        -Sync sync
+        +acquire()
+        +release()
+        +tryAcquire() boolean
+    }
+
+    class CountDownLatch {
+        -Sync sync
+        +await()
+        +countDown()
+    }
+
+    AbstractQueuedSynchronizer <|-- Sync : 继承
+    Sync <|-- NonfairSync : 继承
+    Sync <|-- FairSync : 继承
+    ReentrantLock *-- Sync : 持有内部类
+    Semaphore *-- Sync : 持有内部类
+    CountDownLatch *-- Sync : 持有内部类
+    NonfairSync ..|> AbstractQueuedSynchronizer : 实现 tryAcquire
+    FairSync ..|> AbstractQueuedSynchronizer : 实现 tryAcquire
+```
+
+注意类图中的几个关键点：
+
+- `AbstractQueuedSynchronizer` 的 `acquire()`、`release()` 等方法是 **模板方法**（用 `$` 标记），它们定义了固定的算法骨架
+- `tryAcquire()`、`tryRelease()` 等是 **抽象步骤**（用 `*` 标记），由子类实现
+- `Sync` 是各同步工具内部的抽象中间层，`NonfairSync` 和 `FairSync` 是 `ReentrantLock` 的具体实现
+- `Semaphore`、`CountDownLatch` 也各自持有内部 `Sync` 子类，但它们实现的是共享模式的 `tryAcquireShared/tryReleaseShared`
+
+同一个框架，通过不同的 `try*` 实现，就变成了完全不同的同步工具——这就是模板方法模式在 AQS 中的威力。
+
+### 6.4.4 用一个 state + 一个队列统一万物
+
+Doug Lea（AQS 的设计者）的核心洞察是：所有的同步器，无论表面上多么不同，本质上都可以归结为：
+
+1. **一个同步状态**（state）—— 用一个 `volatile int` 表示
+2. **一个等待队列**（CLH Queue）—— 获取失败的线程排队
+3. **一套获取/释放规则**（子类定义）—— 什么条件下可以修改 state
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    AQS 统一框架                          │
+│                                                         │
+│    state ──→ 含义由子类定义                              │
+│    queue ──→ 管理等待线程（AQS 负责）                    │
+│    tryAcquire/tryRelease ──→ 子类实现具体逻辑            │
+│                                                         │
+│  ┌──────────┬──────────┬──────────┬──────────┐          │
+│  │Reentrant │Semaphore │CountDown │ReadWrite │          │
+│  │  Lock    │          │  Latch   │  Lock    │          │
+│  │          │          │          │          │          │
+│  │state=重入│state=许可│state=计数│state=分割│          │
+│  └──────────┴──────────┴──────────┴──────────┘          │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 6.4.5 分离"如何获取"和"获取失败后怎么办"
+
+这是 AQS 最优雅的设计决策。考虑一个没有 AQS 的世界：每个同步器都需要自己实现线程排队、唤醒、中断处理。这些代码量巨大且容易出错。
+
+AQS 把这个问题一分为二：
+
+- **"如何获取"**：子类通过 `tryAcquire` 定义——这是简短的、纯内存操作的代码，通常就是几行 CAS
+- **"获取失败后怎么办"**：AQS 统一处理——入队、park、中断响应、超时、唤醒，这些复杂的并发控制逻辑全部封装在 AQS 内部
+
+这种分离带来的好处是：
+1. **子类代码极简**：`ReentrantLock` 的 `Sync` 内部类只有几十行
+2. **正确性有保障**：队列管理、线程调度由 AQS 专家代码保证
+3. **性能有保障**：AQS 经过多年优化，CAS 操作、park/unpark 的使用都是最优的
+4. **可扩展性好**：想造新的同步器？只需要实现那几个 try 方法
+
 ---
 
 ## 6.5 AQS 获取锁流程（独占模式）
@@ -700,73 +839,9 @@ if (!lock.validate(stamp)) {
 
 ---
 
-## 6.9 AQS 的设计哲学
-
-### 6.9.1 模板方法模式
-
-AQS 是模板方法模式的经典范例。它将同步器的工作划分为两层：
-
-**AQS 负责的（不变部分）**：
-- 管理 CLH 等待队列（入队、出队、节点状态维护）
-- 线程的 park/unpark（挂起与唤醒）
-- 中断处理
-- 超时处理
-- 公平性控制
-
-**子类负责的（变化部分）**：
-- `tryAcquire(int arg)` —— 如何获取同步状态
-- `tryRelease(int arg)` —— 如何释放同步状态
-- `tryAcquireShared(int arg)` —— 共享模式获取
-- `tryReleaseShared(int arg)` —— 共享模式释放
-- `isHeldExclusively()` —— 当前线程是否持有锁
-
-这种分离意味着：**你只需要关心"如何获取"这个业务逻辑，而不需要关心"获取失败后怎么办"这个通用机制**。这正是模板方法的精髓。
-
-### 6.9.2 用一个 state + 一个队列统一万物
-
-Doug Lea（AQS 的设计者）的核心洞察是：所有的同步器，无论表面上多么不同，本质上都可以归结为：
-
-1. **一个同步状态**（state）—— 用一个 `volatile int` 表示
-2. **一个等待队列**（CLH Queue）—— 获取失败的线程排队
-3. **一套获取/释放规则**（子类定义）—— 什么条件下可以修改 state
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    AQS 统一框架                          │
-│                                                         │
-│    state ──→ 含义由子类定义                              │
-│    queue ──→ 管理等待线程（AQS 负责）                    │
-│    tryAcquire/tryRelease ──→ 子类实现具体逻辑            │
-│                                                         │
-│  ┌──────────┬──────────┬──────────┬──────────┐          │
-│  │Reentrant │Semaphore │CountDown │ReadWrite │          │
-│  │  Lock    │          │  Latch   │  Lock    │          │
-│  │          │          │          │          │          │
-│  │state=重入│state=许可│state=计数│state=分割│          │
-│  └──────────┴──────────┴──────────┴──────────┘          │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 6.9.3 分离"如何获取"和"获取失败后怎么办"
-
-这是 AQS 最优雅的设计决策。考虑一个没有 AQS 的世界：每个同步器都需要自己实现线程排队、唤醒、中断处理。这些代码量巨大且容易出错。
-
-AQS 把这个问题一分为二：
-
-- **"如何获取"**：子类通过 `tryAcquire` 定义——这是简短的、纯内存操作的代码，通常就是几行 CAS
-- **"获取失败后怎么办"**：AQS 统一处理——入队、park、中断响应、超时、唤醒，这些复杂的并发控制逻辑全部封装在 AQS 内部
-
-这种分离带来的好处是：
-1. **子类代码极简**：`ReentrantLock` 的 `Sync` 内部类只有几十行
-2. **正确性有保障**：队列管理、线程调度由 AQS 专家代码保证
-3. **性能有保障**：AQS 经过多年优化，CAS 操作、park/unpark 的使用都是最优的
-4. **可扩展性好**：想造新的同步器？只需要实现那几个 try 方法
-
----
-
 ## 本章小结
 
-本章从 `synchronized` 的不足出发，引出了 `Lock` 接口和 `ReentrantLock`。然后深入 AQS 的内部设计——理解了 state、CLH 队列和 Node 三个核心元素，以及独占模式和共享模式下的获取-释放流程。最后，我们看到 AQS 如何通过模板方法模式，用一个统一的框架支撑起整个 JUC 同步工具家族。
+本章从 `synchronized` 的不足出发，引出了 `Lock` 接口和 `ReentrantLock`，然后深入 AQS 的内部设计——state、CLH 队列和 Node 三个核心元素，模板方法模式如何将同步器的工作分为框架层和子类层，以及独占模式和共享模式下的获取-释放流程。最后介绍了 `Condition` 条件变量和基于 AQS 构建的同步工具家族。
 
 核心要点回顾：
 - `Lock` 相比 `synchronized` 提供了可中断、可超时、公平锁、多条件队列等能力
