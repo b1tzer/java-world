@@ -43,9 +43,9 @@ Thread B:       读取 count(0) → +1 → 写入 count(1)   ← 期望是 2，�
 flowchart TB
   Thread["Thread 线程模型"] --> Sync["Synchronization 同步机制"]
   Sync --> JMM["JMM 内存模型"]
-  JMM --> Lock["Lock 锁机制"]
-  Lock --> AQS["AQS 框架"]
-  AQS --> Collections["Concurrent Collections 并发集合"]
+  JMM --> Atomic["Atomic / CAS 无锁并发"]
+  Atomic --> Lock["Lock / AQS 锁与同步器"]
+  Lock --> Collections["Concurrent Collections 并发集合"]
   Collections --> Async["Async Programming 异步编程"]
 ```
 
@@ -233,70 +233,11 @@ private volatile Singleton instance;  // 必须加 volatile
 
 ---
 
-## 6 Lock 与 AQS：Java 并发工具的核心框架
-
-本章目标：理解 `Lock` 接口相比 `synchronized` 的增强，以及 AQS 是如何用 `state` + `CLH 队列` 统一实现各种并发工具。
-
-### 6.1 为什么需要 Lock
-
-`Lock` 弥补了 `synchronized` 的功能限制：
-
-| 能力 | synchronized | Lock |
-|------|-------------|------|
-| 可中断获取 | ❌ | ✅ `lockInterruptibly()` |
-| 超时获取 | ❌ | ✅ `tryLock(timeout)` |
-| 公平锁 | ❌ | ✅ 构造时指定 |
-| 多条件队列 | ❌（只有一个隐式条件） | ✅ `newCondition()` 多个 |
-| 非块结构 | ❌（必须成对出现在同一方法） | ✅ 可以跨方法 |
-
-### 6.2 AQS 设计思想
-
-`AbstractQueuedSynchronizer` 是 JUC 的骨架，核心三元素：
-
-- **`state`（volatile int）**：同步状态，子类通过 `getState`/`setState`/`compareAndSetState` 操作
-- **CLH 队列**：FIFO 的等待队列，存放获取锁失败的线程
-- **Node**：队列节点，封装线程 + 等待状态（SIGNAL / CANCELLED 等）
-
-### 6.3 AQS 获取锁流程
-
-```
-tryAcquire（子类实现，CAS 修改 state）
-      ↓ 失败
-创建 Node 加入 CLH 队列尾部
-      ↓
-前驱是头节点？→ 再次 tryAcquire
-      ↓ 失败
-park（挂起线程）
-      ↓ 被唤醒
-再次尝试获取
-```
-
-### 6.4 AQS 释放锁流程
-
-```
-tryRelease（子类实现，修改 state）
-      ↓
-唤醒头节点的后继节点
-      ↓
-unpark（恢复线程）
-```
-
-### 6.5 基于 AQS 的工具一览
-
-| 工具 | 同步模式 | state 含义 |
-|------|---------|-----------|
-| `ReentrantLock` | 独占 | 0=未锁定，n=重入次数 |
-| `Semaphore` | 共享 | 剩余许可数 |
-| `CountDownLatch` | 共享 | 还需 countDown 的次数 |
-| `ReentrantReadWriteLock` | 共享+独占 | 高16位=读锁数，低16位=写锁重入数 |
-
----
-
-## 7 原子类与 CAS：无锁并发思想
+## 6 原子类与 CAS：无锁并发思想
 
 本章目标：理解无锁并发的核心——CAS 的原理、底层支持、局限性以及 `Atomic` 系列工具的使用场景。
 
-### 7.1 为什么需要无锁技术
+### 6.1 为什么需要无锁技术
 
 锁的问题：
 
@@ -306,7 +247,7 @@ unpark（恢复线程）
 
 无锁方案利用 CPU 原子指令，在线程不阻塞的情况下完成并发操作。
 
-### 7.2 CAS 原理
+### 6.2 CAS 原理
 
 Compare And Swap：一条 CPU 指令完成"比较并交换"的原子操作：
 
@@ -320,13 +261,13 @@ CAS(内存地址, 预期值, 新值):
 
 如果失败则重试（自旋），直到成功。
 
-### 7.3 CAS 的底层支持
+### 6.3 CAS 的底层支持
 
 - **JDK 层面**：`Unsafe.compareAndSwapInt()` / `VarHandle.compareAndSet()`
 - **CPU 层面**：`cmpxchg` 指令（x86）
 - **多核保证**：`lock` 前缀锁定总线或缓存行
 
-### 7.4 CAS 的三大问题
+### 6.4 CAS 的三大问题
 
 | 问题 | 说明 | 解决 |
 |------|------|------|
@@ -334,7 +275,7 @@ CAS(内存地址, 预期值, 新值):
 | 自旋消耗 | CAS 失败循环重试，消耗 CPU | 竞争激烈时改用锁 |
 | 单变量限制 | 只能保证一个变量的原子性 | 把多个变量封装为一个对象 + `AtomicReference` |
 
-### 7.5 Atomic 系列演进
+### 6.5 Atomic 系列演进
 
 | 类 | 原理 | 适用场景 |
 |----|------|---------|
@@ -342,6 +283,65 @@ CAS(内存地址, 预期值, 新值):
 | `AtomicReference` | CAS | 对象引用原子更新 |
 | `LongAdder` | 分段累加（Cell 数组）| 高并发计数，比 `AtomicLong` 吞吐高 |
 | `LongAccumulator` | 分段 + 自定义聚合函数 | 高并发下自定义聚合逻辑 |
+
+---
+
+## 7 Lock 与 AQS：Java 并发工具的核心框架
+
+本章目标：理解 `Lock` 接口相比 `synchronized` 的增强，以及 AQS 是如何用 `state` + `CLH 队列` 统一实现各种并发工具。
+
+### 7.1 为什么需要 Lock
+
+`Lock` 弥补了 `synchronized` 的功能限制：
+
+| 能力 | synchronized | Lock |
+|------|-------------|------|
+| 可中断获取 | ❌ | ✅ `lockInterruptibly()` |
+| 超时获取 | ❌ | ✅ `tryLock(timeout)` |
+| 公平锁 | ❌ | ✅ 构造时指定 |
+| 多条件队列 | ❌（只有一个隐式条件） | ✅ `newCondition()` 多个 |
+| 非块结构 | ❌（必须成对出现在同一方法） | ✅ 可以跨方法 |
+
+### 7.2 AQS 设计思想
+
+`AbstractQueuedSynchronizer` 是 JUC 的骨架，核心三元素：
+
+- **`state`（volatile int）**：同步状态，子类通过 `getState`/`setState`/`compareAndSetState` 操作
+- **CLH 队列**：FIFO 的等待队列，存放获取锁失败的线程
+- **Node**：队列节点，封装线程 + 等待状态（SIGNAL / CANCELLED 等）
+
+### 7.3 AQS 获取锁流程
+
+```
+tryAcquire（子类实现，CAS 修改 state）
+      ↓ 失败
+创建 Node 加入 CLH 队列尾部
+      ↓
+前驱是头节点？→ 再次 tryAcquire
+      ↓ 失败
+park（挂起线程）
+      ↓ 被唤醒
+再次尝试获取
+```
+
+### 7.4 AQS 释放锁流程
+
+```
+tryRelease（子类实现，修改 state）
+      ↓
+唤醒头节点的后继节点
+      ↓
+unpark（恢复线程）
+```
+
+### 7.5 基于 AQS 的工具一览
+
+| 工具 | 同步模式 | state 含义 |
+|------|---------|-----------|
+| `ReentrantLock` | 独占 | 0=未锁定，n=重入次数 |
+| `Semaphore` | 共享 | 剩余许可数 |
+| `CountDownLatch` | 共享 | 还需 countDown 的次数 |
+| `ReentrantReadWriteLock` | 共享+独占 | 高16位=读锁数，低16位=写锁重入数 |
 
 ---
 
@@ -524,7 +524,7 @@ Java 生态代表：Akka。虽然非主流，但理解这种范式能拓宽对�
 
 ---
 
-> 第三卷到此结束。从线程模型 → JMM → volatile → synchronized → AQS → CAS → 并发集合 → 线程池 → 异步编程 → 诊断优化，读者已经建立起 Java 并发的完整认知体系。
+> 第三卷到此结束。从线程模型 → JMM → volatile → synchronized → CAS → AQS → 并发集合 → 线程池 → 异步编程 → 诊断优化，读者已经建立起 Java 并发的完整认知体系。
 >
 > **与全书其他卷的纵横联系：**
 >

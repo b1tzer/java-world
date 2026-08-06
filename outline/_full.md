@@ -34,7 +34,7 @@
 
 **第二卷《JVM Runtime》**——回答"一行代码如何被 JVM 执行"。覆盖字节码与类加载、内存模型、对象布局、GC、JIT、线上排查。共 6 章。
 
-**第三卷《Java 并发》**——回答"多线程如何正确高效地共享资源"。按 JMM → volatile → synchronized → AQS → CAS → 并发集合 → 线程池 → 异步编程组织。共 11 章。
+**第三卷《Java 并发》**——回答"多线程如何正确高效地共享资源"。按 JMM → volatile → synchronized → CAS → AQS → 并发集合 → 线程池 → 异步编程组织。共 11 章。
 
 **第四卷《Java 网络与通信》**——回答"数据如何从一个 JVM 到另一个 JVM"。覆盖 TCP/IP → Socket → NIO → Netty → HTTP → Servlet/Spring MVC → RPC → 长连接。共 10 章。
 
@@ -142,8 +142,8 @@
 3. Java 内存模型（JMM）
 4. volatile
 5. synchronized
-6. Lock 与 AQS
-7. 原子类与 CAS
+6. 原子类与 CAS
+7. Lock 与 AQS
 8. 并发集合
 9. 线程池
 10. 并发编程模型：异步与响应式
