@@ -434,23 +434,45 @@ private void unparkSuccessor(Node node) {
 
 ### 6.7.1 共享模式
 
-独占模式保证同一时刻只有一个线程持有锁。共享模式则允许多个线程同时获取同步状态——典型的代表是 `Semaphore`（信号量）和 `CountDownLatch`（倒计时门栓）。
+独占模式保证同一时刻只有一个线程能持有锁。共享模式则不同——它允许多个线程**同时通过**。典型代表是 `Semaphore`（信号量）和 `CountDownLatch`（倒计时门栓）。
 
-共享模式的入口是 `acquireShared(int arg)`：
+#### 共享模式不是"一把锁多人用"
 
-```java
-public final void acquireShared(int arg) {
-    if (tryAcquireShared(arg) < 0)     // 子类实现，返回值 >= 0 表示获取成功
-        doAcquireShared(arg);          // 失败则入队等待
-}
+"共享模式"这个名字容易让人误解为"多个线程共享同一把锁"。实际上，共享模式管理的不是"锁"，而是"许可"或"配额"：
+
+- `Semaphore`：state 表示剩余许可数。多个线程可以同时持有许可，直到许可用完
+- `CountDownLatch`：state 表示剩余计数。所有 `await` 的线程在计数归零时同时放行
+
+共享模式和独占模式的区别不在于"锁给谁用"，而在于 `tryAcquireShared` 的返回值：如果返回正数，说明还有剩余资源，后续的共享获取也可能成功。
+
+#### 为什么需要传播
+
+传播机制是共享模式的关键设计。用 `CountDownLatch` 的场景来说明：
+
+```text
+CountDownLatch(3)，三个线程在 await：
+
+队列：head → NodeA(await) → NodeB(await) → NodeC(await)
+
+某处调用了 3 次 countDown()，state 归零。
+state 变化的那一刻，只唤醒了 NodeA。
 ```
 
-`tryAcquireShared` 返回一个 `int`：
-- **正数**：获取成功，且后续的共享获取也可能成功
-- **0**：获取成功，但后续的共享获取可能失败
-- **负数**：获取失败
+问题来了：**NodeA 被唤醒了，但 NodeB 和 NodeC 还在睡。**
 
-共享模式的唤醒机制与独占模式不同。当一个共享锁被释放时，它不仅唤醒下一个节点，还会**传播**——如果被唤醒的节点也是共享模式，它会继续唤醒它的后继，形成连锁反应。这就是 `waitStatus = PROPAGATE(-3)` 的作用。
+如果用独占模式的逻辑，NodeA 被唤醒后就结束了——NodeB 和 NodeC 要等下一次 `release` 才有机会被唤醒。但 `CountDownLatch` 的语义是"计数归零时，所有等待的线程同时放行"。谁来唤醒 NodeB 和 NodeC？
+
+答案是**传播**：NodeA 被唤醒后，发现自己也是共享模式，于是主动唤醒 NodeB；NodeB 被唤醒后，又主动唤醒 NodeC。形成连锁反应，直到所有等待的共享线程都被唤醒。
+
+```text
+NodeA 被唤醒 → tryAcquireShared 返回正数 → 主动唤醒 NodeB
+NodeB 被唤醒 → tryAcquireShared 返回正数 → 主动唤醒 NodeC
+NodeC 被唤醒 → tryAcquireShared 返回正数 → 后面没有了，传播结束
+```
+
+这就是 `waitStatus = PROPAGATE(-3)` 的作用：标记"这个节点被唤醒后，需要继续传播给后继"。
+
+#### 源码实现
 
 ```java
 // 共享模式的释放
@@ -463,7 +485,7 @@ public final boolean releaseShared(int arg) {
 }
 ```
 
-`doReleaseShared` 中的传播逻辑（简化）：
+`doReleaseShared` 的传播逻辑：
 
 ```java
 private void doReleaseShared() {
@@ -484,6 +506,8 @@ private void doReleaseShared() {
     }
 }
 ```
+
+独占模式唤醒一个就停了（只有一个线程能拿到锁），共享模式唤醒一个后还会继续唤醒下一个（多个线程可以同时通过）。这就是两者在唤醒机制上的根本区别。
 
 ### 6.7.2 Condition 条件变量
 
