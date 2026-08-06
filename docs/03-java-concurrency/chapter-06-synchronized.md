@@ -1,110 +1,89 @@
-# 第5章 synchronized：Java 内置锁机制
+# 第6章 synchronized：JVM 内置锁
 
-> 什么是锁？为什么每个 Java 对象都能当锁？`synchronized` 背后的 Monitor 是什么？从偏向锁到重量级锁的升级过程是怎样发生的？为什么 JDK 15 要默认关闭偏向锁？本章将从字节码层面开始，逐层深入到对象头、锁升级机制和性能演进，完整揭示 synchronized 的工作原理。
+> 一个 `synchronized` 关键字，锁住的到底是什么？为什么每个 Java 对象都能当锁？为什么 JDK 15 之后偏向锁被默认关闭，`synchronized` 仍然是"够用"的选择？
+
+Java 里几乎所有并发工具都可以追溯到两条根：一条是 `synchronized` + Monitor，一条是 `LockSupport` + AQS。本章聚焦第一条。
+
+`synchronized` 在语法上简单，在实现上覆盖了从字节码、对象头、CAS、自旋、内核态互斥、到 JIT 优化的完整栈。理解它，也就理解了 JVM 处理"临界区"的默认路径。
 
 ---
 
-## 5.1 synchronized 的使用方式
+## 6.1 从 `count++` 到 `synchronized`
 
-### 5.1.1 三种形式
-
-`synchronized` 是 Java 中最基本的内置锁机制。它有三种使用形式：
-
-**形式一：实例方法锁**
+### 6.1.1 单线程正确的代码，多线程为什么错
 
 ```java
 public class Counter {
     private int count = 0;
-
-    // 锁对象是 this（当前实例）
-    public synchronized void increment() {
-        count++;
-    }
-
-    public synchronized int getCount() {
-        return count;
-    }
+    public void increment() { count++; }
+    public int get() { return count; }
 }
 ```
 
-**形式二：静态方法锁**
+10 条线程各自跑 10 000 次 `increment()`，最终的 `count` 值几乎不会是 100 000。
+
+原因是 `count++` 不是一步操作，而是三步：**读 count → 加 1 → 写回 count**。中间任何一步都可能被别的线程插入，导致更新丢失。第 4 章已经通过 JMM 解释过这类问题的根源——原子性缺失。
+
+要修复这段代码，需要一段"任一时刻只有一个线程能执行"的临界区：
 
 ```java
-public class GlobalCounter {
-    private static int count = 0;
-
-    // 锁对象是 GlobalCounter.class（Class 对象）
-    public static synchronized void increment() {
-        count++;
-    }
-}
-```
-
-**形式三：同步代码块**
-
-```java
-public class FineGrainedLock {
-    private final Object lock = new Object();
+public class Counter {
     private int count = 0;
-
-    public void increment() {
-        // 锁对象是 lock（显式指定）
-        synchronized (lock) {
-            count++;
-        }
-    }
-
-    public void doSomething() {
-        // 这段代码不需要锁，可以并发执行
-        prepareData();
-
-        // 只有临界区需要同步
-        synchronized (lock) {
-            updateSharedState();
-        }
-
-        // 这段代码也不需要锁
-        notifyObservers();
-    }
+    public synchronized void increment() { count++; }
+    public synchronized int get() { return count; }
 }
 ```
 
-### 5.1.2 三种形式对比
+`synchronized` 一次性提供三样东西：
 
-| 形式 | 锁对象 | 适用场景 | 粒度 |
-|------|--------|---------|------|
-| 实例方法 | `this` | 整个方法都需要同步 | 粗 |
-| 静态方法 | `Class<?>` 对象 | 静态变量的同步访问 | 粗 |
-| 同步代码块 | 任意对象 | 只需同步部分代码 | 细 |
+- **互斥**：同一时刻只有一个线程能进入临界区
+- **可见性**：进入临界区能看到上一个持锁线程留下的所有写入
+- **有序性**：临界区里的读写不会跨越加锁/解锁边界
 
-**选择建议**：优先使用同步代码块。它的粒度最细，可以最小化临界区，减少锁竞争。实例方法锁虽然简洁，但如果方法中有不需要同步的操作（如日志、参数校验），会导致不必要的阻塞。
+三样能力打包出售，且成本已经被 JVM 优化到很低。这是 `synchronized` 在 Java 里长盛不衰的根本原因。
 
-### 5.1.3 一个常见的错误
+### 6.1.2 三种加锁位置
+
+`synchronized` 有三种写法，对应三种不同的锁对象：
+
+| 写法 | 锁对象 | 典型场景 |
+| :-- | :-- | :-- |
+| `synchronized` 修饰实例方法 | `this`（当前实例） | 保护实例可变状态 |
+| `synchronized` 修饰静态方法 | 该方法所在类的 `Class` 对象 | 保护类级可变状态 |
+| `synchronized (obj) { ... }` | 指定对象 | 细粒度控制，只锁真正需要保护的代码 |
+
+优先选同步块。同步块能把临界区缩到最小，减少无关操作（日志、参数校验）持锁的时间；实例方法锁会让整段方法都持锁，粒度粗。
+
+### 6.1.3 一个反复出现的错误
 
 ```java
-public class BrokenSync {
-    // 错误！每个线程都会创建新的 lock 对象
-    public void doSync() {
-        Object lock = new Object();  // 局部变量，每个线程一个
-        synchronized (lock) {
-            // 没有互斥效果！
-            criticalSection();
-        }
+// ❌ 每个线程各自的锁对象，没有互斥效果
+public void doSync() {
+    Object lock = new Object();
+    synchronized (lock) {
+        criticalSection();
+    }
+}
+
+// ✅ 锁对象必须由所有需要互斥的线程共享
+private final Object lock = new Object();
+
+public void doSync() {
+    synchronized (lock) {
+        criticalSection();
     }
 }
 ```
 
-锁对象必须是**所有需要互斥的线程共享的同一个对象**。局部变量在栈上分配，每个线程有自己的栈，所以它们看到的是不同的锁对象——等于没有锁。
+`Object lock = new Object()` 是方法局部变量，每次调用都新建一份，位于各自的调用栈帧上。多个线程看到的是不同的锁对象，等于没锁。加锁的第一条规则永远是：**锁对象是共享的可达对象**。
 
 ---
 
-## 5.2 synchronized 的本质
+## 6.2 Monitor：`synchronized` 背后的执行体
 
-### 5.2.1 字节码层面
+### 6.2.1 从字节码开始看
 
-`synchronized` 在编译后会生成 `monitorenter` 和 `monitorexit` 两条字节码指令。
-
-用 `javap -c` 反编译以下代码：
+先看一段最普通的同步块：
 
 ```java
 public void syncBlock() {
@@ -114,9 +93,9 @@ public void syncBlock() {
 }
 ```
 
-反编译结果（简化）：
+用 `javap -c` 反编译得到（简化）：
 
-```
+```text
 public void syncBlock();
   Code:
      0: aload_0
@@ -137,464 +116,295 @@ public void syncBlock();
     21: return
 ```
 
-注意编译器生成了**两个** `monitorexit` 指令：一个在正常路径上，一个在异常处理路径上。这保证了即使同步块中抛出异常，锁也一定会被释放——这是 `synchronized` 相比手动 `lock/unlock` 的一个重要优势。
+两点值得注意：
 
-### 5.2.2 Monitor（监视器）
+- 编译器一定会生成**两个** `monitorexit`：一个走正常路径，一个走异常处理路径。这是 `synchronized` 与手写 `lock.lock()/unlock()` 的核心差异，也是它天然不会漏解锁的原因。
+- `monitorenter` / `monitorexit` 的操作数是栈顶的一个对象引用。锁不属于代码块，属于**对象**——这就是"每个 Java 对象都能当锁"的字节码依据。
 
-`monitorenter` 和 `monitorexit` 操作的核心是 **Monitor**——一种互斥同步的底层数据结构。
+### 6.2.2 Monitor 的三件套
 
-每个 Java 对象都可以关联一个 Monitor。当线程执行 `monitorenter` 时，它尝试获取该对象的 Monitor 的所有权：
-
-```
-                ┌─────────────────────────────┐
-                │         Object Monitor       │
-                │                             │
-                │  _owner: Thread-A (持有者)    │
-                │  _count: 1 (重入次数)        │
-                │  _EntryList: [Thread-B, ...] │  ← 等待获取锁的线程
-                │  _WaitSet:  [Thread-C, ...]  │  ← 调用 wait() 的线程
-                │                             │
-                └─────────────────────────────┘
-```
-
-Monitor 的工作流程：
-
-1. **获取锁**（monitorenter）：如果 `_owner` 为空，当前线程成为 owner，`_count` 设为 1。如果 `_owner` 是当前线程（重入），`_count` 加 1。否则，当前线程进入 `_EntryList` 阻塞等待。
-2. **释放锁**（monitorexit）：`_count` 减 1。如果 `_count` 为 0，释放 Monitor 所有权，`_EntryList` 中的一个线程被唤醒。
-3. **等待/通知**（wait/notify）：线程调用 `wait()` 后进入 `_WaitSet`，释放 Monitor。`notify()` 从 `_WaitSet` 中唤醒一个线程，该线程需要重新竞争 Monitor。
-
-### 5.2.3 Monitor 与对象的关系
-
-在 HotSpot 虚拟机中，Monitor 并不是在对象创建时就分配的，而是**懒加载**的。只有当一个线程第一次尝试获取该对象的锁时，才会分配（或关联）一个 Monitor。这是因为 Monitor 是一个重量级的数据结构（依赖操作系统的 Mutex），大多数对象永远不会被用作锁。
-
-### 5.2.4 synchronized 的内存语义
-
-`synchronized` 不只负责互斥，还负责可见性和有序性。
-
-线程 A 在同步块里写入共享变量后退出，线程 B 随后进入同一把锁保护的同步块时，必须能看到线程 A 留下的结果。JMM 对 `synchronized` 的要求，就是通过加锁和解锁建立这层语义。
-
-`synchronized` 的内存语义由两个动作建立：
-
-- **`monitorenter`**：获取锁，建立 acquire 语义
-- **`monitorexit`**：释放锁，建立 release 语义
-
-可以先看结论：
-
-| 操作 | 语义 | 结果 |
-| :-- | :-- | :-- |
-| `monitorexit` | release | 退出同步块前的写入，对后续获取同一把锁的线程可见 |
-| `monitorenter` | acquire | 获取锁之后的读写，不能重排到加锁之前 |
-
-这就是 JMM 中"**对同一把锁的解锁 happens-before 后续加锁**"的具体落实方式。
+`monitorenter` 真正操作的是对象关联的 **ObjectMonitor**（HotSpot 里的 C++ 结构）：
 
 ```text
-线程 A                              线程 B
-────────────                        ────────────
-synchronized(lock) {                synchronized(lock) {
-    x = 42;                             读取 x;
-    ready = true;                   }
-}
-
-关键关系：
-A 在 monitorexit 之前的写入
-        happens-before
-B 在 monitorenter 之后的读取
+             ┌──────────────────────────────┐
+             │        ObjectMonitor          │
+             │                              │
+    持有者 →  │  _owner:      Thread-A       │
+    重入计数  │  _recursions: 1              │
+             │                              │
+    等锁队列  │  _EntryList:  [B, D, ...]    │  BLOCKED
+    等待队列  │  _WaitSet:    [C, E, ...]    │  WAITING
+             └──────────────────────────────┘
 ```
 
-只要线程 B 获取到了线程 A 刚刚释放的那把锁，B 后续的读取就必须看到 A 在临界区内完成的写入结果。
+三件套各司其职：
 
-从实现角度看，HotSpot 会在加锁和解锁路径上加入相应的顺序约束，保证两件事：
+- **`_owner`**：当前持锁线程。首次加锁时 CAS 写入，重入时不动，解锁到 0 时清空。
+- **`_EntryList`**：正在争锁的线程。它们线程状态是 `BLOCKED`，堆栈里常见 `waiting to lock <0x...>`。
+- **`_WaitSet`**：调用了 `wait()` 主动挂起的线程。它们状态是 `WAITING` 或 `TIMED_WAITING`。
 
-- 同步块里的写入在解锁前完成，并按同步语义对外可见
-- 获取锁之后的读写不能穿越到加锁之前
+区分 `_EntryList` 与 `_WaitSet` 是排查线上锁竞争问题的关键——同一个锁的 dump 里能不能看到 `_WaitSet` 里堆着线程，直接决定要不要往 `wait/notify` 的方向查。
 
-在弱内存模型架构上，JVM 会用更明确的屏障把这层语义补齐；在较强内存模型架构上，需要的额外约束可能更少，但语义要求不变。
+### 6.2.3 Monitor 是懒加载的
 
-这也是 `synchronized` 与 `volatile` 的根本区别之一：
+HotSpot 里 `ObjectMonitor` 不会在对象创建时就分配。原因很简单：**大多数对象永远不会被当作锁**，为每个对象都预留一份 Monitor 是浪费。
 
-- `volatile` 负责单个共享变量读写周围的顺序与可见性
-- `synchronized` 负责一整段临界区的互斥、可见性和有序性
+真正的分配时机是——锁状态从轻量级升级到重量级，且升级的那个瞬间。升级路径见 §6.4。
 
-因此，`synchronized` 可以保证临界区内复合操作的正确性，而 `volatile` 不能。
+### 6.2.4 `synchronized` 的内存语义
+
+Monitor 的两个动作，落实到 JMM 上：
+
+| 动作 | JMM 语义 | 结果 |
+| :-- | :-- | :-- |
+| `monitorexit` | release | 临界区里的写入，对下一个获取同一把锁的线程可见 |
+| `monitorenter` | acquire | 获取锁之后的读写，不允许被重排到加锁之前 |
+
+写到规范里就是 JMM 的"**同一把锁的解锁 happens-before 后续加锁**"。示意：
+
+```text
+线程 A                            线程 B
+─────────────────────            ───────────────────────
+synchronized (lock) {             synchronized (lock) {
+    x = 42;                           读 ready → true
+    ready = true;                     读 x     → 必定为 42
+}                                 }
+```
+
+只要 B 拿到的是 A 刚刚释放的那把锁，B 就一定看到 A 在临界区里做的全部写入。第 5 章讨论过 `volatile` 是"变量粒度"的内存语义，`synchronized` 则是"代码块粒度"的内存语义。二者不是竞品，是不同粒度的工具。
 
 HotSpot 会根据竞争情况把实现分成偏向锁、轻量级锁、重量级锁等不同路径；但无论走哪条路径，release / acquire 语义都必须成立。这是 `synchronized` 在不同实现形态下仍然保持同一并发语义的基础。
 
 ---
 
-§5.2 介绍了 Monitor 的三个组成部分：`_owner`、`_EntryList` 和 `_WaitSet`。前两个负责互斥和阻塞等待，`_WaitSet` 则是 wait/notify 机制的基础。`synchronized` 解决了互斥问题——同一时刻只有一个线程能进入临界区。但很多时候，线程需要的不只是"独占"，而是"等待某个条件成立后再继续"。这就是 `wait/notify` 的用途。
+## 6.3 `wait` / `notify`：Monitor 的等待协作
 
+### 6.3.1 从 `_WaitSet` 讲起
 
-## 5.3 wait/notify：线程间的通知机制
+`_EntryList` 解决"抢不到锁怎么办"。`_WaitSet` 解决另一个问题：**已经抢到锁的线程，发现条件还不满足，怎么办**。
 
-`synchronized` 解决了互斥问题——同一时刻只有一个线程能进入临界区。但很多时候，线程需要的不只是"独占"，而是"等待某个条件成立后再继续"。这就是 `wait/notify` 的用途。
-
-### 5.3.1 基本用法
-
-```java
-synchronized (lock) {
-    while (!condition) {   // 用 while，不用 if
-        lock.wait();       // 释放锁，进入等待
-    }
-    // 条件满足，继续执行
-}
-```
+`_WaitSet` 就是这些"等条件"的线程停靠的地方。`wait()` / `notify()` 是操作 `_WaitSet` 的 API：
 
 ```java
-synchronized (lock) {
-    condition = true;
-    lock.notify();         // 唤醒一个等待的线程
-    // 或 lock.notifyAll() 唤醒所有等待的线程
-}
-```
-
-### 5.3.2 三个关键细节
-
-**1. 必须在 synchronized 块内调用**
-
-`wait()` 和 `notify()` 必须持有调用对象的 Monitor，否则抛 `IllegalMonitorStateException`。这不是语法限制，而是逻辑必须——`wait()` 的本质是"释放当前持有的锁并等待"，没有锁何谈释放？
-
-**2. 用 while 而不用 if**
-
-```java
-// ❌ 错误：用 if
+// 消费者：条件不满足则等待
 synchronized (queue) {
-    if (queue.isEmpty()) {
-        queue.wait();
+    while (queue.isEmpty()) {
+        queue.wait();          // 释放锁，进入 _WaitSet
     }
-    // 唤醒后直接取，但 queue 可能又被其他线程清空了
     Object item = queue.poll();
 }
 
-// ✅ 正确：用 while
+// 生产者：制造条件后唤醒
 synchronized (queue) {
-    while (queue.isEmpty()) {   // 唤醒后重新检查条件
-        queue.wait();
-    }
+    queue.offer(item);
+    queue.notify();            // 从 _WaitSet 拉一个线程出来
+}
+```
+
+### 6.3.2 三条硬性要求
+
+**要求 1：必须持有该对象的 Monitor**
+
+```java
+Object lock = new Object();
+lock.wait();  // ❌ IllegalMonitorStateException
+```
+
+`wait()` 的语义是"释放我持有的这把锁并挂起"。没持有过，何谈释放。
+
+**要求 2：条件判断用 `while`，不用 `if`**
+
+```java
+// ❌ 用 if：唤醒后不检查条件
+synchronized (queue) {
+    if (queue.isEmpty()) queue.wait();
+    Object item = queue.poll();     // 可能空指针
+}
+
+// ✅ 用 while：唤醒后重新检查
+synchronized (queue) {
+    while (queue.isEmpty()) queue.wait();
     Object item = queue.poll();
 }
 ```
 
-原因有两个：**虚假唤醒**（spurious wakeup，操作系统可能在没有 `notify` 的情况下唤醒线程）和**竞争唤醒**（`notifyAll` 唤醒所有线程，但只有一个能拿到锁，其他线程醒来发现条件不满足，需要重新等待）。
+两个原因：
 
-**3. notify() vs notifyAll()**
+- **虚假唤醒（spurious wakeup）**：`wait()` 底层依赖操作系统的等待原语（`pthread_cond_wait`），POSIX 明确允许无通知唤醒。这不是 bug，是规范。
+- **竞争唤醒**：`notifyAll` 唤醒了 N 个线程，但锁只有一把，其余线程醒来发现条件已被别人消耗掉，必须重新等。
 
-`notify()` 只唤醒一个等待线程，`notifyAll()` 唤醒所有。选择取决于场景：
+**要求 3：区分 `notify` 与 `notifyAll`**
 
 | 场景 | 选择 | 原因 |
-|------|------|------|
+| :-- | :-- | :-- |
 | 所有等待线程做同样的事 | `notify()` | 唤醒一个就够了，减少无效竞争 |
 | 等待不同条件的线程 | `notifyAll()` | 只唤醒一个可能唤醒了错误的线程 |
 | 不确定 | `notifyAll()` | 安全，多唤醒几个不会有正确性问题 |
 
-### 5.3.3 wait/notify 的线程状态转换
+### 6.3.3 唤醒不等于运行
 
-```
-Thread-C 调用 wait():
-  RUNNABLE → WAITING
-  从 _owner 变为 _WaitSet 成员
-  释放 Monitor（_owner = null, _count = 0）
+被 `notify` 唤醒的线程，走的路径是：
 
-Thread-B 调用 notify():
-  从 _WaitSet 取出 Thread-C
-  Thread-C 移到 _EntryList
-  Thread-C: WAITING → BLOCKED（等待重新获取锁）
-
-Thread-B 释放 Monitor:
-  _EntryList 中的线程竞争锁
-  Thread-C 重新成为 _owner
-  Thread-C: BLOCKED → RUNNABLE，从 wait() 返回
+```text
+Thread-C 状态迁移
+─────────────────
+在 _WaitSet 中                     WAITING
+  ↓ notify()
+从 _WaitSet 移到 _EntryList         BLOCKED
+  ↓ 前一个持锁线程 monitorexit
+拿到锁，从 wait() 返回               RUNNABLE
 ```
 
-很多人以为 `notify()` 后被唤醒的线程会立即执行——不会。它只是从 `_WaitSet` 移到了 `_EntryList`，还需要重新竞争锁。这就是为什么 `wait()` 必须在 `synchronized` 块中——醒来后要重新获取锁才能继续。
+关键：**从 `_WaitSet` 出来的线程不会立即执行**，它先进 `_EntryList`，还要重新抢锁。这就是为什么 `wait()` 必须写在 `synchronized` 块里——醒来后要重新持锁才能继续。
 
-### 5.3.4 wait/notify 的局限
+### 6.3.4 `wait/notify` 的能力边界
 
-`wait/notify` 是 Monitor 机制的基础能力，但它的功能比较原始：
+`wait/notify` 是 Monitor 的原语，能力也止步于此：
 
-- 只有一个等待队列（`_WaitSet`），无法区分"等待非空"和"等待非满"
-- 不支持超时等待（`wait(timeout)` 有，但没有"等到某个条件成立或超时"的组合）
-- 不支持公平唤醒（`notify()` 随机唤醒一个，无法保证等待最久的线程先被唤醒）
+- 一个 Monitor 只有一个 `_WaitSet`，没法把"队列非空"和"队列非满"的等待者分开
+- `notify()` 从 `_WaitSet` 里挑哪个线程是**不确定**的，做不到公平唤醒
+- 没有"超时后自动放弃"的组合语义，只能 `wait(timeout)` 后手工判断
 
-这些局限正是 `ReentrantLock` + `Condition` 要解决的问题——下一章会讲。`Condition` 可以创建多个等待队列，每个队列等待不同的条件，互不干扰。
+这些限制正是 `Condition` + `ReentrantLock` 要处理的（详见第 8 章）。一个 `Lock` 上可以挂多个 `Condition`，每个 `Condition` 各自的等待队列互不干扰——比如生产者-消费者可以清晰拆成 `notEmpty` 和 `notFull` 两条队列。
 
 ---
 
-## 5.4 synchronized 与对象头
+## 6.4 Mark Word 与锁升级
 
-### 5.4.1 回顾：对象的内存布局
+### 6.4.1 锁状态藏在对象头里
 
-在第二卷（JVM 对象模型）中，我们讨论过 Java 对象在内存中的布局：
+第二卷第 3 章讨论过 Java 对象的内存布局：**对象头**由 Mark Word 与类型指针组成。`synchronized` 的锁状态就写在 Mark Word 里，不需要额外分配空间。
 
-```
-┌──────────────────────────────────┐
-│         对象头 (Header)           │
-│  ┌────────────────────────────┐  │
-│  │ Mark Word (标记字段)        │  │  ← 存储锁状态、GC 年龄、hashCode
-│  ├────────────────────────────┤  │
-│  │ Klass Pointer (类型指针)    │  │  ← 指向类的元数据
-│  ├────────────────────────────┤  │
-│  │ Array Length (数组长度)     │  │  ← 仅数组对象有
-│  └────────────────────────────┘  │
-├──────────────────────────────────┤
-│         实例数据 (Instance Data)  │
-├──────────────────────────────────┤
-│         对齐填充 (Padding)        │
-└──────────────────────────────────┘
-```
+64 位 HotSpot 上，Mark Word 是 8 字节。它在不同锁状态下承载不同内容：
 
-synchronized 的锁信息就存储在 **Mark Word** 中。Mark Word 是 64 位（64 位 JVM）的空间，不同的锁状态下存储不同的内容。
+| 状态 | 标志位 | Mark Word 主要内容 |
+| :-- | :-- | :-- |
+| 无锁 | `001` | `unused(25) \| hashCode(31) \| age(4) \| biased(0) \| 01` |
+| 偏向锁 | `101` | `ThreadID(54) \| Epoch(2) \| age(4) \| biased(1) \| 01` |
+| 轻量级锁 | `00` | `指向线程栈中锁记录的指针(62) \| 00` |
+| 重量级锁 | `10` | `指向 ObjectMonitor 的指针(62) \| 10` |
+| GC 标记 | `11` | 与锁无关 |
 
-### 5.4.2 Mark Word 的四种状态
+最低两位就能定位锁状态，这样 JVM 在每条锁路径上只需检查两个 bit——空间和时间开销都被压到极限。
 
-在 64 位 JVM 中，Mark Word 的内容随锁状态变化：
+### 6.4.2 升级路径：从最乐观到最悲观
 
-| 锁状态 | 标志位 | Mark Word 内容（64 位） | 说明 |
-|--------|--------|------------------------|------|
-| 无锁 | `01` | `hashCode(31) \| age(4) \| biased(1) \| 01` | 存储对象的 hashCode 和分代年龄 |
-| 偏向锁 | `01` | `ThreadID(54) \| Epoch(2) \| age(4) \| 1 \| 01` | 存储偏向线程的 ID 和 Epoch |
-| 轻量级锁 | `00` | `ptr to lock record(62) \| 00` | 指向栈帧中锁记录的指针 |
-| 重量级锁 | `10` | `ptr to Monitor(62) \| 10` | 指向堆中 Monitor 对象的指针 |
-| GC 标记 | `11` | 空 | GC 标记，与锁无关 |
+`synchronized` 采用**只升不降**的策略：
 
-注意标志位的设计非常巧妙：
-
-```
-标志位为 01:
-  ├── biased = 0 → 无锁状态
-  └── biased = 1 → 偏向锁状态
-
-标志位为 00 → 轻量级锁
-标志位为 10 → 重量级锁
-标志位为 11 → GC 标记
+```text
+    无锁 ── 首次线程 CAS──▶ 偏向锁
+                            │
+                   出现竞争  │
+                            ▼
+                        轻量级锁 ──自旋失败──▶ 重量级锁
+                                                 │
+                                    OS Mutex + _EntryList 队列
 ```
 
-这意味着一个对象在任意时刻，其 Mark Word 的最低两位就能告诉 JVM 当前的锁状态。
+三个升级点各自解决一个问题：
 
-## 5.5 锁升级机制
+- **偏向锁**：解决"同一线程反复获取"零竞争场景的开销
+- **轻量级锁**：解决"多线程交替进入、几乎不阻塞"低竞争场景的开销
+- **重量级锁**：解决"真的存在阻塞等待"的正确性
 
-### 5.5.1 升级路径
+**只升不降**的设计原因：降级要在运行时反复判断"当前是否值得回到轻量级"，逻辑复杂且不划算——真出现竞争就说明这把锁确实值得用重量级实现。偏向锁例外：JVM 会在安全点通过 `epoch` 递增做批量撤销。
 
-synchronized 的锁状态会根据竞争情况**逐步升级**，但**不会降级**（严格来说，只有在 GC 时才会清除锁状态）：
+### 6.4.3 偏向锁的细节：`epoch` 是干什么的
 
-```
-无锁 → 偏向锁 → 轻量级锁 → 重量级锁
-```
+回到 Mark Word 表格，偏向锁里有 2 位 `Epoch`。它不是给对象用的，是给**类**用的：
 
-这个设计的哲学是：**从最乐观的假设开始，逐步升级到更安全（但也更重）的同步机制**。
+- 每个类的元数据里维护一个类级 `epoch` 计数器
+- 对象加偏向锁时，把当时的类 `epoch` 复制进对象头
+- 需要"撤销这个类的所有偏向锁"时，JVM 把类的 `epoch` 递增
+- 之后任何线程访问该类的偏向锁对象，一比对 `epoch` 就知道偏向已失效
 
-### 5.5.2 无锁 → 偏向锁
+这样一次 `epoch++` 就顶掉了逐对象遍历撤销的成本，是 JVM 内部很典型的"批量作废"设计。
 
-**触发条件**：当一个线程第一次获取锁时。
+### 6.4.4 轻量级锁：栈上锁记录 + CAS
 
-**升级过程**：
+线程 B 尝试获取一把已被线程 A 偏向的锁时，会走这样一条路：
 
-```
-  线程 A 第一次获取锁
-  ─────────────────────
-
-  1. 检查 Mark Word 的标志位 = 01（无锁或偏向锁）
-  2. 检查偏向位 = 0（无锁状态）
-  3. 使用 CAS 将 Mark Word 中的 Thread ID 替换为线程 A 的 ID
-     ├── CAS 成功 → 偏向锁获取成功
-     └── CAS 失败 → 说明有竞争，升级到轻量级锁
-  4. 之后线程 A 再次进入同步块时，只需检查 Thread ID 是否是自己
-     ├── 是 → 直接进入（无任何同步开销）
-     └── 否 → 发生竞争，触发锁升级
-```
-
-偏向锁的核心思想：**大多数锁在整个生命周期中只有一个线程反复获取**（"偏向"于第一个获取它的线程）。对于这种情况，只需要第一次获取时做一次 CAS，之后的获取/释放几乎零开销。
-
-```
-  线程 A 反复获取偏向锁：
-  ─────────────────────────
-
-  进入同步块：检查 Thread ID == 我？ → ✅ → 直接执行（几乎零开销）
-  退出同步块：什么都不做（不修改 Mark Word）
-  再次进入：  检查 Thread ID == 我？ → ✅ → 直接执行
+```text
+1. JVM 在安全点暂停 A，检查 A 是否还在临界区
+2. 如果 A 已退出 → 撤销偏向，锁回到无锁
+   如果 A 仍持有 → 就地升级为轻量级锁，A 继续跑
+3. B 走轻量级锁路径：
+   ┌────────────────────────┐
+   │ B 的栈帧               │
+   │   ├─ Lock Record       │  ← 新分配
+   │   │    Displaced MW    │  ← 把原 Mark Word 复制进来
+   └────────────────────────┘
+4. B 用 CAS 把对象的 Mark Word 换成"指向 Lock Record 的指针"
+   ├─ CAS 成功 → 获取轻量级锁
+   └─ CAS 失败 → 说明 A 还在跑，自旋重试
 ```
 
-#### Epoch 机制
+轻量级锁的核心思想是：**用一次用户态 CAS 换一次内核态 mutex**。没有阻塞、没有系统调用，只在锁对象和线程栈之间玩指针。
 
-回顾 Mark Word 表格，偏向锁状态下有一个 2 位的 `Epoch` 字段。它的作用是**批量撤销偏向**。
+### 6.4.5 升到重量级：真的要挂起了
 
-具体机制：
+轻量级锁自旋若干次仍拿不到，说明持锁线程的临界区并不短：
 
-- 每个类（Class）的元数据中维护一个 `epoch` 计数器（不是对象头里，是类级别）
-- 每个偏向锁对象的 Mark Word 中存储了获取偏向时的类 `epoch` 值
-- 当 JVM 需要撤销某个类所有对象的偏向时（比如发现这个类的锁竞争变激烈了），只需将类的 `epoch` 加 1
-- 之后任何线程访问该类的偏向锁对象时，发现对象里的 `epoch` 和类的 `epoch` 对不上，就知道偏向已失效，自动回退到无锁状态
-
-这比逐个遍历所有对象、逐个清除 Thread ID 高效得多——一次 `epoch++` 就完成了整个类的批量撤销。
-
-### 5.5.3 偏向锁 → 轻量级锁
-
-**触发条件**：另一个线程尝试获取已被偏向的锁。
-
-**升级过程**：
-
-```
-  线程 B 尝试获取已被线程 A 偏向的锁
-  ──────────────────────────────────────
-
-  1. 检查 Mark Word 的标志位 = 01，偏向位 = 1
-  2. 检查 Thread ID ≠ 线程 B
-  3. 暂停线程 A（到达安全点）
-  4. 检查线程 A 是否仍在同步块中
-     ├── 是 → 偏向锁升级为轻量级锁
-     └── 否 → 撤销偏向，恢复为无锁状态
-  5. 线程 A 恢复执行，继续以轻量级锁的方式操作
-  6. 线程 B 尝试以轻量级锁的方式获取锁
+```text
+1. 分配 ObjectMonitor
+2. 对象 Mark Word 改写为"指向 ObjectMonitor 的指针"，标志位 10
+3. 竞争线程 park 到 _EntryList，线程状态变成 BLOCKED
+4. 持锁线程执行完临界区，走 monitorexit：
+     - 发现 Mark Word 指向 Monitor（不再是栈里的 Lock Record）
+     - 从 _EntryList 唤醒一个线程
+5. 被唤醒线程重新 CAS 争锁
 ```
 
-**轻量级锁的获取**：
+重量级锁的成本主要在两处：**分配 Monitor + 用户态到内核态的切换**。所以只要能停留在轻量级路径上，性能就足够好；真被顶到重量级，说明业务里确实存在竞争，需要考虑降低锁粒度或改用其它工具。
 
-```
-  线程 B 获取轻量级锁
-  ─────────────────────
+### 6.4.6 JDK 15 起偏向锁默认关闭
 
-  1. 在线程 B 的栈帧中创建一个锁记录（Lock Record）
-  2. 将 Mark Word 复制到锁记录中（称为 Displaced Mark Word）
-  3. 使用 CAS 尝试将对象的 Mark Word 替换为指向锁记录的指针
-     ├── CAS 成功 → 轻量级锁获取成功
-     └── CAS 失败 → 说明有竞争，自旋等待或升级到重量级锁
-```
+JEP 374 从 JDK 15 起把偏向锁默认关闭（`-XX:-UseBiasedLocking`），JDK 18 标记为废弃。原因不是偏向锁做错了，而是：
 
-轻量级锁的核心思想：**在没有实际竞争的情况下，通过 CAS 操作在用户态完成加锁，避免操作系统内核态的开销**。
+- 现代应用的并发度普遍偏高，"单线程反复获取"越来越罕见
+- 撤销偏向锁需要 STW 到安全点，成为长尾延迟的来源
+- HotSpot 里偏向锁相关代码占比高，维护成本超过它带来的收益
+- ZGC / Shenandoah 等新 GC 与偏向锁配合复杂
 
-### 5.5.4 轻量级锁 → 重量级锁
-
-**触发条件**：CAS 自旋失败，或竞争激烈。
-
-**升级过程**：
-
-```
-  轻量级锁竞争升级为重量级锁
-  ─────────────────────────────
-
-  1. 线程 B 自旋 N 次后仍无法获取锁（自适应自旋次数由 JVM 动态调整）
-  2. JVM 分配一个 Monitor 对象
-  3. 将 Mark Word 设置为指向 Monitor 的指针，标志位改为 10
-  4. 线程 B 进入 Monitor 的 _EntryList，阻塞等待
-  5. 线程 A 执行完同步块后，发现 Mark Word 指向 Monitor
-  6. 线程 A 释放锁，唤醒 _EntryList 中的线程
-```
-
-重量级锁依赖操作系统的 **Mutex Lock**（互斥锁），涉及内核态的线程挂起和唤醒，开销最大。
-
-### 5.5.5 完整的锁升级流程图
-
-```mermaid
-graph TD
-    A[线程尝试获取锁] --> B{检查 Mark Word}
-    B -->|标志位=01, 偏向位=0| C[无锁状态]
-    C --> D[CAS 设置 Thread ID]
-    D -->|成功| E[偏向锁 ✅]
-    D -->|失败| F[升级为轻量级锁]
-
-    B -->|标志位=01, 偏向位=1| G{Thread ID 是自己？}
-    G -->|是| E
-    G -->|否| H[偏向锁撤销]
-    H --> F
-
-    F --> I[栈帧中创建锁记录]
-    I --> J[CAS 替换 Mark Word]
-    J -->|成功| K[轻量级锁 ✅]
-    J -->|失败| L[自旋等待]
-    L -->|自旋成功| K
-    L -->|自旋超时| M[升级为重量级锁]
-
-    M --> N[分配 Monitor]
-    N --> O[线程阻塞在 EntryList]
-    O --> P[重量级锁 ✅]
-
-    style E fill:#4CAF50,color:white
-    style K fill:#4CAF50,color:white
-    style P fill:#4CAF50,color:white
-    style M fill:#f44336,color:white
-```
-
-### 5.5.6 锁升级的不可逆性
-
-锁只能升级，不能降级。一旦升级为重量级锁，即使竞争消失，也不会自动降级为轻量级锁或偏向锁。
-
-这是出于**安全和性能**的考虑：
-- 降级需要额外的判断逻辑，增加复杂度
-- 降级后如果竞争再次出现，又要重新升级，浪费资源
-- 保持重量级锁的 Monitor 对象，后续的加锁/解锁仍然可以使用
-
-不过，**偏向锁可以在 safepoint 时被批量撤销**（通过递增 epoch），但这不是"降级"，而是"撤销"。
+一句话：**JDK 15+ 之后，直接从轻量级锁起步**。表格里的偏向锁状态在新版 JVM 上是历史遗迹，遇到旧文档提到偏向锁时，需要留意 JDK 版本。
 
 ---
 
-## 5.6 synchronized 的性能演进
+## 6.5 JIT 帮 `synchronized` 做的事
 
-### 5.6.1 JDK 1.2 之前的 synchronized
+写业务代码时，肉眼看到的每一次 `synchronized` 都会加锁——但真正跑起来时，JIT 会主动帮忙削掉一部分开销。
 
-在 JDK 1.2 之前，`synchronized` 是一个"笨重"的机制：
-
-- **每次加锁**都是重量级的系统调用（pthread_mutex_lock）
-- 即使没有任何竞争，加锁/解锁的开销也很大
-- 因此当年的 Java 社区流传着一个说法："不要用 synchronized，太慢了"
-
-这也是为什么 `java.util` 包中的早期集合类（如 `Vector`、`Hashtable`）虽然使用了 synchronized，但性能并不好——它们把 synchronized 加在了每一个方法上，粒度太粗。
-
-### 5.6.2 JDK 1.6 的重大改进
-
-JDK 1.6 引入了一系列锁优化，让 synchronized 的性能得到了质的飞跃：
-
-| 优化技术 | 原理 | 适用场景 |
-|---------|------|---------|
-| 偏向锁 | 第一次获取后记录 Thread ID，后续获取零开销 | 单线程反复获取同一把锁 |
-| 轻量级锁 | 用户态 CAS 替代内核态系统调用 | 低竞争，短时间持有 |
-| 自旋锁 | 忙等待代替阻塞，避免上下文切换 | 锁持有时间极短 |
-| 自适应自旋 | 根据历史数据动态调整自旋次数 | 通用 |
-| 锁粗化 | 合并相邻的同步块，减少加锁次数 | 循环中反复加锁/解锁 |
-| 锁消除 | 通过逃逸分析消除不可能竞争的锁 | 锁对象不逃逸当前线程 |
-
-
-
-### 5.6.3 JDK 15+：偏向锁默认关闭
-
-从 JDK 15 开始，偏向锁被**默认关闭**（`-XX:-UseBiasedLocking`）。原因是：
-
-1. **现代应用的并发度普遍较高**，偏向锁带来的收益有限
-2. **偏向锁的撤销开销大**：需要 STW（Stop-The-World）暂停
-3. **代码复杂度高**：偏向锁相关代码占据了 HotSpot 锁实现的大量代码，维护成本高
-4. **ZGC 和 Shenandoah 等新 GC 与偏向锁的兼容性差**
-
-JDK 18 中偏向锁被标记为废弃（deprecated），计划在未来版本中完全移除。
-
-### 5.6.4 自旋锁与自适应自旋
-
-**自旋锁**的思路：当线程无法获取锁时，不立即阻塞，而是执行一个忙等待（自旋），期望锁很快就会被释放。
-
-```
-  传统方式（阻塞）：
-  获取锁失败 → 挂起线程（内核态）→ 等待唤醒 → 恢复线程（内核态）
-  开销：两次上下文切换 ≈ 数微秒
-
-  自旋方式（忙等待）：
-  获取锁失败 → 循环检查（用户态）→ 锁释放 → 获取成功
-  开销：几次 CAS 操作 ≈ 数十纳秒
-```
-
-但如果锁持有时间很长，自旋会白白浪费 CPU。**自适应自旋**解决了这个问题：
-
-- JVM 根据上一次在同一个锁上的自旋时间和锁持有者的状态来决定本次自旋的次数
-- 如果上次自旋成功获取了锁，这次就多自旋几次
-- 如果某个锁自旋很少成功，就跳过自旋，直接阻塞
-
-### 5.6.5 锁粗化（Lock Coarsening）
+### 6.5.1 锁消除：不逃逸的锁根本不用加
 
 ```java
-// 优化前：循环中反复加锁/解锁
+public String concat(String a, String b) {
+    StringBuffer sb = new StringBuffer();   // 局部变量，不逃逸
+    sb.append(a);
+    sb.append(b);
+    return sb.toString();
+}
+```
+
+`StringBuffer.append` 内部有 `synchronized`。但 JIT 通过**逃逸分析**（第二卷第 5 章）发现 `sb` 不会被任何其它线程访问，就把这些锁**完整消除**——生成的机器码里根本没有加锁指令。
+
+参数验证：
+
+```bash
+-XX:+DoEscapeAnalysis     # 逃逸分析（默认开）
+-XX:+EliminateLocks       # 锁消除（默认开）
+```
+
+### 6.5.2 锁粗化：把小锁合成大锁
+
+```java
+// 写法上：循环里反复加/解锁
 for (int i = 0; i < 100; i++) {
     synchronized (lock) {
         buffer.append(data[i]);
     }
 }
 
-// 优化后：JIT 将锁粗化到循环外部
+// JIT 优化后：锁被粗化到循环外
 synchronized (lock) {
     for (int i = 0; i < 100; i++) {
         buffer.append(data[i]);
@@ -602,150 +412,132 @@ synchronized (lock) {
 }
 ```
 
-JIT 编译器检测到连续的 `monitorenter`/`monitorexit` 操作作用于同一个锁对象时，会自动将锁的范围扩大（粗化），减少加锁/解锁的次数。
+粗化后加锁次数从 100 降到 1。JIT 判断的条件是：**相邻的 `monitorenter/monitorexit` 作用在同一个锁对象上**。这条优化在处理"循环里操作同一个同步集合"时非常有效。
 
-### 5.6.6 锁消除（Lock Elimination）
+### 6.5.3 自适应自旋
 
-**锁消除**是 JIT 编译器通过**逃逸分析**（Escape Analysis）实现的优化：如果一个锁对象不可能被其他线程访问，就直接消除这个锁。
+轻量级锁走到自旋这一步时，自旋多少次不是固定的：
 
-```java
-public String concat(String a, String b) {
-    // StringBuffer 是线程安全的，每次 append 都会加锁
-    StringBuffer sb = new StringBuffer();
-    sb.append(a);
-    sb.append(b);
-    return sb.toString();
-}
-```
+- 上一次在同一个锁上自旋很快拿到了锁 → 这次多自旋几次
+- 上一次自旋很多次都没成功 → 这次直接跳过自旋，走升级路径
 
-在这个例子中，`sb` 是一个局部变量，不会逃逸出 `concat` 方法——没有任何其他线程能访问它。因此，JIT 编译器会**完全消除** StringBuffer 内部的 synchronized 操作。
+自适应自旋让 JVM 在"低竞争"和"高竞争"之间自动切换，减少了固定自旋阈值调不准的问题。
 
-可以通过以下 JVM 参数来观察锁消除的效果：
+### 6.5.4 一个可以感知的性能剖面
 
-```bash
-# 开启逃逸分析（默认开启）
--XX:+DoEscapeAnalysis
+以下数量级来自 JDK 17、典型 x86 服务器、低竞争场景，用作**相对量级**参考：
 
-# 开启锁消除（默认开启）
--XX:+EliminateLocks
+| 路径 | 单次操作量级 |
+| :-- | :-- |
+| 无同步（或锁被完全消除） | ~2 ns |
+| 偏向锁命中（JDK 14 及以下） | ~3 ns |
+| 轻量级锁（一次 CAS 成功） | ~15 ns |
+| 重量级锁（无竞争，走过 Monitor） | ~30 ns |
+| 重量级锁（有竞争，含上下文切换） | ~200 ns 起 |
 
-# 打印锁消除的日志
--XX:+PrintEliminateLocks
-```
-
-验证锁消除的代码：
-
-```java
-public class LockEliminationDemo {
-    // 这个方法中的锁会被消除
-    public int addLocally() {
-        Object lock = new Object();  // 局部对象，不逃逸
-        int sum = 0;
-        synchronized (lock) {  // JIT 会消除这个锁
-            for (int i = 0; i < 1000; i++) {
-                sum += i;
-            }
-        }
-        return sum;
-    }
-
-    // 这个方法中的锁不会被消除
-    private Object sharedLock = new Object();  // 实例变量，可能逃逸
-
-    public int addWithSharedLock() {
-        int sum = 0;
-        synchronized (sharedLock) {  // 不能消除
-            for (int i = 0; i < 1000; i++) {
-                sum += i;
-            }
-        }
-        return sum;
-    }
-}
-```
-
-### 5.6.7 性能对比数据
-
-以下是一个简单的基准测试结果（JDK 17，4 核 CPU，低竞争场景）：
-
-| 方式 | 单次操作耗时 | 说明 |
-|------|------------|------|
-| 无同步 | ~2 ns | 基准线 |
-| 偏向锁 | ~3 ns | 几乎无额外开销 |
-| 轻量级锁（CAS） | ~15 ns | 一次 CAS 操作 |
-| 重量级锁（无竞争） | ~30 ns | 系统调用开销 |
-| 重量级锁（有竞争） | ~200 ns+ | 包含上下文切换 |
-
-这些数据说明：**在 JDK 1.6+ 中，synchronized 的性能已经非常优秀**。在低竞争场景下，偏向锁和轻量级锁的开销几乎可以忽略不计。只有在高竞争场景下，重量级锁的开销才变得显著。
+对绝大多数业务，`synchronized` 都停留在前三行——这也是"JDK 6 之后 `synchronized` 已经不慢"结论的定量依据。真正需要担心的是"竞争激烈到每次都进 Monitor 阻塞"，而这是任何锁工具都躲不掉的场景。
 
 ---
 
-## 5.7 synchronized 的局限性
+## 6.6 `synchronized` 的三个常见误用
 
-尽管 synchronized 经过了大幅优化，它仍然有一些局限性：
+前面 §6.1.3 讲了"锁对象必须共享"这个入门级错误。实际线上还有三种误用出现得非常频繁。
 
-| 局限性 | 说明 |
-|--------|------|
-| 不可中断 | 线程一旦阻塞在 synchronized 上，无法被中断（`Thread.interrupt()` 无效） |
-| 不支持超时 | 无法设置获取锁的超时时间 |
-| 不支持公平性 | 无法保证等待时间最长的线程优先获取锁 |
-| 不支持条件队列 | 只有一个等待队列（wait/notify），无法实现复杂的条件等待 |
-| 必须是块结构 | 获取和释放必须在同一个方法的 `{}` 内完成 |
+### 6.6.1 锁字符串常量
 
-这些局限性催生了 `java.util.concurrent.locks` 包中的 `Lock` 接口和 `ReentrantLock`。它们提供了可中断获取、超时获取、公平锁、多个条件队列等能力。完整对比和 AQS 实现原理将在第 6 章展开。
+```java
+// ❌ 与 JVM 常量池里的其它使用者共享同一把锁
+synchronized ("LOCK") {
+    // ...
+}
+```
+
+字符串字面量会被 JVM 放进字符串常量池；**同一 JVM 内任何写 `"LOCK"` 的代码，锁的都是同一个对象**。这意味着某个第三方库、某段陌生代码只要也写了 `synchronized ("LOCK")`，就会和你争同一把锁。排查时几乎无法定位。
+
+正确做法：
+
+```java
+// ✅ 用私有对象作锁
+private final Object lock = new Object();
+```
+
+### 6.6.2 锁 `Integer` / `Long` 装箱值
+
+```java
+// ❌ 一半时间"共享"，一半时间"独立"
+private Integer counter = 0;
+
+public void inc() {
+    synchronized (counter) {
+        counter++;   // 装箱后是新对象
+    }
+}
+```
+
+两处坑：
+
+- `Integer` 在 `-128..127` 之间走缓存，多个线程拿到的可能是同一个对象；其它值不走缓存，各是各的对象
+- `counter++` 是"拆箱-加一-装箱"，`counter` 变量在临界区里换成了新的对象——**锁着 A 对象，操作 B 对象**
+
+任何**可能被别的代码写到、也可能被 JVM 缓存共享**的对象，都不适合当锁。规则很简单：**锁 `final` 修饰的私有对象**。
+
+### 6.6.3 锁 `this` 泄漏
+
+```java
+// ❌ 把 this 当锁，但 this 引用被外部拿走了
+public class Service {
+    public synchronized void doWork() { /* ... */ }
+
+    public Service register(Registry r) {
+        r.add(this);       // this 引用外泄
+        return this;
+    }
+}
+```
+
+外面拿到 `this` 的代码可以：
+
+```java
+Service s = new Service().register(reg);
+synchronized (s) {
+    // 和 doWork() 争同一把锁！
+    Thread.sleep(Long.MAX_VALUE);
+}
+```
+
+只要 `this` 引用外泄，任何拿到它的代码都能干扰你自己的临界区。生产上更常见的形式是**方法上加 `synchronized` + 对象被注入到多个位置**——被谁锁住了根本查不清。
+
+治法：**永远不锁 `this`；实例方法要同步时，改用私有 `final` 锁对象**。
+
+```java
+// ✅
+public class Service {
+    private final Object lock = new Object();
+
+    public void doWork() {
+        synchronized (lock) { /* ... */ }
+    }
+}
+```
 
 ---
 
-## 5.8 volatile vs synchronized：如何选择
+## 6.7 本章小结
 
-学完了 volatile（第 4 章）和 synchronized（本章），现在可以做一个完整的对比：
-
-### 全面对比
-
-| 特性 | volatile | synchronized |
+| 问题 | 根源 | 解决方案 |
 | :-- | :-- | :-- |
-| 原子性 | ❌ 不保证 | ✅ 保证代码块的原子性 |
-| 可见性 | ✅ 保证 | ✅ 保证（释放锁时刷新，获取锁时重新加载） |
-| 有序性 | ✅ 保证（禁止重排序） | ✅ 保证（happens-before） |
-| 阻塞 | ❌ 不会阻塞 | ✅ 会阻塞（竞争时） |
-| 性能 | 极高（CPU 指令级别） | 较高（涉及锁竞争时开销大） |
-| 适用场景 | 一写多读、状态标志 | 多写多读、复合操作 |
-| 能否修饰方法 | ❌ 只能修饰变量 | ✅ 可以修饰方法和代码块 |
-
-### 选择指南
-
-```text
-需要保证并发安全？
-    │
-    ├── 只有一个线程写，其他线程只读？
-    │   └── ✅ 使用 volatile
-    │
-    ├── 需要多个线程同时写？
-    │   └── ✅ 使用 synchronized 或 Lock
-    │
-    ├── 涉及复合操作（check-then-act、read-modify-write）？
-    │   └── ✅ 使用 synchronized 或原子类（CAS）
-    │
-    └── 需要跨方法的临界区？
-        └── ✅ 使用 synchronized 或 Lock
-```
-
-### 常见误区
-
-有些人认为"既然 volatile 轻量，就尽量用 volatile 替代 synchronized"。这是错误的。volatile 和 synchronized 解决的是不同层次的问题：
-
-- volatile 解决的是**单个变量**的可见性和有序性问题
-- synchronized 解决的是**一段代码**的原子性问题
-
-它们不是替代关系，而是互补关系。在实际开发中，很多场景需要两者的配合——比如 `AtomicInteger`，就是 volatile（可见性）+ CAS（原子性）的组合。
-
-
-> **纵向联系**
->
-> - 本章的锁升级机制，建立在第二卷（JVM 对象模型）中对象头和 Mark Word 的知识基础上。如果你对对象的内存布局不熟悉，建议先回顾第二卷。
-> - volatile 与 synchronized 的对比，在第 4 章（volatile）中已经初步讨论。本章从锁升级的角度给出了更深入的分析。
-> - 本章提到的 Monitor（监视器），在第 6 章（等待/通知机制）中会详细展开 `wait()`/`notify()` 的工作原理。
-> - ReentrantLock 和 AQS（AbstractQueuedSynchronizer）的实现原理，在第 9 章（显式锁）中会深入分析。
-> - 锁消除中的"逃逸分析"，在第二卷（JVM 编译优化）中有更详细的讨论。
+| 复合操作被打断 | 原子性缺失 | `synchronized` 建立临界区互斥 |
+| 一个线程的写另一个线程看不见 | JMM 缓存/重排 | Monitor 的 release / acquire 语义 |
+| 每个对象都要预留锁开销 | 大多数对象不当锁 | Monitor 懒加载，锁状态写在 Mark Word |
+| 单线程反复获取锁的开销 | 传统 mutex 每次都走内核 | 轻量级锁 + CAS（JDK 15+ 之前还有偏向锁） |
+| 局部对象加锁的浪费 | 锁对象不逃逸 | JIT 逃逸分析 → 锁消除 |
+| 循环里频繁加解锁 | 相邻 monitor 操作同锁 | JIT 锁粗化 |
+| 不确定锁对象是不是被共享 | 锁字符串、装箱值、`this` | 用 `private final Object` |
 
 ---
+
+> **纵横联系**
+>
+> - **向前依赖**：§6.2.4 的内存语义建立在第 4 章 JMM 的 happens-before 与 acquire/release 之上；§6.4 的 Mark Word 状态编码依赖第二卷第 3 章对对象头的介绍；§6.5 的锁消除、锁粗化、逃逸分析在第二卷第 5 章 JIT 章节有完整展开。
+> - **向后使用**：`synchronized` 的能力边界（不可中断、无超时、无公平性、单一等待队列）催生了 `Lock` / AQS，详见第 8 章；`Condition` 对 `wait/notify` 的扩展也在第 8 章。
+> - **跨卷关系**：JVM 层锁优化的完整机制在第二卷；`ThreadPoolExecutor` 内部对短临界区的加锁思路（第 10 章）也建立在轻量级锁足够便宜的前提上。

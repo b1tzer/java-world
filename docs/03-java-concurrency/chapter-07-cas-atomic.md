@@ -1,4 +1,4 @@
-# 第7章 原子类与 CAS：无锁并发思想
+# 第7章 CAS 与原子类：无锁并发思想
 
 > 锁是并发编程的"重武器"——可靠，但代价高昂。有没有一种方式，能在不阻塞线程的情况下完成共享变量的安全更新？答案是 CPU 级别的原子指令，而 JDK 将其封装为 CAS 和 Atomic 系列类。本章将从 CAS 的底层原理讲起，逐步揭示无锁并发的实现机制、适用场景和固有局限。
 
@@ -6,19 +6,19 @@
 
 ## 7.1 为什么需要无锁技术
 
-在前面的章节中，`synchronized` 和 `ReentrantLock` 是我们解决共享变量竞争的主力工具。它们的工作原理本质上是**悲观锁**：先假设冲突一定会发生，拿到锁再操作，操作完释放锁。这种策略安全可靠，但并非没有代价。
+`synchronized` 与 `ReentrantLock` 走的是悲观路线：假设冲突一定会发生，先拿锁再操作、操作完再释放。安全，但代价明确。
 
 ### 锁的三大痛点
 
 | 问题 | 描述 | 影响 |
-|------|------|------|
+| :-- | :-- | :-- |
 | **阻塞开销** | 线程被挂起和唤醒涉及用户态/内核态切换，代价高昂 | 高并发场景下吞吐量下降 |
 | **死锁风险** | 多把锁交叉持有形成循环等待 | 程序完全卡死，难以排查 |
 | **优先级反转** | 低优先级线程持锁，高优先级线程被迫等待 | 实时性要求高的系统中表现恶劣 |
 
-对于一个简单的计数器场景，第 1 章已经展示过 `count++` 的数据竞争问题，第 5 章用 `synchronized` 解决了它。但 `count++` 对应的 CPU 指令其实只有三步：
+对于一个简单的计数器场景，第 1 章已经展示过 `count++` 的数据竞争问题，第 6 章用 `synchronized` 解决了它。但 `count++` 对应的 CPU 指令其实只有三步：
 
-```
+```text
 LOAD count → 寄存器
 ADD 1 → 寄存器
 STORE 寄存器 → count
@@ -76,7 +76,7 @@ public class CasCounter {
 
 流程图如下：
 
-```
+```text
 Thread A                          Thread B
    |                                 |
    ├── 读取 count = 0                ├── 读取 count = 0
@@ -108,6 +108,7 @@ lock cmpxchg [mem], new_val
 ```
 
 `lock` 前缀的实际机制取决于 CPU 型号和缓存状态：
+
 - 早期处理器：锁定总线（成本高）
 - 现代处理器：缓存一致性协议（MESI），锁定缓存行即可
 
@@ -116,7 +117,7 @@ lock cmpxchg [mem], new_val
 JDK 内部通过两种方式暴露 CAS 能力：
 
 | API | JDK 版本 | 说明 |
-|-----|---------|------|
+| :-- | :-- | :-- |
 | `Unsafe.compareAndSwapInt()` | JDK 1.5+ | 早期方案，直接操作内存，仅供 JDK 内部使用（应用代码不应调用） |
 | `VarHandle.compareAndSet()` | JDK 9+ | 官方替代方案，类型安全，支持多种内存访问模式，替代大部分 Unsafe 操作 |
 
@@ -173,6 +174,7 @@ public class VarHandleDemo {
 ```
 
 `VarHandle` 相比 `Unsafe` 的优势：
+
 - **类型安全**：编译时检查类型，而非运行时
 - **官方支持**：是 JDK 标准 API，不依赖内部实现
 - **更丰富的语义**：支持 `getVolatile`、`setRelease`、`getAcquire` 等多种内存访问模式
@@ -214,7 +216,7 @@ CAS 并非万能灵药。它有三个已知的经典问题。
 
 ### 问题一：ABA 问题
 
-```
+```text
 线程 A：读取 V = A
 线程 B：将 V 从 A 改为 B，再从 B 改回 A
 线程 A：CAS(V, A, 新值) → 成功 ✗
@@ -222,7 +224,7 @@ CAS 并非万能灵药。它有三个已知的经典问题。
 
 虽然 CAS 成功了，但 V 的"语义"已经变了（可能是一个链表节点被替换后又换回来）。在某些场景（如无锁栈）中这会导致严重错误。
 
-**解决方案：AtomicStampedReference 加版本号**
+解决方案：**AtomicStampedReference 加版本号**
 
 ```java
 AtomicStampedReference<Node> ref =
@@ -242,14 +244,14 @@ boolean success = ref.compareAndSet(
 ```
 
 | 方案 | 比较内容 | 适用场景 |
-|------|---------|---------|
+| :-- | :-- | :-- |
 | `AtomicReference` | 只比较引用 | 不关心中间变化 |
 | `AtomicStampedReference` | 引用 + 版本号 | 需要检测 ABA |
 | `AtomicMarkableReference` | 引用 + boolean 标记 | 只需知道"是否被修改过" |
 
 ### 问题二：自旋消耗
 
-当竞争激烈时，CAS 可能长时间自旋却不成功，白白消耗 CPU。
+竞争激烈时，CAS 可能长时间自旋却不成功，白白消耗 CPU。
 
 ```java
 // 模拟高竞争下的自旋
@@ -268,7 +270,7 @@ while (!cas(expected, newVal)) {
 
 CAS 一次只能保证一个变量的原子性。如果需要同时更新两个变量呢？
 
-**解决方案：封装为对象 + AtomicReference**
+解决方案：**封装为对象 + AtomicReference**
 
 ```java
 class IntPair {
@@ -291,12 +293,12 @@ do {
 
 ## 7.5 Atomic 系列演进
 
-JDK 提供了丰富的原子类，覆盖了常见的无锁并发需求。
+CAS 自旋只是基石。真正让业务代码能直接用上的，是建在 CAS 之上的 `java.util.concurrent.atomic` 一系列封装。按使用形态横向归类：
 
 ### 分类一览
 
 | 类别 | 代表类 | 说明 |
-|------|--------|------|
+| :-- | :-- | :-- |
 | 基本类型 | `AtomicInteger`, `AtomicLong`, `AtomicBoolean` | 对 int/long/boolean 的原子操作 |
 | 引用类型 | `AtomicReference`, `AtomicStampedReference`, `AtomicMarkableReference` | 对对象引用的原子操作 |
 | 数组类型 | `AtomicIntegerArray`, `AtomicLongArray`, `AtomicReferenceArray` | 对数组元素的原子操作 |
@@ -307,7 +309,7 @@ JDK 提供了丰富的原子类，覆盖了常见的无锁并发需求。
 
 这是理解"从单点 CAS 到分段 CAS"的典型例子。
 
-```
+```text
 AtomicLong（单点 CAS）：
 ┌─────────────┐
 │   value=42  │  ← 所有线程竞争同一个变量
@@ -341,14 +343,14 @@ long max = acc.get(); // 20
 
 ### 性能对比
 
-```
+```text
 场景：16 线程并发自增，100 万次
 
 AtomicLong:   ~1200ms   （所有线程竞争同一变量，大量 CAS 失败重试）
 LongAdder:    ~180ms    （分散到 cell，几乎无竞争）
 ```
 
-> **选择建议**：需要精确的单点值读取（如序列号生成器）用 `AtomicLong`；只需要最终汇总结果（如统计计数器）用 `LongAdder`。
+> **选型规则**：需要精确的单点值读取（如序列号生成器）用 `AtomicLong`；只需要最终汇总结果（如统计计数器）用 `LongAdder`。
 
 ### 字段更新器：节省内存的利器
 
@@ -374,10 +376,10 @@ public class Node {
 
 ## 7.6 CAS vs 锁：何时选择哪种
 
-既然 CAS 这么好，是不是可以完全抛弃锁？答案是否定的。它们适用于不同的场景。
+CAS 与锁各有适用边界。选型的核心变量只有两个：**竞争激烈度**与**操作复杂度**。
 
 | 维度 | CAS（无锁） | 锁（synchronized / ReentrantLock） |
-|------|------------|----------------------------------|
+| :-- | :-- | :-- |
 | **阻塞** | 不阻塞，自旋重试 | 阻塞线程，挂起/唤醒 |
 | **单变量操作** | 非常高效 | 过度保护，浪费性能 |
 | **复合操作** | 需要封装对象 + AtomicReference | 天然支持，锁住整个代码块 |
@@ -388,7 +390,7 @@ public class Node {
 
 ### 决策指南
 
-```
+```text
 需要更新的变量数量？
 ├── 单个变量
 │   ├── 竞争低 → CAS（AtomicInteger 等）
@@ -443,7 +445,7 @@ public class LockFreeStack<T> {
 ## 本章小结
 
 | 概念 | 核心要点 |
-|------|---------|
+| :-- | :-- |
 | CAS | 一条 CPU 指令完成"比较并交换"，是无锁并发的基石 |
 | 自旋 | CAS 失败后重试而非阻塞，适合低竞争场景 |
 | ABA 问题 | 用 `AtomicStampedReference` 加版本号解决 |
@@ -451,8 +453,12 @@ public class LockFreeStack<T> {
 | 字段更新器 | 大量实例场景下节省内存 |
 | CAS vs 锁 | 低竞争单变量用 CAS，复杂逻辑用锁 |
 
-无锁并发不是锁的替代品，而是**锁的补充**。理解 CAS 的原理和局限，才能在正确的场景做出正确的选择。
+无锁并发覆盖"低竞争 + 单变量"这条主线；一旦跨过这条线，锁与 AQS 仍然是更合适的工具。理解 CAS 的原理与局限，才能在正确的场景做出正确的选择。
 
 ---
 
-> **本卷前置依赖**：第 5-6 章（锁与同步器）中的概念会在对比中反复出现。下一章我们将看到，CAS 在并发集合中扮演了怎样的核心角色。
+> **纵横联系**
+>
+> - **向前**：第 4 章 JMM 定义的 happens-before 与 `volatile` 语义，是 CAS 能"看到最新值"的前提；第 5 章的 `volatile` 与 CAS 一起构成"可见性 + 原子性"的最小组合。
+> - **向后**：第 8 章 AQS 的 `state` 字段就是通过 CAS 更新的；第 9 章 `ConcurrentHashMap` 的桶首节点插入、`LongAdder` 内部的 `CounterCell` 数组，都建立在本章的 CAS 与字段更新器之上。
+> - **跨卷**：第二卷 JVM Runtime 讲了 `cmpxchg` 与内存屏障如何被 JIT 生成；第七卷高并发架构中"无锁数据结构"的可行性判断，同样围绕本章的三大问题展开。

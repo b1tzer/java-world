@@ -1,793 +1,383 @@
-# 第10章 并发编程模型：从线程到异步
+# 第11章 异步编程：从 `Future` 到 `CompletableFuture`
 
-> 我们已经有了线程和锁，为什么还需要新的并发模型？Future 解决了什么，又留下了什么遗憾？CompletableFuture 如何用链式调用构建复杂的异步流水线？响应式编程和 Actor 模型又分别代表了怎样的并发哲学？面对不同的业务场景，我们该如何选择？
+> 有了线程池，也有了 `Future`，为什么 Java 8 还要再加一个 `CompletableFuture`？异步链条上，任务到底跑在哪条线程上？异常又是从哪一段冒出来的？
 
----
-
-前面的章节中，我们一直在用"线程 + 共享内存 + 锁"这个经典模型来解决并发问题。这个模型在 CPU 密集型或连接数有限的场景下表现良好，但当系统需要处理成千上万的并发 IO 操作时，它的局限性就暴露出来了。本章将带你走出线程池的世界，看看 Java 生态中更现代、更高层次的并发编程模型。
-
-## 10.1 Future 的局限
-
-### 10.1.1 从回调到 Future
-
-在 Java 5 之前，异步编程基本靠 `Thread` + `Runnable`。你提交一个任务，但拿不到返回值。Java 5 引入了 `Future`，终于可以"未来取值"了：
-
-```java
-ExecutorService executor = Executors.newFixedThreadPool(4);
-
-Future<String> future = executor.submit(() -> {
-    // 模拟耗时操作
-    Thread.sleep(2000);
-    return "Hello from async task";
-});
-
-// 问题来了：这里阻塞了
-String result = future.get();  // 主线程在这里等着，直到任务完成
-System.out.println(result);
-```
-
-`Future` 解决了"获取异步结果"的问题，但它的设计有三个明显的短板：
-
-### 10.1.2 Future 的三大痛点
-
-| 痛点 | 说明 | 后果 |
-|------|------|------|
-| `get()` 阻塞 | 调用 `get()` 会阻塞当前线程，直到结果就绪 | 违背异步初衷，白白占着线程 |
-| 无回调机制 | 无法注册"结果就绪后执行"的回调 | 只能轮询或阻塞，无法被动通知 |
-| 无法组合 | 不能表达"A 完成后再做 B"的依赖关系 | 多步异步操作只能嵌套或手动编排 |
-
-```java
-// 痛点一：get() 阻塞
-Future<String> f1 = executor.submit(() -> queryFromDB());
-Future<String> f2 = executor.submit(() -> callRemoteService());
-
-// 虽然 f1 和 f2 是并行提交的，但取结果时必须依次阻塞
-String r1 = f1.get();  // 阻塞等 f1
-String r2 = f2.get();  // 再阻塞等 f2（其实此时可能早就完成了）
-
-// 痛点三：无法组合——想做"先查DB，再调远程"怎么办？
-// 只能这样写：
-Future<String> f3 = executor.submit(() -> {
-    String dbResult = f1.get();  // 阻塞！在另一个线程里阻塞
-    return callRemoteService(dbResult);
-});
-// 嵌套地狱，线程利用率低
-```
-
-核心矛盾：**Future 把异步计算的结果包装了，但没有提供组合和通知机制**。你拿到了一个"未来会有的值"，但除了阻塞等待，没有更好的办法来使用它。
-
-## 10.2 CompletableFuture
-
-JDK 8 引入的 `CompletableFuture` 终于补齐了 Future 的短板。它借鉴了函数式编程中 Monad 的思想，提供了链式组合、回调通知、异常传播等能力，是 Java 中真正意义上的异步编程工具。
-
-### 10.2.1 核心方法全景
-
-`CompletableFuture` 的 API 看起来很多，但可以按功能分成四类：
-
-**创建**
-
-```java
-// 1. 手动创建
-CompletableFuture<String> cf = new CompletableFuture<>();
-cf.complete("result");  // 手动完成
-
-// 2. 异步执行（使用 ForkJoinPool.commonPool()）
-CompletableFuture<String> cf2 = CompletableFuture.supplyAsync(() -> queryDB());
-
-// 3. 指定线程池
-CompletableFuture<String> cf3 = CompletableFuture.supplyAsync(() -> queryDB(), myExecutor);
-```
-
-### 为什么不传线程池是危险的
-
-上面的 `supplyAsync(() -> queryDB())` 没有传第二个参数，它默认使用 `ForkJoinPool.commonPool()`。这个 commonPool 是全局共享的，线程数 = CPU 核数 - 1。
-
-听起来没问题？想想这个场景：
-
-```java
-// 10 个并发请求，每个都要查数据库（阻塞 IO）
-for (int i = 0; i < 10; i++) {
-    CompletableFuture.supplyAsync(() -> queryDB());  // 用 commonPool
-}
-
-// 如果 CPU 是 8 核，commonPool 只有 7 个线程
-// 7 个线程被阻塞在数据库查询上
-// 剩下 3 个请求排队等待
-// 此时 parallelStream、其他 CompletableFuture 全部卡住
-```
-
-**一条规则：但凡任务里有 IO（网络、数据库、文件），就不要用 commonPool。** 用自定义线程池，线程数可以设大一些（IO 等待时线程不占 CPU）。
-
-```java
-// 自定义线程池：IO 密集型任务，线程数可以多一些
-ExecutorService ioPool = Executors.newFixedThreadPool(20);
-
-CompletableFuture.supplyAsync(() -> queryDB(), ioPool);
-```
+`Future` 让 Java 在 2004 年拿到了"未来取值"的能力，`CompletableFuture` 在 2014 年补齐了"未来编排"的能力。这中间隔的十年，是异步编程从"能做"到"好用"的十年。这一章聚焦这两者的语义边界、线程归属和最容易踩的坑；响应式和 Actor 只以速览形式出现，主体分别归第四卷网络与通信、第七卷性能与架构。
 
 ---
 
-**转换（Transform）**
+## 11.1 `Future` 的三个致命局限
+
+### 11.1.1 有结果，但只能靠阻塞取
+
+`Future` 是 Java 5 引入的第一代异步结果承载：
 
 ```java
-// thenApply：同步转换，接收结果，返回新值
-CompletableFuture<Integer> length = cf.thenApply(s -> s.length());
+ExecutorService pool = Executors.newFixedThreadPool(4);
+Future<String> f = pool.submit(() -> queryDB());
 
-// thenApplyAsync：异步转换，在另一个线程中执行
-CompletableFuture<Integer> length2 = cf.thenApplyAsync(s -> {
-    // 这个 lambda 会在 ForkJoinPool 线程中执行
-    return s.length();
+String r = f.get();     // 主线程在这里被阻塞
+```
+
+`submit` 返回得很快，但 `get()` 必须阻塞——线程要么盯着结果原地等，要么就得自己写 `isDone()` 轮询。"异步执行 + 同步等待"这条路走下去，异步只是名义上的异步。
+
+### 11.1.2 没有回调通道
+
+`Future` 上没有一个能挂"结果就绪后自动做点什么"的钩子。想让下一步逻辑在结果就绪时被"推"到手上，只有两条歪路：
+
+- 循环 `isDone()` + `sleep`——把 CPU 烧完
+- 起一条新线程调 `get()`——把线程池耗完
+
+不能被通知，就没法把多个异步操作拼成一条流水线。
+
+### 11.1.3 组合的成本是嵌套
+
+想表达"A 完成后基于 A 的结果做 B、再基于 B 做 C"，用 `Future` 只能这样写：
+
+```java
+Future<String> a = pool.submit(() -> queryA());
+Future<String> b = pool.submit(() -> {
+    String aResult = a.get();            // 在池内线程上阻塞
+    return queryB(aResult);
+});
+Future<String> c = pool.submit(() -> {
+    String bResult = b.get();            // 又阻塞一次
+    return queryC(bResult);
 });
 ```
 
-**消费（Consume）**
+问题成堆：**池内线程被 `get()` 卡住**（可能死锁）、**代码嵌套逐层加深**、**异常传播需要手工写 `try/catch/ExecutionException` 每一层**。
+
+三个短板加起来的结论：`Future` 只解决了"能拿到异步返回值"，没解决"用得起来"。`CompletableFuture` 就是补这三个洞。
+
+---
+
+## 11.2 `CompletableFuture` 的两组 API
+
+### 11.2.1 API 全景：只有两条主线
+
+`CompletableFuture` 方法数看着吓人，但都是围绕两件事：**单个 Future 上做转换** 和 **多个 Future 之间做合并**。抓住这两条主线，其余方法都是变体。
+
+### 11.2.2 转换：单输入 → 单输出
+
+| 方法 | 输入 | 输出 | 语义 |
+| :-- | :-- | :-- | :-- |
+| `thenApply(fn)` | `T → R` | `CF<R>` | 同步转换 |
+| `thenCompose(fn)` | `T → CF<R>` | `CF<R>` | 扁平化异步（避免 `CF<CF<R>>`） |
+| `thenAccept(cons)` | `T → void` | `CF<Void>` | 消费结果 |
+| `thenRun(runnable)` | 忽略结果 | `CF<Void>` | 只关心"完成了" |
+
+关键区别：`thenApply` 用于"结果 → 新值"，`thenCompose` 用于"结果 → 新的异步任务"。对应函数式语言里的 `map` 和 `flatMap`。混用会得到嵌套的 `CompletableFuture<CompletableFuture<R>>`——一层多余。
 
 ```java
-// thenAccept：消费结果，无返回值
-cf.thenAccept(s -> System.out.println("Got: " + s));
+// ❌ 用 thenApply 处理返回 CF 的函数，得到嵌套
+CompletableFuture<CompletableFuture<Order>> bad =
+    findUser(id).thenApply(user -> findOrder(user));    // findOrder 返回 CF
 
-// thenRun：不关心结果，只关心"完成了"
-cf.thenRun(() -> System.out.println("Task done!"));
+// ✅ 用 thenCompose 扁平化
+CompletableFuture<Order> good =
+    findUser(id).thenCompose(user -> findOrder(user));
 ```
 
-**组合（Compose & Combine）**
+### 11.2.3 合并：多个输入 → 单输出
+
+| 方法 | 输入 | 语义 |
+| :-- | :-- | :-- |
+| `thenCombine(other, bi)` | 两个 CF | 都完成后合并两个结果 |
+| `allOf(cf...)` | N 个 CF | 全部完成后触发（返回 `CF<Void>`） |
+| `anyOf(cf...)` | N 个 CF | 任一完成后触发（返回 `CF<Object>`） |
+
+`allOf` 返回 `Void`——想拿到各个 CF 的结果，还得在完成后手动 `join` 每一个。这是初学者最容易忽视的一处：
 
 ```java
-// thenCompose：链式组合（类似 flatMap）
-// 前一个的结果作为下一个的输入，且下一个也是 CompletableFuture
-CompletableFuture<String> composed = cf.thenCompose(s ->
-    CompletableFuture.supplyAsync(() -> s + " world")
+CompletableFuture<User>  fu = findUser(id);
+CompletableFuture<Order> fo = findOrder(id);
+CompletableFuture<Cart>  fc = findCart(id);
+
+// ❌ allOf 只告诉你"全部完成"，不给你结果
+CompletableFuture<Void> all = CompletableFuture.allOf(fu, fo, fc);
+all.join();     // 拿不到 user / order / cart
+
+// ✅ 完成后自己 join 每个
+CompletableFuture<Profile> profile = all.thenApply(v ->
+    new Profile(fu.join(), fo.join(), fc.join())    // 此时都已完成，join 立即返回
 );
-
-// thenCombine：并行组合，两个都完成后合并结果
-CompletableFuture<String> cf1 = CompletableFuture.supplyAsync(() -> "Hello");
-CompletableFuture<String> cf2 = CompletableFuture.supplyAsync(() -> "World");
-CompletableFuture<String> combined = cf1.thenCombine(cf2, (a, b) -> a + " " + b);
 ```
 
-**并行协调**
+### 11.2.4 一条真实的异步流水线
+
+用户查询 → 订单列表 → 每单查物流 → 汇总：
 
 ```java
-// allOf：等待所有完成（无返回值，需要手动收集）
-CompletableFuture<Void> all = CompletableFuture.allOf(cf1, cf2, cf3);
-all.join();  // 等全部完成
+CompletableFuture<String> pipeline =
+    findUser(id)                                    // 第 1 步
+        .thenCompose(u -> findOrders(u))            // 第 2 步：等第 1 步
+        .thenCompose(orders -> {                    // 第 3 步：并行查物流
+            List<CompletableFuture<String>> fs = orders.stream()
+                .map(o -> findTracking(o))
+                .toList();
+            return CompletableFuture
+                .allOf(fs.toArray(new CompletableFuture[0]))
+                .thenApply(v -> fs.stream()
+                    .map(CompletableFuture::join)
+                    .collect(Collectors.joining(", ")));
+        });
 
-// anyOf：任意一个完成即可
-CompletableFuture<Object> any = CompletableFuture.anyOf(cf1, cf2, cf3);
+String result = pipeline.join();
 ```
 
-### 10.2.2 异步流水线
+三步的时间线：
 
-用一个完整的例子来展示 CompletableFuture 的威力。假设我们需要：查询用户 → 根据用户查订单 → 根据订单查物流 → 汇总结果。
-
-```java
-public class AsyncPipeline {
-
-    // 模拟异步服务调用
-    static CompletableFuture<User> findUser(int id) {
-        return CompletableFuture.supplyAsync(() -> {
-            sleep(100);
-            return new User(id, "张三");
-        });
-    }
-
-    static CompletableFuture<List<Order>> findOrders(User user) {
-        return CompletableFuture.supplyAsync(() -> {
-            sleep(150);
-            return List.of(new Order("ORD-001"), new Order("ORD-002"));
-        });
-    }
-
-    static CompletableFuture<String> findTracking(Order order) {
-        return CompletableFuture.supplyAsync(() -> {
-            sleep(80);
-            return order.id() + " → 已签收";
-        });
-    }
-
-    public static void main(String[] args) {
-        long start = System.currentTimeMillis();
-
-        CompletableFuture<String> pipeline = findUser(42)               // 第1步
-            .thenCompose(user -> findOrders(user))                      // 第2步：等第1步完成
-            .thenCompose(orders -> {                                     // 第3步：对每个订单并行查物流
-                List<CompletableFuture<String>> trackingFutures =
-                    orders.stream()
-                          .map(order -> findTracking(order))
-                          .toList();
-                // allOf 等所有物流查询完成，然后收集结果
-                return CompletableFuture.allOf(trackingFutures.toArray(new CompletableFuture[0]))
-                    .thenApply(v -> trackingFutures.stream()
-                        .map(CompletableFuture::join)
-                        .collect(Collectors.joining(", ")));
-            })
-            .exceptionally(ex -> {                                       // 异常兜底
-                System.err.println("Pipeline failed: " + ex.getMessage());
-                return "查询失败";
-            });
-
-        System.out.println("结果: " + pipeline.join());
-        System.out.println("耗时: " + (System.currentTimeMillis() - start) + "ms");
-        // 结果: ORD-001 → 已签收, ORD-002 → 已签收
-        // 耗时: ~330ms（串行需要 100+150+80*2=410ms，并行的物流查询节省了时间）
-    }
-}
-```
-
-整个流程可以用一张图来表示：
-
-```
+```text
 时间 →
-┌──────────┐    ┌──────────┐    ┌─────────────────────────┐
-│ findUser │───→│findOrders│───→│    findTracking (并行)   │
-│  100ms   │    │  150ms   │    │  ┌─────────┐ ┌─────────┐│
-└──────────┘    └──────────┘    │  │ ORD-001 │ │ ORD-002 ││
-                                │  │  80ms   │ │  80ms   ││
-                                │  └─────────┘ └─────────┘│
-                                │        allOf 等待         │
-                                └─────────────────────────┘
-                                              ↓
-                                        汇总结果返回
+[findUser 100ms] → [findOrders 150ms] → [findTracking 并行 80ms]
+                                          ├─ ORD-001 80ms
+                                          └─ ORD-002 80ms
+总耗时 ≈ 330ms（串行需要 100 + 150 + 80 × 2 = 410ms）
 ```
 
-### 10.2.3 异常处理
+`thenCompose` 用于串行依赖，`allOf + join` 用于扇出并行——两者组合就能表达大部分业务流水线。
 
-异步链中的异常不会丢失，但需要正确处理：
+---
+
+## 11.3 执行线程之谜
+
+`thenApply`、`thenApplyAsync`、传 Executor 与不传 Executor——**到底跑在哪条线程上**是 `CompletableFuture` 最让人迷惑的一处。
+
+### 11.3.1 三种触发方式
+
+| 写法 | 执行线程 |
+| :-- | :-- |
+| `thenApply(fn)` | 谁完成上一个 CF，谁执行 `fn`（可能是提交线程，也可能是上一个 stage 的线程） |
+| `thenApplyAsync(fn)` | 提交到 `ForkJoinPool.commonPool` |
+| `thenApplyAsync(fn, executor)` | 提交到指定的 `executor` |
+
+**同步版本 `thenApply` 的"急切执行"**：如果上一个 CF 在调用 `thenApply` 时已经完成，回调**立即在当前线程运行**——不再是异步。这是很多"看起来应该异步、实际在业务线程上跑了阻塞任务"的根源。
+
+### 11.3.2 `commonPool` 的默认坑
+
+`supplyAsync(fn)` / `thenApplyAsync(fn)` 不传 executor 时，默认走 `ForkJoinPool.commonPool()`（第 10 章 §10.7.2 讨论过）。这个池全局共享，线程数 = `CPU 核数 - 1`。
 
 ```java
-// 方式一：exceptionally——异常时返回默认值
-CompletableFuture<String> safe = future
-    .thenApply(s -> riskyOperation(s))
+// ❌ 阻塞 IO 塞进 commonPool：一整个 JVM 的 CompletableFuture / parallelStream 陪葬
+CompletableFuture.supplyAsync(() -> httpClient.get(url));
+
+// ✅ 阻塞任务用独立线程池
+ExecutorService ioPool = new ThreadPoolExecutor(
+    20, 40, 60, TimeUnit.SECONDS,
+    new ArrayBlockingQueue<>(200),
+    new NamedThreadFactory("io"),
+    new ThreadPoolExecutor.CallerRunsPolicy());
+
+CompletableFuture.supplyAsync(() -> httpClient.get(url), ioPool);
+```
+
+一条生产规则：**除非任务是纯 CPU 计算且短，否则永远显式传 Executor**。这条规则在 §11.5 会再出现一次。
+
+### 11.3.3 `Async` 变体的选型
+
+看到方法名带 `Async` 后缀就要问自己两个问题：
+
+- **上一个 stage 的执行线程是否适合承担这一步？** 不适合就用 `Async` 换线程
+- **需要指定线程池吗？** 需要就传 executor，不传的默认落在 `commonPool`
+
+```java
+// 假设 dbPool 用于数据库、cpuPool 用于计算
+CompletableFuture
+    .supplyAsync(() -> queryDB(id), dbPool)                // 明确用 dbPool
+    .thenApplyAsync(this::heavyCompute, cpuPool)           // 换到 cpuPool 计算
+    .thenAccept(this::logResult);                          // 同步：谁完成 heavyCompute 就谁记日志
+```
+
+这种"每一步都在合适的池上"的写法，是 `CompletableFuture` 在生产环境里的默认姿势。
+
+---
+
+## 11.4 异常传播的三条路径
+
+### 11.4.1 传播规则
+
+**异常沿着链条向后透传**：链条中任何一步失败，后续所有 stage 都会跳过正常回调，一路走到最近的一个能"截住"异常的方法。截住的方法有三个：`exceptionally` / `handle` / `whenComplete`。
+
+### 11.4.2 三个方法的差异
+
+| 方法 | 能感知异常 | 能替换结果 | 触发时机 |
+| :-- | :-- | :-- | :-- |
+| `exceptionally(fn)` | ✅ | ✅ 异常时给出替代值 | 只在上游异常时执行 |
+| `handle(bi)` | ✅ | ✅ 正常和异常都能替换 | 无论上游正常还是异常都执行 |
+| `whenComplete(bi)` | ✅ | ❌ 只做副作用，不改变结果 | 正常和异常都执行 |
+
+```java
+future
+    .thenApply(this::riskyStep)
+    // 只关心异常：给个默认值
     .exceptionally(ex -> {
-        log.warn("Failed, using default", ex);
-        return "default value";
+        log.warn("failed, use default", ex);
+        return "default";
     });
 
-// 方式二：handle——统一处理正常和异常结果（更灵活）
-CompletableFuture<String> handled = future
-    .thenApply(s -> riskyOperation(s))
+future
+    .thenApply(this::riskyStep)
+    // 统一处理正常/异常：能改结果
     .handle((result, ex) -> {
-        if (ex != null) {
-            log.error("Error: ", ex);
-            return "fallback";
-        }
+        if (ex != null) return "fallback";
         return result.toUpperCase();
     });
 
-// 方式三：whenComplete——类似 handle，但不改变结果（只做副作用）
-future.whenComplete((result, ex) -> {
-    if (ex != null) log.error("Failed", ex);
-    else log.info("Got: {}", result);
-});
-```
-
-**选择指南**：
-
-| 方法 | 是否改变结果 | 典型用途 |
-|------|-------------|---------|
-| `exceptionally` | 是（异常时替换） | 默认值、降级 |
-| `handle` | 是（正常/异常都可替换） | 统一转换 |
-| `whenComplete` | 否（只做副作用） | 日志、监控、清理 |
-
-### 10.2.4 超时控制
-
-JDK 9 引入了超时支持，避免异步操作无限等待：
-
-```java
-CompletableFuture<String> future = CompletableFuture
-    .supplyAsync(() -> slowOperation())
-    .orTimeout(3, TimeUnit.SECONDS)           // 超时抛 TimeoutException
-    .completeOnTimeout("default", 3, TimeUnit.SECONDS);  // 超时返回默认值
-```
-
-## 10.3 响应式编程思想
-
-### 10.3.1 从"等结果"到"通知我"
-
-CompletableFuture 已经是异步的了，但它仍然是一次性的——一个 Future 对应一个结果。响应式编程（Reactive Programming）往前又走了一步：**处理的是异步数据流**，而不是单个异步值。
-
-核心理念可以用三个词概括：
-
-- **事件驱动**：不轮询，不阻塞，事件来了就处理
-- **非阻塞**：线程永远不等待，处理完一个请求立即去处理下一个
-- **背压（Backpressure）**：下游处理不过来时，通知上游"慢点发"
-
-### 10.3.2 传统模型 vs 事件驱动模型
-
-```
-传统模型：一个请求一个线程
-┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐
-│ Thread1│  │ Thread2│  │ Thread3│  │ Thread4│
-│ req A  │  │ req B  │  │ req C  │  │ req D  │
-│ ...等待  │  │ ...等待  │  │ ...等待  │  │ ...等待  │
-│ IO返回  │  │ IO返回  │  │ IO返回  │  │ IO返回  │
-│ 处理完成 │  │ 处理完成 │  │ 处理完成 │  │ 处理完成 │
-└────────┘  └────────┘  └────────┘  └────────┘
-瓶颈：线程数 = 并发上限，大量线程在等待IO时浪费
-
-事件驱动模型：少量线程处理大量连接
-┌──────────────────────────────────┐
-│          Event Loop (1个线程)      │
-│                                  │
-│  A到达 → 注册回调 → B到达 → 处理B  │
-│  → C到达 → A的IO完成 → 处理A → ... │
-└──────────────────────────────────┘
-优势：线程永远在忙，不浪费在IO等待上
-```
-
-| 维度 | 线程/请求模型 | 事件驱动模型 |
-|------|-------------|-------------|
-| 线程数 | 与请求数成正比 | 固定（通常 CPU 核心数） |
-| IO 等待 | 线程阻塞等待 | 注册回调，线程去处理别的 |
-| 内存开销 | 每线程 ~1MB 栈空间 | 每连接只有少量状态 |
-| 编程复杂度 | 直观（同步思维） | 较高（回调/流思维） |
-| 适用场景 | 低并发、CPU 密集 | 高并发、IO 密集 |
-
-### 10.3.3 背压（Backpressure）机制
-
-背压是响应式编程区别于普通异步编程的核心能力。它的本质是：**下游告诉上游自己能处理多少数据**，避免生产者压垮消费者。
-
-**推模型 vs 拉模型**：
-
-```text
-推模型（无背压）：
-  生产者 ──源源不断──→ 消费者
-  问题：消费者处理不过来时，数据堆积在内存中，最终 OOM
-
-拉模型（有背压）：
-  消费者 ──"我准备好了，请给我 N 个"──→ 生产者
-  生产者 ──只发 N 个──→ 消费者
-  效果：消费者按自己的节奏获取数据，不会被压垮
-```
-
-Reactor 中的背压实践：
-
-```java
-Flux.range(1, 1000000)
-    .onBackpressureBuffer(100)       // 缓冲最多 100 个元素
-    .subscribe(new Subscriber<Integer>() {
-        private Subscription subscription;
-        private int count = 0;
-
-        @Override
-        public void onSubscribe(Subscription s) {
-            this.subscription = s;
-            subscription.request(10);  // 第一次只请求 10 个
-        }
-
-        @Override
-        public void onNext(Integer i) {
-            count++;
-            if (count % 10 == 0) {
-                subscription.request(10);  // 每处理 10 个，再请求 10 个
-            }
-            process(i);
-        }
-
-        @Override
-        public void onError(Throwable t) { log.error("Error", t); }
-
-        @Override
-        public void onComplete() { log.info("Done"); }
+future
+    .thenApply(this::riskyStep)
+    // 打日志 / 释放资源，不改变结果
+    .whenComplete((result, ex) -> {
+        if (ex != null) log.error("failed", ex);
+        span.finish();
     });
 ```
 
-背压策略选择：
+### 11.4.3 异常在链条中的形状
 
-| 策略 | 行为 | 适用场景 |
-|------|------|----------|
-| `onBackpressureBuffer` | 缓冲溢出的元素 | 生产者速度快但只是暂时的 |
-| `onBackpressureDrop` | 丢弃溢出的元素 | 可容忍丢失（如实时监控） |
-| `onBackpressureLatest` | 只保留最新元素 | 只关心最新状态（如股价） |
-| `onBackpressureError` | 抛出异常 | 不允许背压，快速失败 |
-
-### 10.3.4 冷流与热流
-
-**冷流（Cold Stream）**：每个订阅者都会触发独立的数据生产过程。就像点播视频——每个人从头开始看。
-
-```java
-// 冷流：每次 subscribe 都会重新执行
-Flux<String> coldFlux = Flux.defer(() -> {
-    log.info("开始生产数据");
-    return Flux.just("A", "B", "C");
-});
-
-coldFlux.subscribe(s -> log.info("订阅者1: " + s));  // 触发一次生产
-coldFlux.subscribe(s -> log.info("订阅者2: " + s));  // 再触发一次生产
-// 输出：两次“开始生产数据”
-```
-
-**热流（Hot Stream）**：数据生产独立于订阅者，订阅者只能获取订阅之后的数据。就像直播——你加入时看不到之前的画面。
-
-```java
-// 热流：用 Sinks 创建
-Sinks.Many<String> hotSink = Sinks.many().multicast().onBackpressureBuffer();
-Flux<String> hotFlux = hotSink.asFlux();
-
-hotFlux.subscribe(s -> log.info("订阅者1: " + s));  // 订阅
-hotSink.tryEmitNext("X");  // 发射数据
-hotFlux.subscribe(s -> log.info("订阅者2: " + s));  // 晚订阅
-hotSink.tryEmitNext("Y");  // 发射数据
-// 订阅者1 收到 X 和 Y
-// 订阅者2 只收到 Y（错过了 X）
-```
-
-### 10.3.5 调度器（Scheduler）
-
-响应式框架中的线程调度由 `Scheduler` 控制，不同操作符可以运行在不同的线程上：
-
-```java
-Flux.fromIterable(urls)
-    .flatMap(url ->
-        WebClient.get()                     // IO 操作
-            .uri(url)
-            .retrieve()
-            .bodyToMono(String.class)
-            .subscribeOn(Schedulers.boundedElastic())  // IO 线程池
-    )
-    .parallel()                              // 并行化
-    .runOn(Schedulers.parallel())            // CPU 密集线程池
-    .map(this::parseResponse)                // CPU 计算
-    .sequential()
-    .collectList()
-    .subscribeOn(Schedulers.single())        // 最终结果在单线程
-    .subscribe(result -> log.info("结果: " + result));
-```
-
-| 调度器 | 线程数 | 适用场景 |
-|--------|--------|----------|
-| `Schedulers.immediate()` | 当前线程 | 测试、微小操作 |
-| `Schedulers.single()` | 1 个线程 | 事件顺序处理 |
-| `Schedulers.parallel()` | CPU 核数 | CPU 密集计算 |
-| `Schedulers.boundedElastic()` | 10×CPU 核数 | IO 密集、阻塞操作 |
-
-### 10.3.6 响应式的错误处理与重试
-
-异步链中的错误处理比同步代码更复杂，因为异常发生在未来的某个时刻：
-
-```java
-Flux.fromIterable(orders)
-    .flatMap(order ->
-        callPaymentService(order)           // 可能失败
-            .retry(3)                       // 失败重试 3 次
-            .timeout(Duration.ofSeconds(5)) // 超时保护
-            .onErrorResume(ex -> {          // 所有重试都失败后的降级
-                log.warn("支付服务不可用，订单 {} 进入重试队列", order.id());
-                return saveToRetryQueue(order);
-            })
-    )
-    .subscribe(
-        result -> log.info("处理完成: " + result),
-        error -> log.error("流异常结束", error)
-    );
-```
-
-### 10.3.7 响应式与虚拟线程的选择
-
-虚拟线程（JDK 21）和响应式编程都能处理高并发 IO，但思路完全不同：
-
-| 维度 | 响应式（Reactor） | 虚拟线程 |
-|------|-------------------|----------|
-| 编程风格 | 声明式、链式调用 | 同步阻塞代码 |
-| 学习曲线 | 陡峭（函数式思维） | 平缓（传统 Java 思维） |
-| 背压支持 | 原生支持 | 不支持（需要外部限流） |
-| 调试难度 | 高（异步栈断裂） | 低（正常栈信息） |
-| 数据流编排 | 强大（merge、zip、window） | 需手动实现 |
-| 适用场景 | 复杂数据流管道、流处理 | 简单请求-响应模型 |
-
-**实践建议**：如果是传统的 Web 服务（接收请求 → 查数据库 → 返回结果），虚拟线程是更简单的选择。如果需要复杂的数据流编排（多数据源合并、窗口聚合、实时流处理），响应式 API 更合适。两者也可以结合使用——在响应式管道的阻塞点上使用虚拟线程。
-
-## 10.4 Actor 模型与消息传递
-
-### 10.4.1 另一种并发哲学
-
-到目前为止，我们讨论的所有模型都基于**共享状态**：多个线程访问同一块内存，用锁来协调。Actor 模型提出了完全不同的思路：**不共享状态，只传递消息**。
+异常传播路径上，异常会被包装成 `CompletionException`（`get()` 时是 `ExecutionException`）：
 
 ```text
-线程+共享内存模型：           Actor 模型：
-
- Thread1 ──┐                 ┌─────────┐   消息   ┌─────────┐
-           ├──→ 共享数据 ←──┤  Actor A │ ──────→ │ Actor B │
- Thread2 ──┘   (需要锁)      └─────────┘         └─────────┘
-                              有自己的状态          有自己的状态
-                              不暴露给外界          不暴露给外界
+supplyAsync ──▶ thenApply ──▶ thenApply ──▶ ...
+     │                                       │
+     │       抛 IOException                  │
+     └──────────┬──────────────────────────┘
+                │
+                ▼
+        包装成 CompletionException
+                │
+                ▼
+        跳过后续 thenApply，直到 exceptionally / handle
 ```
 
-每个 Actor 的核心特征：
+因此从 `exceptionally` 拿到的 `ex` 通常是 `CompletionException`，真正的业务异常在 `ex.getCause()` 里。写异常处理时如果不 unwrap，日志和监控上会全部显示成 `CompletionException`，看不到真正的原因。
 
-1. **封装状态**：Actor 内部的状态只有自己能访问，外界无法直接读写
-2. **消息通信**：Actor 之间唯一的交互方式是发送消息
-3. **无锁天然安全**：因为没有共享状态，所以不需要锁
-4. **异步处理**：消息发送后立即返回，Actor 按自己的节奏处理消息
+### 11.4.4 超时保护（JDK 9+）
 
-### 10.4.2 Actor 的生命周期与监督
-
-每个 Actor 都有明确的生命周期：
-
-```text
-Created → PreStart → Running → PreRestart / PostStop
-              ↑                    │
-              └── PostRestart ─────┘
-```
-
-Actor 模型最独特的设计是**监督策略（Supervision）**。当子 Actor 处理消息时抛出异常，不是简单地崩溃，而是由父 Actor 决定如何处理：
+JDK 9 起 `CompletableFuture` 支持异步超时，不再需要外挂 `ScheduledExecutorService`：
 
 ```java
-public class SupervisorActor extends AbstractActor {
-
-    @Override
-    public SupervisorStrategy supervisorStrategy() {
-        return new OneForOneStrategy(10,              // 每个子 Actor 最多重启 10 次
-            Duration.ofMinutes(1),                    // 1 分钟内的重启次数限制
-            DeciderBuilder
-                .match(ArithmeticException.class, e -> SupervisorStrategy.resume())     // 除零错误：恢复
-                .match(NullPointerException.class, e -> SupervisorStrategy.restart())    // NPE：重启
-                .match(IllegalArgumentException.class, e -> SupervisorStrategy.stop())   // 参数错误：停止
-                .match(Exception.class, e -> SupervisorStrategy.escalate())              // 其他异常：上抛
-                .build());
-    }
-
-    @Override
-    public Receive createReceive() {
-        return receiveBuilder()
-            .match(String.class, msg -> {
-                // 创建子 Actor
-                ActorRef child = getContext().actorOf(Props.create(WorkerActor.class), "worker");
-                child.forward(msg, getContext());
-            })
-            .build();
-    }
-}
+future
+    .orTimeout(3, TimeUnit.SECONDS)                       // 超时抛 TimeoutException
+    .completeOnTimeout("fallback", 3, TimeUnit.SECONDS);  // 超时返回默认值
 ```
 
-四种监督指令：
+`orTimeout` 会把超时以异常方式注入链条，走 `exceptionally/handle`；`completeOnTimeout` 直接给出替代值，链条继续。生产上一般组合使用：先 `orTimeout` 触发超时，再 `exceptionally` 决定降级方案。
 
-| 指令 | 行为 | 适用场景 |
-|------|------|----------|
-| **Resume** | 子 Actor 继续处理下一条消息，状态保留 | 可恢复的临时错误 |
-| **Restart** | 子 Actor 停止并重新创建，状态重置 | 状态可能已损坏的错误 |
-| **Stop** | 子 Actor 永久停止 | 不可恢复的错误 |
-| **Escalate** | 将失败上抛给父 Actor 的监督者 | 子 Actor 无法处理的严重错误 |
+---
 
-监督策略有两种粒度：
+## 11.5 常见反模式
 
-- **OneForOneStrategy**：只影响出错的那个子 Actor
-- **AllForOneStrategy**：影响所有子 Actor（适用于子 Actor 之间有强依赖的场景）
+线上 `CompletableFuture` 的 bug 高度集中在这五种模式上。
 
-### 10.4.3 消息路由
-
-当需要多个 Actor 协作处理同类任务时，路由器（Router）决定消息分发给哪个 Actor：
+### 11.5.1 链尾忘记 `.join()`
 
 ```java
-// 创建 5 个相同的 Worker Actor
-List<Routee> routees = new ArrayList<>();
-for (int i = 0; i < 5; i++) {
-    ActorRef worker = getContext().actorOf(Props.create(WorkerActor.class), "worker-" + i);
-    routees.add(new ActorRefRoutee(worker));
-}
+// ❌ 链末端没人消费，任务被 GC 掉
+CompletableFuture.supplyAsync(() -> queryDB(id))
+    .thenAccept(this::process);
+// 方法返回，没有引用了
 
-// Round-Robin 路由：轮流分发
-Router router = new Router(new RoundRobinRoutingLogic(), routees);
-
-// 发送消息，自动分发给不同的 Worker
-for (int i = 0; i < 100; i++) {
-    router.route(new WorkItem(i), ActorRef.noSender());
-}
+// ✅ 保留返回值或显式等待
+CompletableFuture<Void> f = CompletableFuture
+    .supplyAsync(() -> queryDB(id))
+    .thenAccept(this::process);
+f.join();
 ```
 
-常用路由策略：
+`CompletableFuture` 本身不保证任务一定被执行到底——只要没人引用它，也没人等它，JVM 完全可以回收。生产上表现是"任务提交了，日志里也没报错，就是从没执行过"。
 
-| 策略 | 行为 | 适用场景 |
-|------|------|----------|
-| RoundRobin | 轮流分发 | 均匀负载 |
-| Random | 随机选择 | 简单场景 |
-| SmallestMailbox | 选择邮箱最空的 Actor | 负载均衡 |
-| Broadcast | 发送给所有 Actor | 广播通知 |
-| ConsistentHashing | 相同 key 的消息发给同一个 Actor | 需要消息亲和性 |
-
-### 10.4.4 Akka 示例
-
-Akka 是 Java/JVM 生态中最著名的 Actor 框架（Akka 2.x 后主要用 Scala，但提供了完整的 Java API）：
+### 11.5.2 在回调里做阻塞 IO
 
 ```java
-// 定义 Actor
-public class CounterActor extends AbstractActor {
-    private int count = 0;  // 完全私有的状态，线程安全
-
-    @Override
-    public Receive createReceive() {
-        return receiveBuilder()
-            .match(Increment.class, msg -> count++)
-            .match(GetCount.class, msg -> getSender().tell(count, getSelf()))
-            .build();
-    }
-}
-
-// 消息定义（不可变）
-public record Increment() {}
-public record GetCount() {}
-
-// 使用
-ActorSystem system = ActorSystem.create("my-system");
-ActorRef counter = system.actorOf(Props.create(CounterActor.class), "counter");
-
-// 发送消息（异步，不阻塞）
-counter.tell(new Increment(), ActorRef.noSender());
-counter.tell(new Increment(), ActorRef.noSender());
-
-// 询问模式（带 Future 返回）
-CompletableFuture<Object> result = AskPattern.ask(
-    counter, GetCount::new, Duration.ofSeconds(3)
-);
-result.thenAccept(count -> System.out.println("Count: " + count));
+// ❌ commonPool 里塞阻塞 IO
+CompletableFuture.supplyAsync(this::queryDB)
+    .thenApply(user -> httpClient.get(user.avatarUrl()))  // 阻塞！还在 commonPool 上
+    .thenAccept(this::save);
 ```
 
-### 10.4.5 Actor 模型的实际应用
+`thenApply` 的回调很可能在 `commonPool` 上执行（详见 §11.3.1）。阻塞 IO 占死 commonPool 后，同 JVM 内的 `parallelStream`、其他 `CompletableFuture` 全部卡住。**含阻塞的 stage 必须用 `xxxAsync(fn, executor)` 换到专用池**。
 
-Actor 模型在以下场景中表现出色：
+### 11.5.3 未指定 Executor
 
-**1. 聊天系统**
+跨业务共享 `commonPool` 会把彼此的问题传染开来。生产规则：**所有异步 stage 都显式传 executor**。规则本身简单，难在团队养成习惯——一个人图省事写了 `supplyAsync(fn)`，就能拖垮整个 JVM 里的其他 stage。
 
-每个聊天室是一个 Actor，管理参与者的连接和消息广播：
+### 11.5.4 混用 `get()` 与 `join()`
+
+两者行为几乎一样，但异常类型不同：
+
+| 方法 | 检查异常 | 未检查异常包装 |
+| :-- | :-- | :-- |
+| `get()` | `throws InterruptedException, ExecutionException` | 业务异常包在 `ExecutionException.getCause()` 里 |
+| `join()` | 不抛检查异常 | 业务异常包在 `CompletionException.getCause()` 里 |
+
+Stream 里用 `.map(CompletableFuture::join)` 是标准写法（不能用 `.map(CompletableFuture::get)`——检查异常无法穿过 lambda）。异常处理时要记住 `join()` 拿到的是 `CompletionException`，`get()` 拿到的是 `ExecutionException`——两者都需要 `.getCause()`。
+
+### 11.5.5 `allOf` 后忘记 `join` 各个 CF
 
 ```java
-public class ChatRoomActor extends AbstractActor {
-    private final Set<ActorRef> members = new HashSet<>();
-
-    @Override
-    public Receive createReceive() {
-        return receiveBuilder()
-            .match(Join.class, msg -> {
-                members.add(msg.member());
-                // 通知所有成员
-                members.forEach(m -> m.tell(new MemberJoined(msg.member()), getSelf()));
-            })
-            .match(Leave.class, msg -> {
-                members.remove(msg.member());
-                members.forEach(m -> m.tell(new MemberLeft(msg.member()), getSelf()));
-            })
-            .match(ChatMessage.class, msg -> {
-                // 广播给所有成员
-                members.forEach(m -> m.tell(msg, getSelf()));
-            })
-            .build();
-    }
-}
+// ❌ allOf 完成不代表你已经把结果拿在手上
+CompletableFuture.allOf(fu, fo, fc).thenApply(v -> new Profile(...));
+// 传参的时候 fu/fo/fc 用了吗？没有——拿到的 Profile 是空的
 ```
 
-**2. 游戏服务器**
+`allOf` 的语义是"全部完成"，不是"结果汇集"。汇集必须自己在 `thenApply` 里 `join` 每个 CF（此时都已完成，`join` 立即返回，不再阻塞）。这一步漏掉是 `CompletableFuture` 上最容易写错的一处。
 
-每个游戏房间是一个 Actor，处理玩家输入、游戏状态更新和广播：
+---
 
-```java
-public class GameRoomActor extends AbstractActor {
-    private final Map<String, ActorRef> players = new HashMap<>();
-    private GameState state = new GameState();
+## 11.6 其他并发范式：只点名思想
 
-    @Override
-    public Receive createReceive() {
-        return receiveBuilder()
-            .match(PlayerInput.class, input -> {
-                state.applyInput(input);
-                // 广播新状态给所有玩家
-                players.values().forEach(p -> p.tell(state.toSnapshot(), getSelf()));
-            })
-            .match(JoinGame.class, join -> {
-                players.put(join.playerId(), join.playerRef());
-                join.playerRef().tell(state.toSnapshot(), getSelf());
-            })
-            .build();
-    }
-}
-```
+`CompletableFuture` 解决的是"单值异步 + 编排"。生产上还有两类相邻范式，它们的主体归其他卷：
 
-**3. 事件溯源（Event Sourcing）**
+### 11.6.1 响应式编程（详见第四卷）
 
-Actor 天然适合事件溯源模式——每个 Actor 的状态变更都可以记录为事件序列，支持重放和审计。Akka Persistence 正是基于这个思想：
+- **模型**：`Publisher` / `Subscriber` / `Subscription` / `Processor`（JDK 9 的 `java.util.concurrent.Flow`；主流实现 Reactor、RxJava）
+- **核心能力**：数据**流**（而非单值），**背压**（`onBackpressureBuffer` / `Drop` / `Latest` / `Error`），**冷流 / 热流**
+- **和 `CompletableFuture` 的关系**：`CompletableFuture` = 单值 + 一次；响应式流 = 多值 + 持续
+- **完整机制**：Publisher/Subscriber 协议、`request(n)` 拉取语义、`Scheduler` 与非阻塞 IO 的绑定，全部在第四卷 Netty / NIO 章节展开
 
-```java
-public class OrderActor extends AbstractPersistentActor {
-    private List<OrderEvent> events = new ArrayList<>();
-    private OrderState state = OrderState.EMPTY;
+一句话结论：**业务里只是"异步取一次结果 + 编排"，不必上响应式**；真的需要流处理、背压、事件驱动的场景，第四卷会给完整答案。
 
-    @Override
-    public String persistenceId() { return "order-" + orderId; }
+### 11.6.2 Actor 模型（详见第七卷）
 
-    @Override
-    public Receive createReceiveRecover() {
-        return receiveBuilder()
-            .match(OrderEvent.class, event -> {
-                events.add(event);
-                state = state.apply(event);
-            })
-            .build();
-    }
+- **核心思想**：不共享状态，只传消息。每个 Actor 有独立邮箱，串行处理消息，天然无锁
+- **能力项**：监督策略（`Resume` / `Restart` / `Stop` / `Escalate`）、位置透明（本地和远程 Actor 用同一 API 调用）、事件溯源
+- **代表**：Akka（Scala 主导，Java API 完整）
+- **主要场景**：分布式系统、聊天/游戏这类"多个独立实体"的天然模型、事件驱动架构
 
-    @Override
-    public Receive createReceiveCommand() {
-        return receiveBuilder()
-            .match(CreateOrder.class, cmd -> {
-                OrderEvent event = new OrderCreated(cmd.items(), cmd.total());
-                persist(event, persisted -> {
-                    events.add(persisted);
-                    state = state.apply(persisted);
-                    getSender().tell(new OrderConfirmed(orderId), getSelf());
-                });
-            })
-            .build();
-    }
-}
-```
+Actor 与前述所有模型的分野在**编程思维**：从"共享内存 + 加锁"切换到"消息传递 + 无共享"。这个思维底座与分布式系统的一致性、CAP 直接相关，因此完整讨论放在第七卷。
 
-### 10.4.6 Actor 模型的局限
+### 11.6.3 四种模型的选型速览
 
-Actor 模型并非万能：
+| 模型 | 适合场景 | 本卷 / 卷号 |
+| :-- | :-- | :-- |
+| 线程 + 锁 | CPU 密集、简单并发 | 本卷 §6 / §8 |
+| `CompletableFuture` | 单值异步 + 编排、微服务扇出 | 本章 |
+| 响应式流 | 高并发 IO、流处理、背压 | 第四卷 |
+| 虚拟线程 | 大量阻塞 IO、同步风格代码 | 本卷第 12 章 |
+| Actor | 分布式系统、事件驱动、高容错 | 第七卷 |
 
-| 局限 | 说明 |
-|------|------|
-| 消息顺序 | 同一对 Actor 之间的消息顺序有保证，但不同对之间没有全局顺序 |
-| 请求-响应模式 | 需要使用 Ask 模式（返回 Future），增加了复杂度 |
-| 共享数据 | 多个 Actor 需要共享大量数据时，消息传递的开销大 |
-| 调试困难 | 消息在 Actor 之间流动，追踪请求链路比同步代码困难 |
-| 框架依赖 | Akka 重量级，引入成本高；轻量级替代方案（如 Kilim、Quasar）生态不成熟 |
+选型的一条起手线：**能用同步风格 + 虚拟线程解决的场景，就不要引入响应式或 Actor**（第 12 章给了理由）。剩下真正需要流处理和分布式容错的场景，再各自展开。
 
-**何时选择 Actor**：
+---
 
-- 系统天然有多个独立实体（聊天室、游戏房间、IoT 设备）
-- 需要高容错（监督策略自动恢复）
-- 需要分布式部署（Akka Cluster 提供位置透明）
-- 事件驱动架构（事件溯源、CQRS）
+## 11.N 本章小结
 
-**何时不选择 Actor**：
-
-- 简单的请求-响应服务（用 CompletableFuture 或虚拟线程更简单）
-- 大量共享数据的计算密集型任务（消息传递开销大）
-- 团队不熟悉 Actor 模型（学习成本高）
-
-### 10.4.7 Actor vs 线程+锁
-
-| 维度 | 线程+共享内存 | Actor+消息传递 |
-|------|-------------|---------------|
-| 状态共享 | 共享，需要锁保护 | 不共享，天然隔离 |
-| 并发控制 | 显式（锁、CAS） | 隐式（消息串行处理） |
-| 死锁风险 | 存在 | 基本不存在 |
-| 编程模型 | 命令式，同步思维 | 消息驱动，异步思维 |
-| 调试难度 | 高（竞态条件难复现） | 中（消息顺序可追踪） |
-| 性能特征 | 低延迟（直接内存访问） | 有消息序列化/路由开销 |
-| 适用场景 | JVM 内并发 | 分布式系统、高容错 |
-
-## 10.5 如何选择并发模型
-
-没有万能的并发模型，选择取决于你的场景：
-
-| 模型 | 优势 | 劣势 | 适用场景 | Java 代表 |
-|------|------|------|---------|----------|
-| 线程+锁 | 直观、低延迟 | 难以扩展、易出错 | 简单并发、CPU 密集 | `synchronized`、`ReentrantLock` |
-| CompletableFuture | 链式组合、非阻塞 | 只处理单值、调试链难 | 异步IO编排、微服务调用 | `CompletableFuture` |
-| 响应式流 | 背压、数据流编排 | 学习曲线陡、调试复杂 | 高并发IO、流式处理 | Reactor、RxJava |
-| 虚拟线程 | 阻塞式代码+高并发 | 不适合计算密集 | 大量阻塞IO | Project Loom |
-| Actor | 天然分布式、容错 | 有框架依赖 | 分布式系统、事件驱动 | Akka |
-
-**选择决策树**：
-
-```text
-你的场景是什么？
-│
-├─ 简单并发，线程数有限 → 线程+锁 / ExecutorService
-│
-├─ 需要异步编排多个IO操作？
-│   ├─ 用 JDK 8+ → CompletableFuture
-│   └─ 用 Spring → WebFlux (Reactor)
-│
-├─ 大量并发连接（>1万）？
-│   ├─ 不想改代码风格 → 虚拟线程 (JDK 21+)
-│   └─ 需要背压/流处理 → 响应式 (Reactor/RxJava)
-│
-└─ 分布式系统，需要容错和位置透明 → Actor (Akka)
-```
+| 问题 | 根源 | 解决方案 |
+| :-- | :-- | :-- |
+| `Future.get()` 阻塞 | `Future` 只提供拉取通道 | `CompletableFuture` 提供回调 |
+| 异步任务无法组合 | 缺少链式 API | `thenApply` / `thenCompose` / `thenCombine` |
+| 得到 `CF<CF<R>>` 嵌套 | `thenApply` 用错 | 改 `thenCompose` |
+| `allOf` 后拿不到各自结果 | `allOf` 返回 `Void` | 手动 `join` 每个 CF |
+| 阻塞 IO 拖垮 `commonPool` | 默认走 `ForkJoinPool.commonPool` | 显式传 executor |
+| 链尾任务从未执行 | 链末端没人 `join` | 保留引用或显式等待 |
+| 异常总是显示成 `CompletionException` | 未 unwrap `getCause()` | 处理异常时取 `ex.getCause()` |
+| 异步超时 | JDK 9 之前没原生 API | `orTimeout` / `completeOnTimeout` |
 
 ---
 
 > **纵横联系**
 >
-> 本章介绍的 `CompletableFuture` 底层依赖的是第 9 章讲的 `ForkJoinPool`；响应式框架中的非阻塞 IO 基于 Java NIO，这在第四卷《网络与通信》中有详细介绍；虚拟线程的调度策略和操作系统线程的关系，对应第 2 章线程模型的内容。Actor 模型的思想也影响了分布式系统设计，这将在第七卷《性能与架构》中进一步展开。下一章，我们将回到实践层面，讨论并发问题的诊断与性能优化——当本章这些模型出了问题，怎么找、怎么修。
+> - **向前依赖**：`CompletableFuture` 默认执行器是第 10 章讲的 `ForkJoinPool.commonPool`；同一 JVM 内的所有异步 stage 都会争这个池——§11.3.2 的规则建立在第 10 章 §10.7.2 之上。
+> - **向后使用**：第 12 章会用虚拟线程 + `StructuredTaskScope` 重写本章的"扇出 + 合并"模式，代码更短、异常更清晰、生命周期更明确；第 13 章的诊断章会用本章的反模式作为线上问题的对照样本。
+> - **跨卷关系**：第四卷 Netty / NIO 章节展开响应式编程的完整机制；第六卷 Spring `@Async` 底层直接返回 `CompletableFuture`；第七卷分布式与 Actor 模型的一致性讨论承接本章 §11.6.2。
