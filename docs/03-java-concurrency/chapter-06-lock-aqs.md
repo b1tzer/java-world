@@ -41,9 +41,38 @@
 
 ---
 
-## 6.2 Lock 接口与 ReentrantLock
+## 6.2 Lock 的基本思想
 
-### 6.2.1 Lock 接口的六个方法
+synchronized 的互斥是 JVM 实现的：编译器生成 `monitorenter`/`monitorexit` 指令，JVM 内部通过 Monitor 数据结构完成加锁和解锁。开发者无法干预这个过程——不能设置超时、不能中断等待、不能选择公平策略。
+
+Lock 要突破这些限制，就必须把锁的实现从 JVM 内部搬到 Java 代码层面。这带来一个根本问题：**不用 `monitorenter`/`monitorexit`，怎么实现互斥？**
+
+答案是三个要素：
+
+**一个 volatile 变量**表示锁状态。比如 `state = 0` 表示未锁定，`state = 1` 表示已锁定。volatile 保证了任何线程修改 state 后，其他线程立刻可见。
+
+**CAS 操作**原子地获取锁。线程尝试用 CAS 将 state 从 0 改为 1：如果成功，说明拿到了锁；如果失败，说明别的线程已经拿走了。这一步不需要系统调用，纯 CPU 指令完成。
+
+**一个等待队列**管理排队的线程。CAS 抢锁失败的线程不能无限制自旋（浪费 CPU），需要进入队列等待。前驱节点释放锁时，唤醒队列中的下一个线程。
+
+```text
+volatile int state = 0;     // 锁状态
+
+线程 A：CAS(0, 1) 成功 → 持有锁
+线程 B：CAS(0, 1) 失败 → 进入等待队列，park 挂起
+线程 A：释放锁，state = 0，unpark 唤醒线程 B
+线程 B：被唤醒，CAS(0, 1) 成功 → 持有锁
+```
+
+这三个要素——**state + CAS + 队列**——就是 `java.util.concurrent.locks` 包中所有锁和同步器的共同基础。Doug Lea 把它们封装成了一个框架：`AbstractQueuedSynchronizer`（AQS）。`ReentrantLock`、`Semaphore`、`CountDownLatch`、`ReadWriteLock` 等工具，全部基于 AQS 构建。
+
+后续章节会逐步展开这个框架。但核心思想就是这一节讲的：**用 volatile 变量表示状态，用 CAS 原子操作获取状态，用队列管理等待线程**。
+
+---
+
+## 6.3 Lock 接口与 ReentrantLock
+
+### 6.3.1 Lock 接口的六个方法
 
 ```java
 public interface Lock {
@@ -58,7 +87,7 @@ public interface Lock {
 
 六个方法，每一个都对应 `synchronized` 做不到的事情。其中 `lock()` 是最基本的阻塞获取；`lockInterruptibly()` 让等待中的线程可以响应中断；`tryLock()` 两个重载分别实现了非阻塞尝试和超时等待；`newCondition()` 则开辟了多个条件队列的能力。
 
-### 6.2.2 ReentrantLock 的基本使用
+### 6.3.2 ReentrantLock 的基本使用
 
 `ReentrantLock` 是 `Lock` 接口最常用的实现。"Reentrant"意味着同一线程可以多次获取这把锁（重入），每次获取会将 state 加 1，释放时减 1，减到 0 才真正释放。
 
@@ -79,7 +108,7 @@ try {
 
 一个关键原则：**`unlock()` 必须放在 `finally` 块中**。与 `synchronized` 的隐式释放不同，`Lock` 需要手动释放。如果在 `lock()` 之后、`unlock()` 之前发生了异常而没有 `finally`，锁就永远不会释放，其他线程将永久阻塞。这是 `Lock` 相比 `synchronized` 最大的使用风险。
 
-### 6.2.3 公平锁 vs 非公平锁
+### 6.3.3 公平锁 vs 非公平锁
 
 ```java
 // 非公平锁（默认）
@@ -110,15 +139,15 @@ ReentrantLock fairLock = new ReentrantLock(true);
 
 ---
 
-## 6.3 AQS 设计思想
+## 6.4 AQS 设计思想
 
-### 6.3.1 JUC 的骨架
+### 6.4.1 JUC 的骨架
 
 `AbstractQueuedSynchronizer`（AQS）是整个 `java.util.concurrent.locks` 包的核心框架。如果你翻开 `ReentrantLock`、`Semaphore`、`CountDownLatch`、`ReentrantReadWriteLock` 的源码，会发现它们内部都持有一个 `Sync` 对象——而这个 `Sync` 继承自 AQS。
 
 AQS 的设计目标是：**用一个统一的框架，抽象出所有同步器的共性**。不管你是互斥锁、信号量、还是倒计时门栓，本质上都是在做同一件事：管理一个同步状态（state），以及在获取失败时排队等待。
 
-### 6.3.2 核心三元素
+### 6.4.2 核心三元素
 
 AQS 的内部结构由三个核心元素构成：
 
@@ -168,11 +197,11 @@ static final class Node {
 
 ---
 
-## 6.4 AQS 获取锁流程（独占模式）
+## 6.5 AQS 获取锁流程（独占模式）
 
 独占模式是最常见的模式——同一时刻只有一个线程能持有锁。`ReentrantLock` 就是独占模式的典型实现。
 
-### 6.4.1 整体流程
+### 6.5.1 整体流程
 
 AQS 的 `acquire(int arg)` 方法是独占模式获取的入口。它的流程可以用一句话概括：**先尝试直接获取，失败了就入队排队，排队时如果发现自己是队首就再试一次，还不行就挂起**。
 
@@ -190,7 +219,7 @@ flowchart TD
     I --> F
 ```
 
-### 6.4.2 源码级解析
+### 6.5.2 源码级解析
 
 让我们沿着源码走一遍 `acquire` 的核心逻辑：
 
@@ -324,11 +353,11 @@ final boolean acquireQueued(final Node node, int arg) {
 
 ---
 
-## 6.5 AQS 释放锁流程（独占模式）
+## 6.6 AQS 释放锁流程（独占模式）
 
 释放锁的流程比获取简单得多——核心就是把 state 减到 0，然后唤醒队列中的下一个等待者。
 
-### 6.5.1 流程概览
+### 6.6.1 流程概览
 
 ```mermaid
 flowchart TD
@@ -342,7 +371,7 @@ flowchart TD
     B -->|state 仍 > 0| I["锁仍被持有（重入未完全释放）"]
 ```
 
-### 6.5.2 源码解析
+### 6.6.2 源码解析
 
 ```java
 // AQS 的释放入口
@@ -401,9 +430,9 @@ private void unparkSuccessor(Node node) {
 
 ---
 
-## 6.6 共享模式与条件变量
+## 6.7 共享模式与条件变量
 
-### 6.6.1 共享模式
+### 6.7.1 共享模式
 
 独占模式保证同一时刻只有一个线程持有锁。共享模式则允许多个线程同时获取同步状态——典型的代表是 `Semaphore`（信号量）和 `CountDownLatch`（倒计时门栓）。
 
@@ -456,7 +485,7 @@ private void doReleaseShared() {
 }
 ```
 
-### 6.6.2 Condition 条件变量
+### 6.7.2 Condition 条件变量
 
 `Condition` 是 `Lock` 对 `wait()/notify()` 的替代品，但功能更强大。
 
@@ -530,7 +559,7 @@ try {
 
 ---
 
-## 6.7 基于 AQS 的工具一览
+## 6.8 基于 AQS 的工具一览
 
 AQS 之所以被称为 JUC 的骨架，是因为几乎所有核心同步工具都是基于它构建的。子类只需要实现 `tryAcquire/tryRelease`（独占模式）或 `tryAcquireShared/tryReleaseShared`（共享模式），AQS 负责排队、唤醒、中断处理等所有复杂的队列管理。
 
@@ -647,9 +676,9 @@ if (!lock.validate(stamp)) {
 
 ---
 
-## 6.8 AQS 的设计哲学
+## 6.9 AQS 的设计哲学
 
-### 6.8.1 模板方法模式
+### 6.9.1 模板方法模式
 
 AQS 是模板方法模式的经典范例。它将同步器的工作划分为两层：
 
@@ -669,7 +698,7 @@ AQS 是模板方法模式的经典范例。它将同步器的工作划分为两�
 
 这种分离意味着：**你只需要关心"如何获取"这个业务逻辑，而不需要关心"获取失败后怎么办"这个通用机制**。这正是模板方法的精髓。
 
-### 6.8.2 用一个 state + 一个队列统一万物
+### 6.9.2 用一个 state + 一个队列统一万物
 
 Doug Lea（AQS 的设计者）的核心洞察是：所有的同步器，无论表面上多么不同，本质上都可以归结为：
 
@@ -694,7 +723,7 @@ Doug Lea（AQS 的设计者）的核心洞察是：所有的同步器，无论�
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 6.8.3 分离"如何获取"和"获取失败后怎么办"
+### 6.9.3 分离"如何获取"和"获取失败后怎么办"
 
 这是 AQS 最优雅的设计决策。考虑一个没有 AQS 的世界：每个同步器都需要自己实现线程排队、唤醒、中断处理。这些代码量巨大且容易出错。
 
