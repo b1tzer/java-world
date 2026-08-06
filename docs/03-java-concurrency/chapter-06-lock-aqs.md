@@ -53,7 +53,7 @@ volatile int state = 0;     // 锁状态
 
 ## 6.3 Lock 接口与 ReentrantLock
 
-### 6.3.1 Lock 接口的增强
+### 6.3.1 Lock vs synchronized
 
 `java.util.concurrent.locks.Lock` 接口正是为了解决上述所有问题而设计的。它把锁的操作从语言关键字提升为 API 层面的接口，带来了本质性的能力扩展：
 
