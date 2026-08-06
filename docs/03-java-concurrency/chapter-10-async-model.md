@@ -483,7 +483,7 @@ Flux.fromIterable(orders)
 
 到目前为止，我们讨论的所有模型都基于**共享状态**：多个线程访问同一块内存，用锁来协调。Actor 模型提出了完全不同的思路：**不共享状态，只传递消息**。
 
-```
+```text
 线程+共享内存模型：           Actor 模型：
 
  Thread1 ──┐                 ┌─────────┐   消息   ┌─────────┐
@@ -550,6 +550,7 @@ public class SupervisorActor extends AbstractActor {
 | **Escalate** | 将失败上抛给父 Actor 的监督者 | 子 Actor 无法处理的严重错误 |
 
 监督策略有两种粒度：
+
 - **OneForOneStrategy**：只影响出错的那个子 Actor
 - **AllForOneStrategy**：影响所有子 Actor（适用于子 Actor 之间有强依赖的场景）
 
@@ -731,17 +732,19 @@ Actor 模型并非万能：
 | 框架依赖 | Akka 重量级，引入成本高；轻量级替代方案（如 Kilim、Quasar）生态不成熟 |
 
 **何时选择 Actor**：
+
 - 系统天然有多个独立实体（聊天室、游戏房间、IoT 设备）
 - 需要高容错（监督策略自动恢复）
 - 需要分布式部署（Akka Cluster 提供位置透明）
 - 事件驱动架构（事件溯源、CQRS）
 
 **何时不选择 Actor**：
+
 - 简单的请求-响应服务（用 CompletableFuture 或虚拟线程更简单）
 - 大量共享数据的计算密集型任务（消息传递开销大）
 - 团队不熟悉 Actor 模型（学习成本高）
 
-### 10.4.3 Actor vs 线程+锁
+### 10.4.7 Actor vs 线程+锁
 
 | 维度 | 线程+共享内存 | Actor+消息传递 |
 |------|-------------|---------------|
@@ -767,7 +770,7 @@ Actor 模型并非万能：
 
 **选择决策树**：
 
-```
+```text
 你的场景是什么？
 │
 ├─ 简单并发，线程数有限 → 线程+锁 / ExecutorService
