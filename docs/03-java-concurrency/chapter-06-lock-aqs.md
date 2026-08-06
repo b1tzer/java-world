@@ -20,25 +20,6 @@
 
 **必须是块结构**。`synchronized` 的获取和释放必须在同一个方法的 `{}` 内完成，无法在一个方法中加锁、另一个方法中解锁。
 
-### 6.1.2 Lock 接口的增强
-
-`java.util.concurrent.locks.Lock` 接口正是为了解决上述所有问题而设计的。它把锁的操作从语言关键字提升为 API 层面的接口，带来了本质性的能力扩展：
-
-| 能力维度 | synchronized | Lock / ReentrantLock |
-|---|---|---|
-| 获取方式 | 隐式（进入同步块） | 显式调用 `lock()` |
-| 释放方式 | 隐式（退出同步块/异常） | 显式调用 `unlock()`（必须 finally） |
-| 可中断获取 | ❌ 不支持 | ✅ `lockInterruptibly()` |
-| 超时获取 | ❌ 不支持 | ✅ `tryLock(time, unit)` |
-| 非阻塞尝试 | ❌ 不支持 | ✅ `tryLock()` 立即返回 true/false |
-| 公平锁 | ❌ 不支持 | ✅ 构造时 `new ReentrantLock(true)` |
-| 条件队列数量 | 1 个隐式 | 多个（`newCondition()`） |
-| 锁的作用域 | 块结构（同一方法） | 可跨方法（手动 lock/unlock） |
-| 性能（无竞争） | 极高（偏向锁优化） | 高（CAS 操作） |
-| 性能（高竞争） | 中等 | 非公平模式下略优 |
-
-注意最后一行：在高竞争场景下，`ReentrantLock` 的非公平模式因为允许"插队"（新到的线程直接尝试 CAS 抢锁，不用排队），吞吐量往往优于 `synchronized`。但公平模式下，由于维护 FIFO 的额外开销，性能会有所下降。
-
 ---
 
 ## 6.2 Lock 的基本思想
@@ -72,7 +53,26 @@ volatile int state = 0;     // 锁状态
 
 ## 6.3 Lock 接口与 ReentrantLock
 
-### 6.3.1 Lock 接口的六个方法
+### 6.3.1 Lock 接口的增强
+
+`java.util.concurrent.locks.Lock` 接口正是为了解决上述所有问题而设计的。它把锁的操作从语言关键字提升为 API 层面的接口，带来了本质性的能力扩展：
+
+| 能力维度 | synchronized | Lock / ReentrantLock |
+|---|---|---|
+| 获取方式 | 隐式（进入同步块） | 显式调用 `lock()` |
+| 释放方式 | 隐式（退出同步块/异常） | 显式调用 `unlock()`（必须 finally） |
+| 可中断获取 | ❌ 不支持 | ✅ `lockInterruptibly()` |
+| 超时获取 | ❌ 不支持 | ✅ `tryLock(time, unit)` |
+| 非阻塞尝试 | ❌ 不支持 | ✅ `tryLock()` 立即返回 true/false |
+| 公平锁 | ❌ 不支持 | ✅ 构造时 `new ReentrantLock(true)` |
+| 条件队列数量 | 1 个隐式 | 多个（`newCondition()`） |
+| 锁的作用域 | 块结构（同一方法） | 可跨方法（手动 lock/unlock） |
+| 性能（无竞争） | 极高（偏向锁优化） | 高（CAS 操作） |
+| 性能（高竞争） | 中等 | 非公平模式下略优 |
+
+注意最后一行：在高竞争场景下，`ReentrantLock` 的非公平模式因为允许"插队"（新到的线程直接尝试 CAS 抢锁，不用排队），吞吐量往往优于 `synchronized`。但公平模式下，由于维护 FIFO 的额外开销，性能会有所下降。
+
+### 6.3.2 Lock 接口的六个方法
 
 ```java
 public interface Lock {
@@ -87,7 +87,7 @@ public interface Lock {
 
 六个方法，每一个都对应 `synchronized` 做不到的事情。其中 `lock()` 是最基本的阻塞获取；`lockInterruptibly()` 让等待中的线程可以响应中断；`tryLock()` 两个重载分别实现了非阻塞尝试和超时等待；`newCondition()` 则开辟了多个条件队列的能力。
 
-### 6.3.2 ReentrantLock 的基本使用
+### 6.3.3 ReentrantLock 的基本使用
 
 `ReentrantLock` 是 `Lock` 接口最常用的实现。"Reentrant"意味着同一线程可以多次获取这把锁（重入），每次获取会将 state 加 1，释放时减 1，减到 0 才真正释放。
 
@@ -108,7 +108,7 @@ try {
 
 一个关键原则：**`unlock()` 必须放在 `finally` 块中**。与 `synchronized` 的隐式释放不同，`Lock` 需要手动释放。如果在 `lock()` 之后、`unlock()` 之前发生了异常而没有 `finally`，锁就永远不会释放，其他线程将永久阻塞。这是 `Lock` 相比 `synchronized` 最大的使用风险。
 
-### 6.3.3 公平锁 vs 非公平锁
+### 6.3.4 公平锁 vs 非公平锁
 
 ```java
 // 非公平锁（默认）
