@@ -672,9 +672,7 @@ Thread-B 释放 Monitor:
 
 ---
 
-## 5.7 synchronized 的局限性与替代方案
-
-### 5.7.1 synchronized 的不足
+## 5.7 synchronized 的局限性
 
 尽管 synchronized 经过了大幅优化，它仍然有一些局限性：
 
@@ -684,59 +682,9 @@ Thread-B 释放 Monitor:
 | 不支持超时 | 无法设置获取锁的超时时间 |
 | 不支持公平性 | 无法保证等待时间最长的线程优先获取锁 |
 | 不支持条件队列 | 只有一个等待队列（wait/notify），无法实现复杂的条件等待 |
+| 必须是块结构 | 获取和释放必须在同一个方法的 `{}` 内完成 |
 
-### 5.7.2 java.util.concurrent.locks
-
-JDK 1.5 引入的 `java.util.concurrent.locks` 包提供了更灵活的锁机制：
-
-```java
-// ReentrantLock：支持中断、超时、公平性
-ReentrantLock lock = new ReentrantLock(true);  // 公平锁
-
-try {
-    // 支持超时
-    if (lock.tryLock(1, TimeUnit.SECONDS)) {
-        try {
-            criticalSection();
-        } finally {
-            lock.unlock();
-        }
-    } else {
-        // 获取锁超时
-        handleTimeout();
-    }
-} catch (InterruptedException e) {
-    // 支持中断
-    handleInterrupt();
-}
-
-// 支持多个条件队列
-Condition notEmpty = lock.newCondition();
-Condition notFull = lock.newCondition();
-```
-
-### 5.7.3 如何选择
-
-```
-需要锁？
-  │
-  ├── 简单的互斥同步
-  │   └── ✅ 使用 synchronized（简洁、自动释放、JVM 优化好）
-  │
-  ├── 需要中断、超时、公平性
-  │   └── ✅ 使用 ReentrantLock
-  │
-  ├── 读多写少
-  │   └── ✅ 使用 ReentrantReadWriteLock
-  │
-  ├── 高并发计数
-  │   └── ✅ 使用 LongAdder / AtomicLong
-  │
-  └── 不确定
-      └── ✅ 先用 synchronized，性能不够再换
-```
-
-> **Joshua Bloch 的建议**（Effective Java）：**优先使用 synchronized，而非 ReentrantLock**。现代 JVM 对 synchronized 的优化已经非常好，代码也更简洁（自动释放锁）。只有在需要 ReentrantLock 的高级特性时才使用它。
+这些局限性催生了 `java.util.concurrent.locks` 包中的 `Lock` 接口和 `ReentrantLock`。它们提供了可中断获取、超时获取、公平锁、多个条件队列等能力。完整对比和 AQS 实现原理将在第 6 章展开。
 
 ---
 

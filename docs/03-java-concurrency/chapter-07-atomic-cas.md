@@ -16,26 +16,7 @@
 | **死锁风险** | 多把锁交叉持有形成循环等待 | 程序完全卡死，难以排查 |
 | **优先级反转** | 低优先级线程持锁，高优先级线程被迫等待 | 实时性要求高的系统中表现恶劣 |
 
-对于一个简单的计数器场景：
-
-```java
-// 用锁保护一个自增操作
-public class Counter {
-    private int count = 0;
-    private final Lock lock = new ReentrantLock();
-
-    public void increment() {
-        lock.lock();
-        try {
-            count++;  // 实际就三步：读→加→写
-        } finally {
-            lock.unlock();
-        }
-    }
-}
-```
-
-`count++` 对应的 CPU 指令是：
+对于一个简单的计数器场景，第 1 章已经展示过 `count++` 的数据竞争问题，第 5 章用 `synchronized` 解决了它。但 `count++` 对应的 CPU 指令其实只有三步：
 
 ```
 LOAD count → 寄存器
@@ -136,8 +117,8 @@ JDK 内部通过两种方式暴露 CAS 能力：
 
 | API | JDK 版本 | 说明 |
 |-----|---------|------|
-| `Unsafe.compareAndSwapInt()` | JDK 1.5+ | 早期方案，直接操作内存，仅供 JDK 内部使用 |
-| `VarHandle.compareAndSet()` | JDK 9+ | 官方替代方案，类型安全，替代大部分 Unsafe 操作 |
+| `Unsafe.compareAndSwapInt()` | JDK 1.5+ | 早期方案，直接操作内存，仅供 JDK 内部使用（应用代码不应调用） |
+| `VarHandle.compareAndSet()` | JDK 9+ | 官方替代方案，类型安全，支持多种内存访问模式，替代大部分 Unsafe 操作 |
 
 ```java
 // Unsafe 方式（仅供 JDK 内部，应用代码不应直接使用）
@@ -152,6 +133,50 @@ VarHandle handle = MethodHandles.lookup()
     .findVarHandle(MyClass.class, "value", int.class);
 handle.compareAndSet(obj, expected, newVal);
 ```
+
+`VarHandle` 不仅支持 CAS，还支持多种内存访问模式：
+
+```java
+public class VarHandleDemo {
+    private volatile int state = 0;
+    private static final VarHandle STATE;
+
+    static {
+        try {
+            STATE = MethodHandles.lookup()
+                .findVarHandle(VarHandleDemo.class, "state", int.class);
+        } catch (Exception e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    // CAS 操作
+    public boolean casState(int expected, int newVal) {
+        return STATE.compareAndSet(this, expected, newVal);
+    }
+
+    // 原子加法（类似 AtomicInteger.getAndAdd）
+    public int getAndAdd(int delta) {
+        return (int) STATE.getAndAdd(this, delta);
+    }
+
+    // volatile 读（等价于直接读 volatile 字段，但可编程使用）
+    public int getState() {
+        return (int) STATE.getVolatile(this);
+    }
+
+    // 带内存语义的写（release 语义）
+    public void releaseWrite(int val) {
+        STATE.setRelease(this, val);
+    }
+}
+```
+
+`VarHandle` 相比 `Unsafe` 的优势：
+- **类型安全**：编译时检查类型，而非运行时
+- **官方支持**：是 JDK 标准 API，不依赖内部实现
+- **更丰富的语义**：支持 `getVolatile`、`setRelease`、`getAcquire` 等多种内存访问模式
+- **数组和静态字段**：同样支持 `ArrayVarHandle` 和静态字段的访问
 
 AtomicInteger 内部的简化实现：
 

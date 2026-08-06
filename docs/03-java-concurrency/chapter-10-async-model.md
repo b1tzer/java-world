@@ -323,47 +323,159 @@ CompletableFuture 已经是异步的了，但它仍然是一次性的——一�
 | 编程复杂度 | 直观（同步思维） | 较高（回调/流思维） |
 | 适用场景 | 低并发、CPU 密集 | 高并发、IO 密集 |
 
-### 10.3.3 Java 生态中的响应式框架
+### 10.3.3 背压（Backpressure）机制
 
-**Reactor**（Spring WebFlux 的底层）
+背压是响应式编程区别于普通异步编程的核心能力。它的本质是：**下游告诉上游自己能处理多少数据**，避免生产者压垮消费者。
 
-```java
-Flux<String> stream = Flux.fromIterable(List.of("A", "B", "C"))
-    .map(s -> s.toLowerCase())
-    .filter(s -> !s.equals("b"))
-    .flatMap(s -> reactiveRepository.save(s))  // 非阻塞IO
-    .doOnError(e -> log.error("Error", e));
+**推模型 vs 拉模型**：
 
-// 订阅（pull 模型）
-stream.subscribe(
-    value -> System.out.println("Received: " + value),
-    error -> System.err.println("Error: " + error),
-    () -> System.out.println("Complete")
-);
+```text
+推模型（无背压）：
+  生产者 ──源源不断──→ 消费者
+  问题：消费者处理不过来时，数据堆积在内存中，最终 OOM
+
+拉模型（有背压）：
+  消费者 ──"我准备好了，请给我 N 个"──→ 生产者
+  生产者 ──只发 N 个──→ 消费者
+  效果：消费者按自己的节奏获取数据，不会被压垮
 ```
 
-**核心抽象**：
-- `Mono<T>`：0 或 1 个元素的异步流（类似 `CompletableFuture`）
-- `Flux<T>`：0 到 N 个元素的异步流（类似 `Stream`，但是异步的）
-
-**Project Loom（虚拟线程，JDK 21 正式发布）**
-
-虚拟线程是另一种思路——不改变编程模型（你还是写同步代码），但底层用虚拟线程代替操作系统线程，创建百万个也不费力：
+Reactor 中的背压实践：
 
 ```java
-// 虚拟线程：轻量级，由 JVM 调度
-try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-    for (int i = 0; i < 100_000; i++) {
-        executor.submit(() -> {
-            // 同步写法，底层是非阻塞的
-            String result = blockingIOCall();
-            process(result);
-        });
-    }
-}
+Flux.range(1, 1000000)
+    .onBackpressureBuffer(100)       // 缓冲最多 100 个元素
+    .subscribe(new Subscriber<Integer>() {
+        private Subscription subscription;
+        private int count = 0;
+
+        @Override
+        public void onSubscribe(Subscription s) {
+            this.subscription = s;
+            subscription.request(10);  // 第一次只请求 10 个
+        }
+
+        @Override
+        public void onNext(Integer i) {
+            count++;
+            if (count % 10 == 0) {
+                subscription.request(10);  // 每处理 10 个，再请求 10 个
+            }
+            process(i);
+        }
+
+        @Override
+        public void onError(Throwable t) { log.error("Error", t); }
+
+        @Override
+        public void onComplete() { log.info("Done"); }
+    });
 ```
 
-虚拟线程的意义在于：**你不必为了高并发而重写为响应式风格，用阻塞代码也能获得高吞吐**。但这不意味着响应式没有价值——当需要复杂的数据流编排（多数据源合并、窗口聚合、背压控制）时，响应式 API 仍然更合适。
+背压策略选择：
+
+| 策略 | 行为 | 适用场景 |
+|------|------|----------|
+| `onBackpressureBuffer` | 缓冲溢出的元素 | 生产者速度快但只是暂时的 |
+| `onBackpressureDrop` | 丢弃溢出的元素 | 可容忍丢失（如实时监控） |
+| `onBackpressureLatest` | 只保留最新元素 | 只关心最新状态（如股价） |
+| `onBackpressureError` | 抛出异常 | 不允许背压，快速失败 |
+
+### 10.3.4 冷流与热流
+
+**冷流（Cold Stream）**：每个订阅者都会触发独立的数据生产过程。就像点播视频——每个人从头开始看。
+
+```java
+// 冷流：每次 subscribe 都会重新执行
+Flux<String> coldFlux = Flux.defer(() -> {
+    log.info("开始生产数据");
+    return Flux.just("A", "B", "C");
+});
+
+coldFlux.subscribe(s -> log.info("订阅者1: " + s));  // 触发一次生产
+coldFlux.subscribe(s -> log.info("订阅者2: " + s));  // 再触发一次生产
+// 输出：两次“开始生产数据”
+```
+
+**热流（Hot Stream）**：数据生产独立于订阅者，订阅者只能获取订阅之后的数据。就像直播——你加入时看不到之前的画面。
+
+```java
+// 热流：用 SProcessor 创建
+Sinks.Many<String> hotSink = Sinks.many().multicast().onBackpressureBuffer();
+Flux<String> hotFlux = hotSink.asFlux();
+
+hotFlux.subscribe(s -> log.info("订阅者1: " + s));  // 订阅
+hotSink.tryEmitNext("X");  // 发射数据
+hotFlux.subscribe(s -> log.info("订阅者2: " + s));  // 晚订阅
+hotSink.tryEmitNext("Y");  // 发射数据
+// 订阅者1 收到 X 和 Y
+// 订阅者2 只收到 Y（错过了 X）
+```
+
+### 10.3.5 调度器（Scheduler）
+
+响应式框架中的线程调度由 `Scheduler` 控制，不同操作符可以运行在不同的线程上：
+
+```java
+Flux.fromIterable(urls)
+    .flatMap(url ->
+        WebClient.get()                     // IO 操作
+            .uri(url)
+            .retrieve()
+            .bodyToMono(String.class)
+            .subscribeOn(Schedulers.boundedElastic())  // IO 线程池
+    )
+    .parallel()                              // 并行化
+    .runOn(Schedulers.parallel())            // CPU 密集线程池
+    .map(this::parseResponse)                // CPU 计算
+    .sequential()
+    .collectList()
+    .subscribeOn(Schedulers.single())        // 最终结果在单线程
+    .subscribe(result -> log.info("结果: " + result));
+```
+
+| 调度器 | 线程数 | 适用场景 |
+|--------|--------|----------|
+| `Schedulers.immediate()` | 当前线程 | 测试、微小操作 |
+| `Schedulers.single()` | 1 个线程 | 事件顺序处理 |
+| `Schedulers.parallel()` | CPU 核数 | CPU 密集计算 |
+| `Schedulers.boundedElastic()` | 10×CPU 核数 | IO 密集、阻塞操作 |
+
+### 10.3.6 响应式的错误处理与重试
+
+异步链中的错误处理比同步代码更复杂，因为异常发生在未来的某个时刻：
+
+```java
+Flux.fromIterable(orders)
+    .flatMap(order ->
+        callPaymentService(order)           // 可能失败
+            .retry(3)                       // 失败重试 3 次
+            .timeout(Duration.ofSeconds(5)) // 超时保护
+            .onErrorResume(ex -> {          // 所有重试都失败后的降级
+                log.warn("支付服务不可用，订单 {} 进入重试队列", order.id());
+                return saveToRetryQueue(order);
+            })
+    )
+    .subscribe(
+        result -> log.info("处理完成: " + result),
+        error -> log.error("流异常结束", error)
+    );
+```
+
+### 10.3.7 响应式与虚拟线程的选择
+
+虚拟线程（JDK 21）和响应式编程都能处理高并发 IO，但思路完全不同：
+
+| 维度 | 响应式（Reactor） | 虚拟线程 |
+|------|-------------------|----------|
+| 编程风格 | 声明式、链式调用 | 同步阻塞代码 |
+| 学习曲线 | 陡峭（函数式思维） | 平缓（传统 Java 思维） |
+| 背压支持 | 原生支持 | 不支持（需要外部限流） |
+| 调试难度 | 高（异步栈断裂） | 低（正常栈信息） |
+| 数据流编排 | 强大（merge、zip、window） | 需手动实现 |
+| 适用场景 | 复杂数据流管道、流处理 | 简单请求-响应模型 |
+
+**实践建议**：如果是传统的 Web 服务（接收请求 → 查数据库 → 返回结果），虚拟线程是更简单的选择。如果需要复杂的数据流编排（多数据源合并、窗口聚合、实时流处理），响应式 API 更合适。两者也可以结合使用——在响应式管道的阻塞点上使用虚拟线程。
 
 ## 10.4 Actor 模型与消息传递
 
@@ -388,7 +500,91 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 3. **无锁天然安全**：因为没有共享状态，所以不需要锁
 4. **异步处理**：消息发送后立即返回，Actor 按自己的节奏处理消息
 
-### 10.4.2 Akka 示例
+### 10.4.2 Actor 的生命周期与监督
+
+每个 Actor 都有明确的生命周期：
+
+```text
+Created → PreStart → Running → PreRestart / PostStop
+              ↑                    │
+              └── PostRestart ─────┘
+```
+
+Actor 模型最独特的设计是**监督策略（Supervision）**。当子 Actor 处理消息时抛出异常，不是简单地崩溃，而是由父 Actor 决定如何处理：
+
+```java
+public class SupervisorActor extends AbstractActor {
+
+    @Override
+    public SupervisorStrategy supervisorStrategy() {
+        return new OneForOneStrategy(10,              // 每个子 Actor 最多重启 10 次
+            Duration.ofMinutes(1),                    // 1 分钟内的重启次数限制
+            DeciderBuilder
+                .match(ArithmeticException.class, e -> SupervisorStrategy.resume())     // 除零错误：恢复
+                .match(NullPointerException.class, e -> SupervisorStrategy.restart())    // NPE：重启
+                .match(IllegalArgumentException.class, e -> SupervisorStrategy.stop())   // 参数错误：停止
+                .match(Exception.class, e -> SupervisorStrategy.escalate())              // 其他异常：上抛
+                .build());
+    }
+
+    @Override
+    public Receive createReceive() {
+        return receiveBuilder()
+            .match(String.class, msg -> {
+                // 创建子 Actor
+                ActorRef child = getContext().actorOf(Props.create(WorkerActor.class), "worker");
+                child.forward(msg, getContext());
+            })
+            .build();
+    }
+}
+```
+
+四种监督指令：
+
+| 指令 | 行为 | 适用场景 |
+|------|------|----------|
+| **Resume** | 子 Actor 继续处理下一条消息，状态保留 | 可恢复的临时错误 |
+| **Restart** | 子 Actor 停止并重新创建，状态重置 | 状态可能已损坏的错误 |
+| **Stop** | 子 Actor 永久停止 | 不可恢复的错误 |
+| **Escalate** | 将失败上抛给父 Actor 的监督者 | 子 Actor 无法处理的严重错误 |
+
+监督策略有两种粒度：
+- **OneForOneStrategy**：只影响出错的那个子 Actor
+- **AllForOneStrategy**：影响所有子 Actor（适用于子 Actor 之间有强依赖的场景）
+
+### 10.4.3 消息路由
+
+当需要多个 Actor 协作处理同类任务时，路由器（Router）决定消息分发给哪个 Actor：
+
+```java
+// 创建 5 个相同的 Worker Actor
+List<Routee> routees = new ArrayList<>();
+for (int i = 0; i < 5; i++) {
+    ActorRef worker = getContext().actorOf(Props.create(WorkerActor.class), "worker-" + i);
+    routees.add(new ActorRefRoutee(worker));
+}
+
+// Round-Robin 路由：轮流分发
+Router router = new Router(new RoundRobinRoutingLogic(), routees);
+
+// 发送消息，自动分发给不同的 Worker
+for (int i = 0; i < 100; i++) {
+    router.route(new WorkItem(i), ActorRef.noSender());
+}
+```
+
+常用路由策略：
+
+| 策略 | 行为 | 适用场景 |
+|------|------|----------|
+| RoundRobin | 轮流分发 | 均匀负载 |
+| Random | 随机选择 | 简单场景 |
+| SmallestMailbox | 选择邮箱最空的 Actor | 负载均衡 |
+| Broadcast | 发送给所有 Actor | 广播通知 |
+| ConsistentHashing | 相同 key 的消息发给同一个 Actor | 需要消息亲和性 |
+
+### 10.4.4 Akka 示例
 
 Akka 是 Java/JVM 生态中最著名的 Actor 框架（Akka 2.x 后主要用 Scala，但提供了完整的 Java API）：
 
@@ -424,6 +620,126 @@ CompletableFuture<Object> result = AskPattern.ask(
 );
 result.thenAccept(count -> System.out.println("Count: " + count));
 ```
+
+### 10.4.5 Actor 模型的实际应用
+
+Actor 模型在以下场景中表现出色：
+
+**1. 聊天系统**
+
+每个聊天室是一个 Actor，管理参与者的连接和消息广播：
+
+```java
+public class ChatRoomActor extends AbstractActor {
+    private final Set<ActorRef> members = new HashSet<>();
+
+    @Override
+    public Receive createReceive() {
+        return receiveBuilder()
+            .match(Join.class, msg -> {
+                members.add(msg.member());
+                // 通知所有成员
+                members.forEach(m -> m.tell(new MemberJoined(msg.member()), getSelf()));
+            })
+            .match(Leave.class, msg -> {
+                members.remove(msg.member());
+                members.forEach(m -> m.tell(new MemberLeft(msg.member()), getSelf()));
+            })
+            .match(ChatMessage.class, msg -> {
+                // 广播给所有成员
+                members.forEach(m -> m.tell(msg, getSelf()));
+            })
+            .build();
+    }
+}
+```
+
+**2. 游戏服务器**
+
+每个游戏房间是一个 Actor，处理玩家输入、游戏状态更新和广播：
+
+```java
+public class GameRoomActor extends AbstractActor {
+    private final Map<String, ActorRef> players = new HashMap<>();
+    private GameState state = new GameState();
+
+    @Override
+    public Receive createReceive() {
+        return receiveBuilder()
+            .match(PlayerInput.class, input -> {
+                state.applyInput(input);
+                // 广播新状态给所有玩家
+                players.values().forEach(p -> p.tell(state.toSnapshot(), getSelf()));
+            })
+            .match(JoinGame.class, join -> {
+                players.put(join.playerId(), join.playerRef());
+                join.playerRef().tell(state.toSnapshot(), getSelf());
+            })
+            .build();
+    }
+}
+```
+
+**3. 事件溯源（Event Sourcing）**
+
+Actor 天然适合事件溯源模式——每个 Actor 的状态变更都可以记录为事件序列，支持重放和审计。Akka Persistence 正是基于这个思想：
+
+```java
+public class OrderActor extends AbstractPersistentActor {
+    private List<OrderEvent> events = new ArrayList<>();
+    private OrderState state = OrderState.EMPTY;
+
+    @Override
+    public String persistenceId() { return "order-" + orderId; }
+
+    @Override
+    public Receive createReceiveRecover() {
+        return receiveBuilder()
+            .match(OrderEvent.class, event -> {
+                events.add(event);
+                state = state.apply(event);
+            })
+            .build();
+    }
+
+    @Override
+    public Receive createReceiveCommand() {
+        return receiveBuilder()
+            .match(CreateOrder.class, cmd -> {
+                OrderEvent event = new OrderCreated(cmd.items(), cmd.total());
+                persist(event, persisted -> {
+                    events.add(persisted);
+                    state = state.apply(persisted);
+                    getSender().tell(new OrderConfirmed(orderId), getSelf());
+                });
+            })
+            .build();
+    }
+}
+```
+
+### 10.4.6 Actor 模型的局限
+
+Actor 模型并非万能：
+
+| 局限 | 说明 |
+|------|------|
+| 消息顺序 | 同一对 Actor 之间的消息顺序有保证，但不同对之间没有全局顺序 |
+| 请求-响应模式 | 需要使用 Ask 模式（返回 Future），增加了复杂度 |
+| 共享数据 | 多个 Actor 需要共享大量数据时，消息传递的开销大 |
+| 调试困难 | 消息在 Actor 之间流动，追踪请求链路比同步代码困难 |
+| 框架依赖 | Akka 重量级，引入成本高；轻量级替代方案（如 Kilim、Quasar）生态不成熟 |
+
+**何时选择 Actor**：
+- 系统天然有多个独立实体（聊天室、游戏房间、IoT 设备）
+- 需要高容错（监督策略自动恢复）
+- 需要分布式部署（Akka Cluster 提供位置透明）
+- 事件驱动架构（事件溯源、CQRS）
+
+**何时不选择 Actor**：
+- 简单的请求-响应服务（用 CompletableFuture 或虚拟线程更简单）
+- 大量共享数据的计算密集型任务（消息传递开销大）
+- 团队不熟悉 Actor 模型（学习成本高）
 
 ### 10.4.3 Actor vs 线程+锁
 

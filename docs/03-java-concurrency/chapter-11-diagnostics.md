@@ -749,6 +749,77 @@ try {
 
 `ThreadMXBean` 对虚拟线程的支持有限——`getThreadCount()` 不包含虚拟线程，`getThreadInfo()` 对虚拟线程返回的信息不完整。监控虚拟线程需要用 JFR 或 Arthas 等工具。
 
+### 更多 Pinning 场景
+
+除了 `synchronized` 块中的阻塞操作，以下场景也会导致 Pinning：
+
+| 场景 | 原因 | 解决方案 |
+|------|------|----------|
+| `synchronized` + 阻塞 IO | JVM 无法在 synchronized 块中卸载虚拟线程 | 用 `ReentrantLock` 替代 |
+| `synchronized` + `Thread.sleep()` | sleep 也是阻塞操作 | 用 `ReentrantLock` 或移出 synchronized 块 |
+| JNI 调用中的阻塞 | 本地代码中的阻塞无法被 JVM 感知 | 将 JNI 调用放到独立的平台线程池中 |
+| `synchronized` + `Object.wait()` | wait 释放锁但仍然 Pinning | 用 `ReentrantLock` + `Condition.await()` |
+
+```java
+// ❌ JNI 调用中的阻塞也会 Pinning
+synchronized (lock) {
+    nativeLibrary.blockingCall();  // 本地代码阻塞，虚拟线程被钉住
+}
+
+// ✅ 将 JNI 调用移到独立的平台线程池
+ExecutorService nativePool = Executors.newFixedThreadPool(4);
+nativePool.submit(() -> nativeLibrary.blockingCall());
+```
+
+### JFR 检测 Pinning
+
+JDK Flight Recorder 可以记录 Pinning 事件，适合生产环境的持续监控：
+
+```bash
+# 启动 JFR 记录 Pinning 事件
+java -XX:StartFlightRecording=pinning=enabled,duration=60s,filename=pinning.jfr MyApp
+
+# 或者通过 jcmd 动态开启
+jcmd <pid> JFR.start settings=profile filename=pinning.jfr
+```
+
+JFR 记录的 `jdk.VirtualThreadPinned` 事件包含：
+- Pinning 发生的时间
+- 持续时间
+- 涉及的锁对象
+- 完整的线程栈
+
+在 JMC（Java Mission Control）中打开记录文件，搜索 "VirtualThreadPinned" 事件即可定位问题。
+
+### 虚拟线程的最佳实践
+
+| 实践 | 说明 |
+|------|------|
+| 避免在 synchronized 中做 IO | 用 `ReentrantLock` 替代 synchronized |
+| 不要池化虚拟线程 | 虚拟线程设计为每个任务一个，不需要池化 |
+| 为阻塞操作设置超时 | 避免虚拟线程永久阻塞 |
+| 使用 Semaphore 限制并发 | 替代线程池来限制资源访问并发数 |
+| 监控 Pinning 事件 | 生产环境开启 JFR 持续监控 |
+| 不要用于 CPU 密集型任务 | 虚拟线程的优势在 IO 等待，CPU 密集用平台线程 |
+
+```java
+// ✅ 用 Semaphore 限制数据库连接并发（替代线程池）
+Semaphore dbLimiter = new Semaphore(20);  // 最多 20 个并发数据库查询
+
+try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+    for (int i = 0; i < 100_000; i++) {
+        executor.submit(() -> {
+            dbLimiter.acquire();  // 限制并发
+            try {
+                return queryDB();
+            } finally {
+                dbLimiter.release();
+            }
+        });
+    }
+}
+```
+
 ---
 
 **最佳实践速查表**：

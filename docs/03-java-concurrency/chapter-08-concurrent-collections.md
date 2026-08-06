@@ -433,7 +433,58 @@ public class ProducerConsumerDemo {
 
 ---
 
-## 8.5 小结
+## 8.5 ConcurrentSkipListMap：有序并发 Map
+
+`ConcurrentHashMap` 不保证遍历顺序。如果你需要一个**线程安全且按 key 排序**的 Map，`ConcurrentSkipListMap` 是正确选择。
+
+### 跳表（Skip List）结构
+
+跳表是一种概率平衡的有序数据结构，通过多层索引来加速查找：
+
+```text
+Level 3:  head ──────────────────────→ 50 ────────────────→ null
+Level 2:  head ──────────→ 20 ────────→ 50 ────→ 70 ──────→ null
+Level 1:  head ──→ 10 ──→ 20 ──→ 30 ──→ 50 ──→ 70 ──→ 80 → null
+```
+
+查找 `50` 时，从最高层开始：Level 3 跳到 50，直接命中。平均查找时间 O(log n)，与红黑树相当，但实现更简单——插入和删除只需要调整指针，不需要复杂的旋转操作。
+
+### 与 ConcurrentHashMap 的对比
+
+| 维度 | ConcurrentHashMap | ConcurrentSkipListMap |
+|------|------------------|----------------------|
+| 顺序 | 无序（HashMap 语义） | 有序（SortedMap 语义） |
+| 底层结构 | 数组 + 链表/红黑树 | 跳表 |
+| 并发实现 | CAS + synchronized 锁桶 | CAS 无锁插入 |
+| 查找复杂度 | O(1) 平均 | O(log n) |
+| 适用场景 | 通用高并发 Map | 需要排序或范围查询 |
+
+### 典型用法
+
+```java
+ConcurrentSkipListMap<String, Score> leaderboard = new ConcurrentSkipListMap<>();
+
+// 并发写入
+leaderboard.put("Alice", new Score(95));
+leaderboard.put("Bob", new Score(87));
+leaderboard.put("Charlie", new Score(92));
+
+// 范围查询：获取分数 90 以上的所有选手
+SortedMap<String, Score> topPlayers = leaderboard.tailMap("90");
+
+// 获取最高分和最低分
+Map.Entry<String, Score> first = leaderboard.firstEntry();
+Map.Entry<String, Score> last = leaderboard.lastEntry();
+
+// 并发遍历（弱一致性，不会抛 ConcurrentModificationException）
+for (Map.Entry<String, Score> entry : leaderboard.entrySet()) {
+    System.out.println(entry.getKey() + ": " + entry.getValue());
+}
+```
+
+`ConcurrentSkipListMap` 的所有操作都是线程安全的，且遍历时不会抛出 `ConcurrentModificationException`（弱一致性）。它在需要**并发有序**的场景（如排行榜、时间线索引、范围缓存）中是不可替代的。
+
+## 8.6 小结
 
 并发集合的设计本质上是在**安全性、并发度、内存开销**三者之间做取舍：
 
@@ -455,8 +506,8 @@ public class ProducerConsumerDemo {
 
 > **纵横联系**
 >
-> - 本章的 `ConcurrentHashMap` 使用了 CAS 操作和 `volatile` 语义，这些基础概念在第5章《内存模型与 happens-before》中有深入讲解
+> - 本章的 `ConcurrentHashMap` 使用了 CAS 操作和 `volatile` 语义，这些基础概念在第 3 章（JMM）和第 7 章（原子类与 CAS）中有深入讲解
 > - `CopyOnWriteArrayList` 的弱一致性与 Java 内存模型的可见性保证直接相关，理解 happens-before 规则有助于理解其迭代器行为
-> - `BlockingQueue` 是线程池（第9章）的内部核心组件——`ThreadPoolExecutor` 的工作队列就是 `BlockingQueue`
-> - `ConcurrentHashMap` 的 `CounterCell` 分散计数思想与 `LongAdder`（第6章并发工具类）完全一致，它们共享同一套代码
-> - `ConcurrentHashMap` 的内部结构基于 `HashMap` 的数组+链表+红黑树设计，`CopyOnWriteArrayList` 基于 `ArrayList` 的数组设计——理解 JDK 集合框架是理解并发集合的前提
+> - `BlockingQueue` 是线程池（第 9 章）的内部核心组件——`ThreadPoolExecutor` 的工作队列就是 `BlockingQueue`
+> - `ConcurrentHashMap` 的 `CounterCell` 分散计数思想与 `LongAdder`（第 7 章）完全一致，它们共享同一套代码
+> - `ConcurrentSkipListMap` 的跳表结构是一种概率平衡数据结构，与红黑树相比实现更简单且天然适合并发场景
