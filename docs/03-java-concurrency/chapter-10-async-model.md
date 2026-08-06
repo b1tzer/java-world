@@ -400,7 +400,7 @@ coldFlux.subscribe(s -> log.info("订阅者2: " + s));  // 再触发一次生产
 **热流（Hot Stream）**：数据生产独立于订阅者，订阅者只能获取订阅之后的数据。就像直播——你加入时看不到之前的画面。
 
 ```java
-// 热流：用 SProcessor 创建
+// 热流：用 Sinks 创建
 Sinks.Many<String> hotSink = Sinks.many().multicast().onBackpressureBuffer();
 Flux<String> hotFlux = hotSink.asFlux();
 
@@ -787,4 +787,4 @@ Actor 模型并非万能：
 
 > **纵横联系**
 >
-> 本章介绍的 `CompletableFuture` 底层依赖的是第 6 章讲的 `ForkJoinPool`；响应式框架中的非阻塞 IO 基于 Java NIO，这在第一卷《Java 核心》中有详细介绍；虚拟线程的调度策略和操作系统线程的关系，对应第 8 章线程调度的内容。Actor 模型的思想也影响了分布式系统设计，这将在第四卷《分布式与微服务》中进一步展开。下一章，我们将回到实践层面，讨论并发问题的诊断与性能优化——当本章这些模型出了问题，怎么找、怎么修。
+> 本章介绍的 `CompletableFuture` 底层依赖的是第 9 章讲的 `ForkJoinPool`；响应式框架中的非阻塞 IO 基于 Java NIO，这在第四卷《网络与通信》中有详细介绍；虚拟线程的调度策略和操作系统线程的关系，对应第 2 章线程模型的内容。Actor 模型的思想也影响了分布式系统设计，这将在第七卷《性能与架构》中进一步展开。下一章，我们将回到实践层面，讨论并发问题的诊断与性能优化——当本章这些模型出了问题，怎么找、怎么修。

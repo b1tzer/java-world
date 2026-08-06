@@ -758,7 +758,6 @@ try {
 | `synchronized` + 阻塞 IO | JVM 无法在 synchronized 块中卸载虚拟线程 | 用 `ReentrantLock` 替代 |
 | `synchronized` + `Thread.sleep()` | sleep 也是阻塞操作 | 用 `ReentrantLock` 或移出 synchronized 块 |
 | JNI 调用中的阻塞 | 本地代码中的阻塞无法被 JVM 感知 | 将 JNI 调用放到独立的平台线程池中 |
-| `synchronized` + `Object.wait()` | wait 释放锁但仍然 Pinning | 用 `ReentrantLock` + `Condition.await()` |
 
 ```java
 // ❌ JNI 调用中的阻塞也会 Pinning
@@ -776,11 +775,15 @@ nativePool.submit(() -> nativeLibrary.blockingCall());
 JDK Flight Recorder 可以记录 Pinning 事件，适合生产环境的持续监控：
 
 ```bash
-# 启动 JFR 记录 Pinning 事件
-java -XX:StartFlightRecording=pinning=enabled,duration=60s,filename=pinning.jfr MyApp
+# 方式一：使用预置配置文件启动 JFR 记录
+jcmd <pid> JFR.start settings=profile filename=pinning.jfr duration=60s
 
-# 或者通过 jcmd 动态开启
-jcmd <pid> JFR.start settings=profile filename=pinning.jfr
+# 方式二：启动时开启 JFR
+java -XX:StartFlightRecording=settings=profile,duration=60s,filename=pinning.jfr MyApp
+
+# 方式三：仅记录 Pinning 事件（更轻量）
+jcmd <pid> JFR.start filename=pinning.jfr duration=60s \
+  jdk.VirtualThreadPinned#enabled=true
 ```
 
 JFR 记录的 `jdk.VirtualThreadPinned` 事件包含：

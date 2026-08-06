@@ -462,27 +462,35 @@ Level 1:  head ──→ 10 ──→ 20 ──→ 30 ──→ 50 ──→ 70 
 ### 典型用法
 
 ```java
-ConcurrentSkipListMap<String, Score> leaderboard = new ConcurrentSkipListMap<>();
+// 按用户名排序的排行榜（key 是用户名，天然有序）
+ConcurrentSkipListMap<String, Integer> scores = new ConcurrentSkipListMap<>();
 
-// 并发写入
-leaderboard.put("Alice", new Score(95));
-leaderboard.put("Bob", new Score(87));
-leaderboard.put("Charlie", new Score(92));
+scores.put("Alice", 95);
+scores.put("Bob", 87);
+scores.put("Charlie", 92);
+scores.put("David", 78);
+scores.put("Eve", 99);
 
-// 范围查询：获取分数 90 以上的所有选手
-SortedMap<String, Score> topPlayers = leaderboard.tailMap("90");
+// 范围查询：获取用户名在 "B" 到 "D" 之间的所有选手
+SortedMap<String, Integer> range = scores.subMap("B", "D");
+// 结果：{Bob=87, Charlie=92}
 
-// 获取最高分和最低分
-Map.Entry<String, Score> first = leaderboard.firstEntry();
-Map.Entry<String, Score> last = leaderboard.lastEntry();
+// 获取所有用户名排在 "C" 之后的选手
+SortedMap<String, Integer> tail = scores.tailMap("C");
+// 结果：{Charlie=92, David=78, Eve=99}
 
-// 并发遍历（弱一致性，不会抛 ConcurrentModificationException）
-for (Map.Entry<String, Score> entry : leaderboard.entrySet()) {
-    System.out.println(entry.getKey() + ": " + entry.getValue());
-}
+// 如果需要按分数排序，key 直接用分数（注意同分选手需要用复合 key）
+ConcurrentSkipListMap<Integer, List<String>> byScore = new ConcurrentSkipListMap<>();
+scores.forEach((name, score) ->
+    byScore.computeIfAbsent(score, k -> new ArrayList<>()).add(name)
+);
+
+// 获取 90 分以上的所有选手
+SortedMap<Integer, List<String>> highScores = byScore.tailMap(90);
+// 结果：{92=[Charlie], 95=[Alice], 99=[Eve]}
 ```
 
-`ConcurrentSkipListMap` 的所有操作都是线程安全的，且遍历时不会抛出 `ConcurrentModificationException`（弱一致性）。它在需要**并发有序**的场景（如排行榜、时间线索引、范围缓存）中是不可替代的。
+`ConcurrentSkipListMap` 的所有操作都是线程安全的，且遍历时不会抛出 `ConcurrentModificationException`（弱一致性）。它在需要**并发有序**的场景（如按用户名/ID 排序的索引、时间线索引、范围缓存）中是不可替代的。
 
 ## 8.6 小结
 
