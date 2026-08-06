@@ -36,7 +36,7 @@ jstack <pid> | grep -A 30 "<tid in hex>"
 
 **根因一：死循环或正则回溯**
 
-```
+```text
 "Thread-1" #12 prio=5 os_prio=0 cpu=985421.23ms
    java.lang.Thread.State: RUNNABLE
     at com.example.Processor.process(Processor.java:45)  ← 死循环位置
@@ -47,7 +47,7 @@ jstack <pid> | grep -A 30 "<tid in hex>"
 
 **根因二：GC 线程占用**
 
-```
+```text
 "GC task thread#0 (ParallelGC)" os_prio=0 cpu=892341.56ms
 ```
 
@@ -55,7 +55,7 @@ jstack <pid> | grep -A 30 "<tid in hex>"
 
 **根因三：锁竞争（自旋）**
 
-```
+```text
 "Thread-2" #13 prio=5 os_prio=0 cpu=567823.12ms
    java.lang.Thread.State: RUNNABLE
     at com.example.SharedResource.access(SharedResource.java:30)
@@ -66,7 +66,7 @@ jstack <pid> | grep -A 30 "<tid in hex>"
 
 **根因四：JIT 编译**
 
-```
+```text
 "CompilerThread0" os_prio=0 cpu=345212.78ms
 ```
 
@@ -108,7 +108,7 @@ heapdump /path/to/heap.hprof
 
 MAT 自动分析后报告：
 
-```
+```text
 Problem Suspect 1:
   4,523 instances of "com.example.CacheEntry", loaded by "app classloader"
   occupy 1,892,345,678 bytes (45.2% of heap)
@@ -124,7 +124,7 @@ MAT 告诉你：`CacheEntry` 对象占了堆的 45%，被 `CacheManager` 的 `ca
 
 打开 Dominator Tree，按 Retained Heap 排序：
 
-```
+```text
 com.example.CacheManager @ 0x7f8b2c012300
   └─ java.util.HashMap @ 0x7f8b2c012340
        └─ java.util.HashMap$Node[16384] @ 0x7f8b2c020000
@@ -161,7 +161,7 @@ Arthas: thread            # 交互式分析
 
 `jstack` 输出末尾会自动检测死锁：
 
-```
+```text
 Found one Java-level deadlock:
 =============================
 "Thread-1":
@@ -178,7 +178,7 @@ Found one Java-level deadlock:
 
 比死锁更常见的情况是多个线程 BLOCKED 在同一把锁上：
 
-```
+```text
 "http-nio-8080-exec-1" #15 prio=5
    java.lang.Thread.State: BLOCKED
     at com.example.OrderService.createOrder(OrderService.java:30)
@@ -200,7 +200,7 @@ Found one Java-level deadlock:
 
 三个线程都在等同一把锁，持锁线程是 `exec-5`。接下来搜索 `exec-5` 的栈信息：
 
-```
+```text
 "http-nio-8080-exec-5" #20 prio=5
    java.lang.Thread.State: RUNNABLE
     at java.net.SocketInputStream.socketRead0(Native Method)
@@ -310,7 +310,7 @@ JMC 提供自动分析功能，能标记出潜在的性能问题（如"方法编
 
 JMC 打开 `.jfr` 文件后，左侧 "Rule Results" 中自动标记了问题：
 
-```
+```text
 ⚠️ Hot Methods:
   com.example.QueryBuilder.buildQuery() — 占用 12.3% CPU
   java.util.regex.Pattern.matches() — 占用 8.7% CPU

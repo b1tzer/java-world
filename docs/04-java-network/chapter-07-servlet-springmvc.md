@@ -10,7 +10,7 @@ Servlet 是 Java Web 世界的基石。在理解 Spring Boot 之前，必须先�
 
 一个 HTTP 请求从网络到达 Java 应用，需要经过以下路径：
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        客户端 (Browser/App)                      │
 └──────────────────────────────┬──────────────────────────────────┘
@@ -100,7 +100,7 @@ Tomcat 不仅仅是一个 Servlet 容器，它首先是一个网络服务器。�
 
 Tomcat 的架构可以简化为两个核心模块的协作：
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                      Tomcat                                  │
 │                                                              │
@@ -122,7 +122,7 @@ Tomcat 的架构可以简化为两个核心模块的协作：
 
 Tomcat 的容器采用四层嵌套结构，每一层都有特定职责：
 
-```
+```text
 Server (整个 Tomcat 实例)
  └── Service (连接器 + 容器的组合)
       ├── Connector (HTTP/1.1, AJP)
@@ -156,7 +156,7 @@ engine.invoke(request, response)
 
 一个 Connector 由三个核心组件构成：
 
-```
+```text
 ┌────────────────────────────────────────────────────────┐
 │                   Connector                             │
 │                                                         │
@@ -197,7 +197,7 @@ Tomcat 从 8.5 开始默认使用 NIO（非阻塞 I/O），这是理解高性能
 
 Tomcat 的 NIO 实现核心是 `NioEndpoint`，它使用三个线程角色协作处理请求：
 
-```
+```text
                          ┌──────────────────────┐
                          │   ServerSocketChannel │
                          │   (监听 8080 端口)     │
@@ -310,7 +310,7 @@ Spring MVC 在 Servlet 规范之上构建了一套灵活的请求处理框架。
 
 `DispatcherServlet` 本质上就是一个 `HttpServlet`：
 
-```
+```text
                     ┌─────────────────────────────────┐
                     │      DispatcherServlet           │
                     │  (extends FrameworkServlet        │
@@ -340,7 +340,7 @@ Spring MVC 在 Servlet 规范之上构建了一套灵活的请求处理框架。
 
 以下是一个请求从进入 `DispatcherServlet` 到返回响应的完整流程：
 
-```
+```text
 HTTP Request (GET /api/users/1)
 │
 ▼
@@ -483,7 +483,7 @@ public class UserController {
 
 这短短几行代码，背后隐藏着从 Socket 到 HTTP 的完整协议栈：
 
-```
+```text
 开发者视角:  @GetMapping("/{id}")  →  return user
                 │
                 │ (框架透明处理)

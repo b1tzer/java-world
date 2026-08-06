@@ -434,7 +434,7 @@ CompletableFuture.supplyAsync(() -> httpClient.get(url), ioPool);
 
 Little 定律的推导：
 
-```
+```text
 线程数 = CPU 核数 × (1 + 等待时间 / 计算时间)
 
 例：8 核，任务里 60% 时间在等 IO，40% 在算
@@ -547,7 +547,7 @@ try { f.get(); } catch (ExecutionException e) { /* 才能拿到异常 */ }
 
 ---
 
-## 10.N 本章小结
+## 10.9 本章小结
 
 | 问题 | 根源 | 解决方案 |
 | :-- | :-- | :-- |
@@ -567,5 +567,3 @@ try { f.get(); } catch (ExecutionException e) { /* 才能拿到异常 */ }
 > - **向前依赖**：`workQueue` 就是第 9 章讲的 `BlockingQueue`——`ArrayBlockingQueue` / `LinkedBlockingQueue` / `SynchronousQueue` / `DelayedWorkQueue` 各自的行为决定了线程池的调度语义；`Worker` 的锁基于第 8 章的 AQS；`mainLock`（`ReentrantLock`）与 `termination`（`Condition`）来自第 8 章。
 > - **向后使用**：第 11 章的 `CompletableFuture` 默认走 `ForkJoinPool.commonPool`，本章 §10.7.2 的选型规则会在那里被再次强调；第 12 章的虚拟线程重新评估"线程池参数配置"这一整套经验（对 IO 密集任务不再需要，对 CPU 密集依然需要）。
 > - **跨卷关系**：第五卷 HikariCP 的连接池设计与本章参数配置方法论一脉相承；第六卷 Spring `@Async` 底层就是本章的 `ThreadPoolTaskExecutor`；第七卷高并发架构的"线程池隔离"（舱壁）建立在 §10.8.4。
-
-```

@@ -10,7 +10,7 @@
 
 Java Web 开发的历史起点是 Servlet 规范。一个 HTTP 请求到达服务器的路径：
 
-```
+```text
 浏览器发送 HTTP 请求
         │
         ▼
@@ -55,7 +55,7 @@ public class UserServlet extends HttpServlet {
 
 Spring MVC 的核心设计思想是**前端控制器（Front Controller）模式**——所有请求统一由一个 Servlet 处理，再分发给具体的处理器：
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────┐
 │                        Tomcat                                │
 │  ┌─────────┐   ┌─────────────────────────────────────────┐  │
@@ -94,7 +94,7 @@ public ServletRegistrationBean<DispatcherServlet> dispatcherServletRegistration(
 
 DispatcherServlet 初始化时会创建自己的 `WebApplicationContext`，它是根 `ApplicationContext` 的子容器：
 
-```
+```text
 Root WebApplicationContext
   ├── DataSource Bean
   ├── UserService Bean
@@ -148,7 +148,7 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 
 ### 3.2.2 流程图解
 
-```
+```text
 HTTP Request
      │
      ▼
@@ -260,7 +260,7 @@ public List<Product> search(
 
 处理流程：
 
-```
+```text
 GET /search?keyword=phone&page=2
      │
      ▼
@@ -289,7 +289,7 @@ public User createUser(@Valid @RequestBody UserDTO userDTO) {
 
 处理流程：
 
-```
+```text
 POST /users
 Content-Type: application/json
 Body: {"name":"张三","email":"zhangsan@example.com"}
@@ -351,7 +351,7 @@ HttpMessageConverter 的常见实现：
 
 当客户端请求不同格式的数据时，Spring MVC 通过内容协商决定使用哪个 `HttpMessageConverter`：
 
-```
+```text
 客户端请求：
   Accept: application/json  →  使用 Jackson 序列化为 JSON
   Accept: application/xml   →  使用 Jackson XML 序列化为 XML
@@ -373,7 +373,7 @@ spring.mvc.contentnegotiation.parameter-name=format
 
 Spring MVC 提供了多层级的异常处理机制：
 
-```
+```text
 Controller 方法抛出异常
         │
         ▼
@@ -555,7 +555,7 @@ public class GlobalExceptionHandler {
 
 当异常发生时，Spring MVC 按以下顺序查找处理器：
 
-```
+```text
 1. Controller 内的 @ExceptionHandler
    ↓ 未找到
 2. @ControllerAdvice 中的 @ExceptionHandler
@@ -573,7 +573,7 @@ public class GlobalExceptionHandler {
 
 Spring MVC 的异常处理机制只在 DispatcherServlet 内部生效。对于 Filter 中抛出的异常，需要通过 Servlet 容器的错误页面机制处理：
 
-```
+```text
 请求进入
   │
   ▼

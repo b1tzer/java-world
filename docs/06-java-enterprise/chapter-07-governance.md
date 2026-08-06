@@ -23,7 +23,7 @@
 
 Nacos（Naming and Configuration Service）是阿里巴巴开源的服务发现与配置管理平台。其配置中心的工作流程如下：
 
-```
+```text
 ┌─────────────┐     ①发布配置      ┌─────────────┐
 │  管理控制台   │ ──────────────────▶ │  Nacos Server │
 └─────────────┘                     └──────┬──────┘
@@ -116,7 +116,7 @@ public class OrderController {
 
 `@RefreshScope` 是 Spring Cloud 提供的注解，其本质是将 Bean 的作用域设为 `refresh`：
 
-```
+```text
 配置变更事件
     │
     ▼
@@ -139,7 +139,7 @@ ContextRefresher.refresh()
 
 Nacos 用三层结构组织配置，适合多团队、多环境的管理需求：
 
-```
+```text
 Namespace（命名空间）── 通常按环境划分：dev / test / prod
     │
     ├── Group（分组）── 通常按业务域划分：order-group / user-group
@@ -161,7 +161,7 @@ Namespace（命名空间）── 通常按环境划分：dev / test / prod
 
 在微服务调用链中，任何一个节点出问题都可能引发连锁反应：
 
-```
+```text
 用户请求 → Gateway → OrderService → PaymentService → AccountService
                                             │
                                        AccountService 响应变慢（5s）
@@ -215,7 +215,7 @@ public class FeignConfig {
 
 超时值的计算逻辑：
 
-```
+```text
 接口超时 = P99 响应时间 × 安全系数（1.5 ~ 2）
 但不能大于上游能容忍的最大等待时间
 ```
@@ -265,7 +265,7 @@ public class RetryConfig {
 
 熔断器（Circuit Breaker）是容错的核心机制，其工作状态可以用一个三态状态机描述：
 
-```
+```text
                     失败率超过阈值
     ┌──────────┐ ──────────────────▶ ┌──────────┐
     │  CLOSED  │                     │   OPEN   │
@@ -422,7 +422,7 @@ public void initSystemRules() {
 
 一个用户请求在微服务架构中可能经过 5~10 个服务，当请求变慢或出错时，如何快速定位问题发生在哪个环节？
 
-```
+```text
 [用户] → Gateway → OrderService → UserService
                        │                │
                        ▼                ▼
@@ -449,7 +449,7 @@ public void initSystemRules() {
 
 一次请求的 Span 关系如下：
 
-```
+```text
 TraceID: abc-123-def
 
 Span A (Gateway)              SpanID=1, Parent=null
@@ -487,7 +487,7 @@ SkyWalking 是 Apache 基金会的顶级项目，其最大优势是**无侵入**
 
 **部署架构**：
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                     应用服务器集群                         │
 │                                                          │
@@ -549,7 +549,7 @@ java -javaagent:/path/skywalking-agent.jar \
 
 SkyWalking Agent 会自动将 TraceID 注入 MDC（Mapped Diagnostic Context），key 为 `tid`。日志输出效果：
 
-```
+```text
 2024-01-15 14:23:45.123 [http-nio-8080-exec-1] [TID:abc-123-def] INFO  o.s.OrderService - Creating order for user 10086
 2024-01-15 14:23:45.156 [http-nio-8080-exec-1] [TID:abc-123-def] INFO  o.s.PaymentService - Processing payment 200.00
 2024-01-15 14:23:45.890 [http-nio-8080-exec-1] [TID:abc-123-def] ERROR o.s.AccountService - Account balance insufficient

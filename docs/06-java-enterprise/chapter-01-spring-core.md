@@ -10,7 +10,7 @@
 
 早期的 Java Web 应用结构简单，一个 WAR 包部署到 Tomcat 就能跑起来：
 
-```
+```text
 ┌─────────────────────────────────┐
 │           单体应用 (WAR)          │
 │  ┌───────┐ ┌──────┐ ┌────────┐  │
@@ -42,7 +42,7 @@
 
 拆分的演进路径：
 
-```
+```text
 单体 → 垂直拆分 → SOA → 微服务
  │         │        │       │
  │         │        │       └─ 独立部署、独立数据库
@@ -142,7 +142,7 @@ public class OrderServiceApplication {
 2. **起步依赖（Starter）：** 一个 `spring-boot-starter-data-jpa` 引入 JPA + Hibernate + HikariCP 的最佳组合
 3. **Actuator：** 开箱即用的健康检查、指标监控端点
 
-```
+```text
 Spring Boot 的依赖引入链：
 spring-boot-starter-data-jpa
   → spring-boot-starter-jdbc
@@ -157,7 +157,7 @@ spring-boot-starter-data-jpa
 
 Spring Cloud 在 Spring Boot 基础上，提供微服务架构的一站式解决方案：
 
-```
+```text
 ┌────────────────────────────────────────────────┐
 │                 Spring Cloud 全景               │
 │                                                │
@@ -235,7 +235,7 @@ public class OrderService {
 
 ### 1.3.3 容器的工作流程
 
-```
+```text
 开发者定义组件         容器管理生命周期         使用者获取实例
    (POJO)               (BeanFactory)            (getBean)
      │                      │                       │
@@ -279,7 +279,7 @@ public class UserService {
 
 Bean 从定义到销毁，经历以下阶段：
 
-```
+```text
 BeanDefinition 加载
         │
         ▼

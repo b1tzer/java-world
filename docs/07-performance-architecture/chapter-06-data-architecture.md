@@ -248,7 +248,7 @@ redis.set(key, JSON.toJSONString(value), totalExpire, TimeUnit.MINUTES);
 
 **方案二：多级缓存**
 
-```
+```text
 请求 → L1 本地缓存（Caffeine）→ L2 分布式缓存（Redis）→ 数据库
          │ 命中直接返回          │ 命中直接返回
 ```
@@ -371,7 +371,7 @@ spring:
 
 ### 6.5.1 冷热数据的定义
 
-```
+```text
 ┌─────────────────────────────────────────────┐
 │  热数据（Hot）  ~10%   最近 1~7 天           │
 │  存储：Redis / SSD    要求：毫秒级响应       │
@@ -427,7 +427,7 @@ public void createProduct(Product product) {
 
 通过监听 MySQL binlog，异步同步到其他数据源：
 
-```
+```text
 应用 → MySQL(写入) → binlog → Canal Server → MQ → ES/HBase/...
 ```
 

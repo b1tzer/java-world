@@ -27,7 +27,7 @@ Java 21 把虚拟线程从预览特性升级为 GA。它不是一种新语言语
 
 一个典型的后端接口，处理链路是这样的：
 
-```
+```text
         接收请求
              │
              ▼
@@ -41,7 +41,7 @@ Java 21 把虚拟线程从预览特性升级为 GA。它不是一种新语言语
 
 95% 的时间线程都在 park 等 IO。假设 QPS = 10 000、平均 RT = 200 ms，按小 Little 定律得到平均并发数：
 
-```
+```text
 N = QPS × RT = 10 000 × 0.2s = 2 000
 ```
 
@@ -96,7 +96,7 @@ Reactor 版本换来的是吞吐，付出的是：
 
 ### 12.2.1 虚拟线程与平台线程的对照
 
-```
+```text
 用户视角：
         VT1  VT2  VT3  VT4  VT5  ... VT_1000000
          │    │    │    │    │           │
@@ -192,7 +192,7 @@ try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
 
 被钉住时的现场：
 
-```
+```text
 虚拟线程 VT1 持有 monitor lock，进入 synchronized 块 → 挂载在 Carrier C1
                                     │
                                     │  发起 HTTP 请求，等待响应
@@ -484,7 +484,7 @@ try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
 
 **判断决策**：
 
-```
+```text
                 任务是 CPU 密集吗？
                        │
                 ┌──────┴──────┐
@@ -561,7 +561,7 @@ public Profile loadProfile(String id) throws Exception {
 
 ---
 
-## 12.N 本章小结
+## 12.8 本章小结
 
 | 问题 | 根源 | 解决方案 |
 | :-- | :-- | :-- |

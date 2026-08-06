@@ -24,7 +24,7 @@ TCP 连接状态是网络排查的第一手信息。两个最容易出问题的�
 
 **TIME-WAIT 过多：**
 
-```
+```text
 主动关闭方在发送最后一个 ACK 后进入 TIME-WAIT，等待 2MSL（通常 60s）。
 高并发短连接场景下，大量 TIME-WAIT 会耗尽端口。
 
@@ -47,7 +47,7 @@ net.ipv4.tcp_fin_timeout = 30      # 缩短 FIN-WAIT-2 超时
 
 **CLOSE-WAIT 过多：**
 
-```
+```text
 被动关闭方收到 FIN 后进入 CLOSE-WAIT，等待应用层调用 close()。
 如果 CLOSE-WAIT 堆积，说明应用代码有 bug —— 没有正确关闭连接。
 
@@ -88,7 +88,7 @@ public void handleRequest(Socket socket) {
 
 ### 10.1.3 连接状态全景图
 
-```
+```text
                                主动打开
                                   │
                                   ↓
@@ -162,7 +162,7 @@ tcpdump -i eth0 port 53
 
 **tcpdump 输出解读：**
 
-```
+```text
 # 正常的 TCP 三次握手
 22:01:01.100 IP 10.0.1.1.54321 > 10.0.1.2.8080: Flags [S], seq 1000
 22:01:01.101 IP 10.0.1.2.8080 > 10.0.1.1.54321: Flags [S.], seq 2000, ack 1001
@@ -183,7 +183,7 @@ tcpdump -i eth0 port 53
 
 **常用过滤器：**
 
-```
+```text
 # 按 IP 过滤
 ip.addr == 10.0.1.100
 ip.src == 10.0.1.100 && ip.dst == 10.0.1.200
@@ -270,7 +270,7 @@ ss -tni
 
 **输出解读：**
 
-```
+```text
 $ ss -tni
 State   Recv-Q  Send-Q  Local Address:Port  Peer Address:Port
 ESTAB   0       0       10.0.1.1:8080       10.0.1.2:54321
@@ -304,7 +304,7 @@ grep -A 5 "BLOCKED\|WAITING\|TIMED_WAITING" /tmp/thread_dump.txt | grep -i "sock
 
 **典型的网络相关线程栈：**
 
-```
+```text
 # 1. 正常的 NIO 线程（Selector 等待事件）
 "NIO-Selector-1" #15 daemon prio=5
    java.lang.Thread.State: RUNNABLE
@@ -368,7 +368,7 @@ vmtool --action getInstances \
 
 **Arthas 诊断流程：**
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │               Arthas 网络问题诊断流程                     │
 │                                                         │
@@ -631,7 +631,7 @@ public class ExternalApiService {
 
 **限流与熔断的关系：**
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                   流量保护层次                            │
 │                                                         │
@@ -734,7 +734,7 @@ java.security.Security.setProperty("networkaddress.cache.negative.ttl", "10");
 
 一个完善的网络监控应覆盖以下指标：
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                 网络监控指标体系                          │
 │                                                         │

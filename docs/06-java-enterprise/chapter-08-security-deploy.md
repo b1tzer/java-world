@@ -24,7 +24,7 @@
 
 JWT 是目前微服务架构中最常用的身份认证方案，它由三部分组成：
 
-```
+```text
 eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEwMDg2LCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3MDUzMDAwMDB9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
 │       Header（算法）          │              Payload（声明）                    │            Signature（签名）               │
 ```
@@ -83,7 +83,7 @@ OAuth 2.0 是一个授权框架，定义了四种授权模式：
 
 授权码模式的完整流程：
 
-```
+```text
 ① 用户点击"微信登录"
         │
         ▼
@@ -112,7 +112,7 @@ OAuth 2.0 是一个授权框架，定义了四种授权模式：
 
 Spring Security 的本质是一条 **Servlet Filter Chain**（过滤器链），每个请求都要经过这条链的处理：
 
-```
+```text
 HTTP Request
     │
     ▼
@@ -139,7 +139,7 @@ HTTP Request
 
 一次登录认证的完整流程涉及多个组件的协作：
 
-```
+```text
 用户提交用户名/密码
         │
         ▼
@@ -249,7 +249,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 RBAC（Role-Based Access Control，基于角色的访问控制）是企业应用中最广泛使用的权限模型：
 
-```
+```text
 ┌────────┐     M:N      ┌────────┐     M:N      ┌────────────┐
 │  用户   │ ◀──────────▶ │  角色   │ ◀──────────▶ │  权限/资源  │
 │ (User) │              │ (Role) │              │(Permission)│
@@ -599,7 +599,7 @@ docker run -d \
 
 多阶段构建（Multi-stage Build）将"编译"和"运行"分离：
 
-```
+```text
 构建阶段（builder）          运行阶段（runtime）
 ┌─────────────────────┐     ┌─────────────────────┐
 │ JDK 17 (~300MB)     │     │ JRE 17 (~180MB)     │
@@ -746,7 +746,7 @@ data:
 
 企业应用通常需要在多个环境（开发、测试、预发布、生产）中运行，每个环境的数据库地址、缓存配置、日志级别都不同。Spring Boot 通过 `spring.profiles.active` 机制解决这个问题：
 
-```
+```text
 src/main/resources/
 ├── application.yml              # 公共配置（所有环境共享）
 ├── application-dev.yml          # 开发环境
@@ -838,7 +838,7 @@ env:
 
 Spring Boot 的配置优先级从高到低：
 
-```
+```text
 命令行参数 > java:comp/env > 系统属性 > 系统环境变量
 > application-{profile}.yml > application.yml > @PropertySource
 > 默认属性（SpringApplication.setDefaultProperties）

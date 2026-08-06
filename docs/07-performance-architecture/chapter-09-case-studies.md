@@ -17,7 +17,7 @@
 
 ### 9.1.2 整体架构
 
-```
+```text
                         ┌─────────────┐
                         │   CDN/Nginx  │ ← 静态资源缓存
                         └──────┬──────┘
@@ -184,7 +184,7 @@ Redis Lua 脚本的吞吐量是数据库乐观锁的 100 倍以上。但代价�
 
 ### 9.1.5 防超卖的三重保障
 
-```
+```text
          Redis 预减（第一道）
               │ 扣减成功
               ▼
@@ -215,7 +215,7 @@ Redis Lua 脚本的吞吐量是数据库乐观锁的 100 倍以上。但代价�
 | 存储 | 大（粉丝数 × 消息数） | 小（只存原始消息） | 中等 |
 | 适用 | 粉丝少的普通用户 | 粉丝多的大V | 混合场景 |
 
-```
+```text
 推模型：
   用户A 发布 → 写入粉丝B的收件箱
             → 写入粉丝C的收件箱
@@ -275,7 +275,7 @@ public List<Feed> getTimeline(String userId, int page) {
 
 大V 发布的内容被海量用户读取，需要特殊处理：
 
-```
+```text
 普通 Feed：Redis 缓存 1 小时
 热点 Feed：本地缓存（Caffeine）+ Redis + DB 三级
           Caffeine 10s → Redis 1h → DB
@@ -303,7 +303,7 @@ public Feed getFeedWithHotDetection(String feedId) {
 
 ### 9.2.5 分片与冷热分离
 
-```
+```text
 按 user_id 分片：
   ┌───────────────────┐  ┌───────────────────┐
   │  Shard 0           │  │  Shard 1           │
@@ -352,7 +352,7 @@ public Feed getFeedWithHotDetection(String feedId) {
 
 TCC（Try-Confirm-Cancel）是分布式事务的常用方案：
 
-```
+```text
 TCC 流程：
 
   业务服务           账户服务           库存服务
@@ -482,7 +482,7 @@ public class IdempotentAspect {
 
 对账是支付系统的最后防线，确保内部账目和外部渠道（银行、支付宝、微信）一致：
 
-```
+```text
 对账流程：
 
   T+1 凌晨 2:00
@@ -602,7 +602,7 @@ public class PaymentSigner {
 
 ### 七卷闭环
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    Java 技术体系全景                          │
 │                                                              │
@@ -638,7 +638,7 @@ public class PaymentSigner {
 
 ### 技术演进的路线图
 
-```
+```text
 初级工程师：
   写出能跑的代码 ──→ 第一卷
       │

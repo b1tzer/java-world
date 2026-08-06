@@ -16,7 +16,7 @@ Java 不像 C/C++ 那样直接编译成机器码，而是编译成一种中间�
 
 **3. 语言生态统一。** Kotlin、Scala、Groovy 等语言都编译到同一套字节码格式。它们共享 JVM 生态——同一个库，Java 写的可以被 Kotlin 调用，Scala 写的可以被 Java 调用。
 
-```
+```text
 C/C++：  Source → Machine Code → 只能在特定平台
 Java：   Source → Bytecode → JVM → Machine Code → 任何平台
 Kotlin： Source → Bytecode → JVM → Machine Code → 任何平台
@@ -30,7 +30,7 @@ Kotlin： Source → Bytecode → JVM → Machine Code → 任何平台
 
 一个 `.class` 文件的结构：
 
-```
+```text
 ClassFile {
     u4             magic;              // 魔数：0xCAFEBABE
     u2             minor_version;
@@ -70,7 +70,7 @@ ClassFile {
 
 每个方法包含：访问标志、方法名、描述符、属性表。方法的**字节码指令**存储在 `Code` 属性中：
 
-```
+```text
 method_info {
     access_flags
     name_index          → 常量池中的方法名
@@ -176,7 +176,7 @@ public void process(List<Integer> list) { }  // 编译报错！
 
 编译后，两个方法的描述符完全相同：`(Ljava/util/List;)V`。`Signature` 属性中保留了泛型信息供反射使用，但方法体中的类型检查是通过编译器插入的 `checkcast` 指令实现的：
 
-```
+```text
 // List<String>.get(0) 编译后
 invokeinterface List.get:(I)Ljava/lang/Object;
 checkcast java/lang/String    // 编译器插入的类型检查
@@ -217,7 +217,7 @@ try (InputStream in = new FileInputStream(f)) {
 
 `.class` 文件不会自动进入 JVM，需要由 ClassLoader 加载。类的生命周期分为七个阶段：
 
-```
+```text
 加载（Loading）
   → 验证（Verification）
   → 准备（Preparation）
@@ -243,7 +243,7 @@ try (InputStream in = new FileInputStream(f)) {
 
 表格中"符号引用 → 直接引用"是最抽象的一行，用一个例子说清楚：
 
-```
+```text
 // 编译时：常量池中存储的是符号引用（字符串描述）
 CONSTANT_Methodref #15 = #16.#17
   #16 = java/io/PrintStream          // 类名
@@ -283,7 +283,7 @@ User[] arr = new User[10];    // 创建数组，不触发数组元素类的初�
 
 ### ClassLoader 的层次结构
 
-```
+```text
 Bootstrap ClassLoader（引导类加载器）
   └─ 加载 rt.jar（java.lang.String、java.util.List 等核心类）
   └─ C++ 实现，JVM 内置
@@ -303,7 +303,7 @@ Application ClassLoader（应用类加载器）
 
 当一个 ClassLoader 收到加载请求时，它不会自己先加载，而是**先委托给父加载器**。只有父加载器无法加载时，才自己尝试。
 
-```
+```text
 Application ClassLoader 收到请求"加载 java.lang.String"
   → 委托给 Platform ClassLoader
     → 委托给 Bootstrap ClassLoader
@@ -369,7 +369,7 @@ Tomcat 需要在同一个 JVM 中运行多个 Web 应用，每个应用可能依
 
 解决方案：每个 Web 应用使用独立的 `WebAppClassLoader`，加载顺序与标准双亲委派**相反**：
 
-```
+```text
 WebAppClassLoader 加载顺序：
   1. 自己的 /WEB-INF/classes 和 /WEB-INF/lib（优先自己）
   2. 找不到才委托给父加载器
@@ -383,7 +383,7 @@ WebAppClassLoader 加载顺序：
 
 OSGi 实现了模块化系统，每个 Bundle（模块）有独立的 ClassLoader。与 Tomcat 的树状结构不同，OSGi 的 ClassLoader 之间是**网状委托关系**：
 
-```
+```text
 Bundle A 的 ClassLoader
   ├─ import: org.slf4j（委托给 Bundle B）
   ├─ import: com.google.gson（委托给 Bundle C）
@@ -445,7 +445,7 @@ public class Hello {
 
 `javap -c` 输出：
 
-```
+```text
 public int add(int, int);
   Code:
      0: iload_1      // 加载局部变量 1（参数 a）到操作数栈

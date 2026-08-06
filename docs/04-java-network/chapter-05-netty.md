@@ -18,7 +18,7 @@ Java NIO（`java.nio` 包）在 JDK 1.4 引入，提供了 Channel、Selector、
 
 Netty 是一个 **异步事件驱动的网络应用框架**，它在 NIO 之上构建了一层更高阶的抽象：
 
-```
+```text
 ┌─────────────────────────────────────┐
 │         业务应用 (你的代码)           │
 ├─────────────────────────────────────┤
@@ -56,7 +56,7 @@ Netty 是 Java 生态中事实标准的网络框架：
 
 Netty 的架构由五个核心组件构成，它们之间的关系可以用以下调用链概括：
 
-```
+```text
 Bootstrap
   └─ EventLoopGroup (bossGroup, workerGroup)
        └─ EventLoop (每个线程一个)
@@ -131,7 +131,7 @@ channel.alloc()           // 获取 ByteBuf 分配器
 
 EventLoop 是 Netty 的核心线程模型，**一个 EventLoop 绑定一个线程**，负责处理其上所有 Channel 的 I/O 事件。这是 Netty 保证线程安全的关键设计：
 
-```
+```text
 EventLoop-1 (Thread-1)
   ├── Channel-A (read, write)
   ├── Channel-B (read, write)
@@ -153,7 +153,7 @@ EventLoop-3 (Thread-3)
 
 ### 5.3.2 EventLoop 生命周期
 
-```
+```text
 ┌───────────┐
 │  启动      │
 └─────┬─────┘
@@ -201,7 +201,7 @@ EventLoopGroup group = new NioEventLoopGroup(4);
 
 每个 Channel 拥有一个 Pipeline，Pipeline 内部是一条 **双向链表**，由 Handler 节点组成：
 
-```
+```text
   Head → [Handler A] → [Handler B] → [Handler C] → Tail
   │        Inbound      Inbound       Outbound        │
   │        ──────────→  ──────────→   ←──────────     │
@@ -224,7 +224,7 @@ EventLoopGroup group = new NioEventLoopGroup(4);
 
 以一个典型的编解码链为例：
 
-```
+```text
 Pipeline:
   [HttpDecoder]         → Inbound: 将字节解码为 HttpRequest
   [HttpAggregator]      → Inbound: 聚合完整请求体
@@ -233,7 +233,8 @@ Pipeline:
 ```
 
 数据流入（读取）过程：
-```
+
+```text
 Socket 读取字节
   → HttpDecoder.channelRead()   // 字节 → HttpRequest
   → HttpAggregator.channelRead() // 分片 → 完整请求
@@ -241,7 +242,8 @@ Socket 读取字节
 ```
 
 数据流出（写入）过程：
-```
+
+```text
 BusinessHandler.write(response)
   → HttpEncoder.write()          // HttpResponse → 字节
   → Socket 写出字节
@@ -280,7 +282,7 @@ JDK 原生的 `ByteBuffer` 存在以下问题：
 
 Netty 的 `ByteBuf` 采用 **读写分离的双指针设计**，彻底消除了 `flip()` 的困扰：
 
-```
+```text
 +-------------------+------------------+------------------+
 | discardable bytes |  readable bytes  |  writable bytes  |
 |    (已读/可丢弃)   |   (可读数据)      |   (可写空间)      |
@@ -353,7 +355,7 @@ buf.release(); // 引用计数 -1 → 0，内存释放
 
 TCP 是 **字节流协议**，没有消息边界。发送端写入的两条消息 `Hello` 和 `World`，接收端可能一次读到 `HelloWorld`，也可能分两次读到 `Hel` 和 `loWorld`。这就是 **TCP 粘包/拆包** 问题。
 
-```
+```text
 发送端:                          接收端可能收到:
   write("Hello")                 情况1: "HelloWorld"     (粘包)
   write("World")                 情况2: "Hel" + "loWorld" (拆包)
@@ -371,7 +373,7 @@ Netty 提供了多种 Frame Decoder（帧解码器）来解决这个问题。
 pipeline.addLast(new FixedLengthFrameDecoder(10));
 ```
 
-```
+```text
 原始字节流: [Hello_____][World_____][12345_____]
 解码结果:   "Hello"     "World"     "12345"
 ```
@@ -388,7 +390,7 @@ pipeline.addLast(new DelimiterBasedFrameDecoder(8192,
     Delimiters.lineDelimiter()));
 ```
 
-```
+```text
 原始字节流: "Hello\r\nWorld\r\n"
 解码结果:   "Hello"  "World"
 ```
@@ -405,7 +407,7 @@ pipeline.addLast(new DelimiterBasedFrameDecoder(8192,
 pipeline.addLast(new LengthFieldBasedFrameDecoder(1024, 0, 4, 0, 4));
 ```
 
-```
+```text
 原始数据:
 +--------+------------------+
 | Length  |     Payload      |
@@ -460,7 +462,7 @@ Reactor 模式是高性能网络服务器的经典架构，核心思想是 **一
 
 三种典型的 Reactor 变体：
 
-```
+```text
 单 Reactor 单线程:
   ┌──────────────────┐
   │  Reactor Thread   │
@@ -497,7 +499,7 @@ Reactor 模式是高性能网络服务器的经典架构，核心思想是 **一
 
 Netty 默认采用 **主从 Reactor** 模型：
 
-```
+```text
                         ┌─────────────────────────────────────┐
                         │         ServerBootstrap              │
                         └──────────────┬──────────────────────┘
@@ -525,7 +527,7 @@ Netty 默认采用 **主从 Reactor** 模型：
 
 以客户端发送一个 HTTP 请求为例，完整的数据流经过程：
 
-```
+```text
 1. 客户端发起 TCP 连接
    ↓
 2. OS 内核完成三次握手，连接进入 accept 队列

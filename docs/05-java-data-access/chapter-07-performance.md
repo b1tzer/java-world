@@ -8,7 +8,7 @@
 
 每次执行 SQL 之前，如果都要经历一次完整的连接建立过程，代价是这样的：
 
-```
+```text
 客户端                           数据库服务器
   |                                |
   |------ TCP 三次握手 ----------->|  ~1-5ms（同机房）
@@ -45,7 +45,7 @@ HikariCP 是 Spring Boot 2.x 起的默认连接池，以极致的性能和简洁
 
 **关键原则**：连接池不是越大越好。每个连接都会占用数据库的内存和线程资源。一个 100 连接的池，对数据库来说是 100 个并发工作线程——如果数据库 CPU 已经打满，再多连接只是让排队更长。
 
-```
+```text
                 应用连接池                    数据库
          ┌─────────────────┐           ┌──────────────┐
          │ ● ● ● ● ● ● ● ●│  连接 1~N │  Worker 线程  │
@@ -103,7 +103,7 @@ for (User user : userList) {
 }
 ```
 
-```
+```text
 时间轴（每次 insert ~5ms 网络 + ~2ms 事务）：
 
 请求1  ████▓▓  请求2  ████▓▓  请求3  ████▓▓  ...  请求N  ████▓▓
@@ -148,7 +148,7 @@ public void batchInsert(List<User> users) throws SQLException {
 }
 ```
 
-```
+```text
 时间轴（批量模式）：
 
 ┌──────────────────────────────────────┐
@@ -221,7 +221,7 @@ try (SqlSession session = sqlSessionFactory.openSession(ExecutorType.BATCH, fals
 
 一次数据访问请求的完整链路：
 
-```
+```text
 浏览器/客户端
     │
     ▼
@@ -342,7 +342,7 @@ ORDER BY create_time DESC;
 
 **排查步骤**：
 
-```
+```text
 1. 检查连接池状态
    active = maximumPoolSize  → 池已满
    waiting > 0               → 有线程在排队
@@ -384,7 +384,7 @@ public void goodExample() {
 
 **死锁的典型场景**：
 
-```
+```text
 事务 A                          事务 B
 ─────                          ─────
 UPDATE account SET              UPDATE account SET
@@ -495,7 +495,7 @@ public void updateUser(User user) {
 - **连接池指标**：确认池大小是否合理
 - **接口 RT 分布**：发现性能拐点
 
-```
+```text
 优化飞轮：
 
   监控 → 发现瓶颈 → 分析原因 → 优化 → 验证效果 → 监控

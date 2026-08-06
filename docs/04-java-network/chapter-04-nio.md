@@ -10,7 +10,7 @@
 
 上一章我们看到，BIO 的本质问题是：**线程被阻塞在 `read()` 上，即使没有数据到来也不释放。**
 
-```
+```text
 BIO 时间线（单个连接）:
 ├── read 阻塞等待 200ms ──────────────────┤── 处理 5ms ──┤── read 阻塞等待 500ms ──┤
 │◄────────── 线程被白白占用 ──────────────►│              │◄──── 又白等 ────────────►│
@@ -20,7 +20,7 @@ BIO 时间线（单个连接）:
 
 NIO 换了一个思路：**不问"有没有数据"，而是让操作系统在"有数据可读"时通知我。**
 
-```
+```text
 BIO:  线程 → read() → 阻塞等数据 → 数据到了 → 处理 → read() → 阻塞等 ...
 NIO:  线程 → 注册关心 READ 事件 → 做其他事 → Selector 通知"可读" → 处理 → 继续等通知
 ```
@@ -36,7 +36,7 @@ NIO:  线程 → 注册关心 READ 事件 → 做其他事 → Selector 通知"�
 
 ### 4.1.3 NIO 的三大核心组件
 
-```
+```text
 ┌──────────────────────────────────────────────────┐
 │                   NIO 模型                        │
 │                                                  │
@@ -113,7 +113,7 @@ SocketChannel sc = ssc.accept(); // 非阻塞，无连接时返回 null（而非
 
 在 BIO 中，`read(byte[] buf)` 直接把数据读到字节数组里。NIO 的 Channel 不能直接读写字节，**所有数据必须先经过 Buffer**。
 
-```
+```text
 BIO:   Stream  ──read──►  byte[]
 NIO:   Channel ──read──►  Buffer ──get()──►  byte[]
 ```
@@ -122,7 +122,7 @@ NIO:   Channel ──read──►  Buffer ──get()──►  byte[]
 
 每个 Buffer 内部维护三个关键指针：
 
-```
+```text
 Buffer 内存布局:
 ┌───┬───┬───┬───┬───┬───┬───┬───┐
 │ 0 │ 1 │ 2 │ 3 │ 4 │ 5 │ 6 │ 7 │   capacity = 8
@@ -164,7 +164,7 @@ buffer.clear();            // position = 0; limit = capacity
 buffer.compact();          // 把 [position, limit) 的数据复制到开头，position = 剩余数据量
 ```
 
-```
+```text
 put() 写入 3 字节后:
 ┌───┬───┬───┬───┬───┬───┬───┬───┐
 │ A │ B │ C │   │   │   │   │   │  pos=3, limit=8
@@ -217,7 +217,7 @@ LongBuffer longBuf = LongBuffer.allocate(32);
 
 传统 I/O 的一个痛点是数据拷贝次数太多。以"从文件读取数据发送到网络"为例：
 
-```
+```text
 传统 I/O（4 次拷贝 + 4 次上下文切换）：
   磁盘 → 内核缓冲区 → 用户缓冲区 → Socket 缓冲区 → 网卡
          read()         用户态        write()
@@ -261,7 +261,7 @@ Kafka 的高吞吐很大程度上归功于零拷贝——消费者拉取消息�
 
 `ByteBuffer.allocateDirect()` 分配的堆外内存也和零拷贝有关。普通堆内存（`allocate()`）在 I/O 操作时，JVM 需要先将数据从堆拷贝到临时的直接内存（因为操作系统不能直接访问 Java 堆）。`allocateDirect()` 跳过了这一步。
 
-```
+```text
 allocate()：       堆内存 → 临时直接内存 → 内核缓冲区 → 网卡
 allocateDirect()： 直接内存 → 内核缓冲区 → 网卡
 ```
@@ -276,7 +276,7 @@ allocateDirect()： 直接内存 → 内核缓冲区 → 网卡
 
 **Selector（选择器）** 是 NIO 实现高并发的核心。它的作用是：**让一个线程同时监听多个 Channel 的 I/O 事件。**
 
-```
+```text
                     ┌───────────────────┐
                     │    Selector 线程   │
                     │   (单个 Event Loop) │
@@ -372,7 +372,7 @@ ClientState state = (ClientState) key.attachment();
 
 ### 4.7.2 单线程 Reactor
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                     Reactor Thread                           │
 │                                                             │
@@ -443,7 +443,7 @@ public class NioEchoServer {
 
 解决方案：将 Handler 的执行交给 Worker 线程池。
 
-```
+```text
 ┌─────────────────────────────────────┐
 │         Main Reactor Thread         │
 │                                     │
@@ -467,7 +467,7 @@ public class NioEchoServer {
 
 大型框架（如 Netty）采用的模式：
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
 │  ┌──────────────┐         ┌──────────────────────────────┐ │
@@ -494,7 +494,7 @@ public class NioEchoServer {
 
 用原生 NIO 写一个生产级的网络服务器，需要处理：
 
-```
+```text
 手动管理的事项清单:
 ├── Buffer 的 flip / clear / compact 切换（极易出错）
 ├── 半包 / 粘包问题（TCP 是字节流，没有消息边界）
@@ -560,7 +560,7 @@ while (true) {
 
 正是因为原生 NIO 的这些问题，社区才催生了 **Netty**：
 
-```
+```text
 原生 NIO 的痛点              Netty 的解决方案
 ─────────────────           ─────────────────
 Buffer 操作复杂        ──►  ByteBuf（更友好的 API，自动扩容）

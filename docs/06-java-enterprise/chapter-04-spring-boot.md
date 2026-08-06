@@ -114,7 +114,7 @@ public @interface SpringBootApplication { ... }
 
 Spring Boot 2.7+ 使用新的加载机制，整个流程如下：
 
-```
+```text
 启动 SpringApplication
     │
     ▼
@@ -171,7 +171,7 @@ Spring Boot 提供了一整套 `@Conditional` 注解，构成自动配置的"开
 
 ### 4.2.4 自动配置的核心流程图
 
-```
+```text
 @SpringBootApplication
         │
         ├── @ComponentScan ──→ 扫描开发者写的 @Component/@Service/@Controller
@@ -263,7 +263,7 @@ Spring Boot 就会自动：
 
 ### 4.3.3 Starter 的类型
 
-```
+```text
 spring-boot-starter-*
 │
 ├── 官方 Starter（由 Spring 团队维护）
@@ -289,7 +289,7 @@ spring-boot-starter-*
 
 创建一个自定义 Starter 需要两个模块：
 
-```
+```text
 my-spring-boot-starter（Starter 模块 - 纯依赖聚合）
 └── pom.xml
         └── 引入 my-spring-boot-autoconfigure
@@ -326,7 +326,7 @@ public class MyServiceAutoConfiguration {
 
 注册到 `AutoConfiguration.imports`：
 
-```
+```text
 # META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
 com.example.autoconfigure.MyServiceAutoConfiguration
 ```
@@ -349,7 +349,7 @@ com.example.autoconfigure.MyServiceAutoConfiguration
 
 Spring Boot 支持多种配置源，按优先级从高到低排列：
 
-```
+```text
 优先级（高 → 低）
 │
 ├── 1. 命令行参数        --server.port=9090
@@ -484,7 +484,7 @@ myapp:
 
 Profile 是 Spring Boot 实现多环境隔离的核心机制：
 
-```
+```text
 src/main/resources/
 ├── application.yml              # 公共配置
 ├── application-dev.yml          # 开发环境
@@ -578,7 +578,7 @@ public class DataSourceConfig {
 
 ### 4.4.5 配置体系全景图
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                    Spring Boot 配置体系                    │
 ├─────────────────────────────────────────────────────────┤

@@ -12,7 +12,7 @@ User user = new User();
 
 JVM 执行的操作：
 
-```
+```text
 1. 检查 User 类是否已加载
    └─ 没有？先执行类加载（第一章）
 
@@ -39,7 +39,7 @@ JVM 执行的操作：
 
 HotSpot JVM 中，一个 Java 对象在堆中的结构：
 
-```
+```text
 ┌──────────────────┐
 │     对象头        │
 │  ├─ Mark Word     │  8 字节（64 位 JVM）
@@ -73,7 +73,7 @@ Mark Word 不是固定不变的。当对象被同步操作时，Mark Word 的内
 
 64 位 JVM 中 Mark Word 的位布局：
 
-```
+```text
 64 位 Mark Word（共 64 bit）:
 ┌───────────────────────────────────────────────────────────────┐
 │  unused:25 │ hash:31 │ age:4 │ biased_lock:1 │ lock:2        │
@@ -100,7 +100,7 @@ hash: 对象的 hashCode (首次调用 hashCode() 时计算并存储)
 
 这是第三卷 `synchronized` 锁升级机制的关键前置知识。锁升级的过程就是 Mark Word 内容不断变化的过程：
 
-```
+```text
 无锁 → 偏向锁（同一线程反复获取）
      → 轻量级锁（CAS 竞争失败但自旋可期）
      → 重量级锁（自旋超时，依赖 OS Mutex）
@@ -110,7 +110,7 @@ hash: 对象的 hashCode (首次调用 hashCode() 时计算并存储)
 
 当锁升级到重量级锁时，Mark Word 中存储的是指向 **Monitor** 对象的指针。Monitor 是 JVM 实现互斥同步的底层数据结构，每个 Java 对象都可以关联一个 Monitor：
 
-```
+```text
 ┌─────────────────────────────────┐
 │          Object Monitor         │
 │                                 │
@@ -132,7 +132,7 @@ hash: 对象的 hashCode (首次调用 hashCode() 时计算并存储)
 
 很多人觉得 `wait/notify` 就是“等一下”和“醒一醒”。没那么简单。它们是 Monitor 机制的一部分，操作路径比大多数人想的要复杂——线程从 `wait()` 到真正重新执行，中间要经过三个队列的转换。
 
-```
+```text
 线程 A 调用 obj.wait():
   1. 线程 A 必须是 obj 的 Monitor 的 _owner（必须持有锁）
   2. 线程 A 释放 Monitor（_owner = null, _count = 0）
@@ -171,7 +171,7 @@ Monitor 是重量级的数据结构，依赖操作系统的 Mutex 实现。这�
 - TLAB 内分配只需要移动指针，**无需 CAS**
 - TLAB 用完才需要同步申请新缓冲区
 
-```
+```text
 Eden 区
 ├── TLAB for Thread A  [已用: 3KB / 总共: 8KB]
 ├── TLAB for Thread B  [已用: 1KB / 总共: 8KB]

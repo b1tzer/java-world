@@ -19,7 +19,7 @@
 
 ### 一个请求的资源消耗链路
 
-```
+```text
 客户端请求
     │
     ▼
@@ -80,7 +80,7 @@ public Mono<Order> getOrder(@PathVariable Long id) {
 
 ### 核心经验公式
 
-```
+```text
 并发线程数 = QPS × RT（秒）
 ```
 
@@ -91,7 +91,7 @@ public Mono<Order> getOrder(@PathVariable Long id) {
 
 **实际应用**：
 
-```
+```text
 场景：某电商秒杀活动预估
 
 秒杀开始瞬间峰值 QPS = 50,000
@@ -107,7 +107,7 @@ public Mono<Order> getOrder(@PathVariable Long id) {
 
 ### 容量规划公式
 
-```
+```text
 所需机器数 = 峰值 QPS / 单机 QPS 承载能力
 
 单机 QPS = 并发线程数 / 平均 RT(秒)
@@ -146,7 +146,7 @@ public Mono<Order> getOrder(@PathVariable Long id) {
 | 容错 | 单点故障 | 任意一台挂不影响整体 |
 | 推荐 | 早期、数据库层 | 应用层、缓存层 |
 
-```
+```text
 垂直扩展                          水平扩展
 
   ┌─────────────┐              ┌───────┐ ┌───────┐ ┌───────┐
@@ -247,7 +247,7 @@ public class OrderController {
 
 ### 全链路架构
 
-```
+```text
 用户请求
     │
     ▼
@@ -444,7 +444,7 @@ public class OrderQueryService {
 
 秒杀是高并发的极端场景，需要全链路协同：
 
-```
+```text
                     ┌─────────────────────────────┐
                     │        用户浏览器/APP         │
                     │   前端静态化 + 按钮防重复点击    │

@@ -24,7 +24,7 @@ CAP 定理由 Eric Brewer 于 2000 年提出，2002 年被 Seth Gilbert 和 Nanc
 
 所谓的"三选二"实际上变成了"在 P 的前提下，C 和 A 二选一"：
 
-```
+```text
          C (一致性)
         / \
        /   \
@@ -65,7 +65,7 @@ try {
 
 CAP 只讨论了分区发生时的选择，但**没有网络分区时**也存在权衡。PACELC 模型补充了这一点：
 
-```
+```text
 如果 Partition (P):
     选择 Availability (A) 或 Consistency (C)
 Else (正常运行):
@@ -86,7 +86,7 @@ Else (正常运行):
 
 一致性不是一个非黑即白的概念，而是一个从强到弱的光谱：
 
-```
+```text
 强一致 ──────────────────────────────────────── 弱一致
   │                                                │
   │   线性一致   顺序一致   因果一致   最终一致   无保证  │
@@ -154,7 +154,7 @@ public String readWithVersion(String key, long expectedVersion) {
 
 当一个业务操作跨多个服务、多个数据库时，本地事务无法保证原子性：
 
-```
+```text
 用户下单：
   1. 订单服务 → 创建订单（订单库）
   2. 库存服务 → 扣减库存（库存库）
@@ -165,7 +165,7 @@ public String readWithVersion(String key, long expectedVersion) {
 
 ### 5.3.2 两阶段提交（2PC）
 
-```
+```text
 阶段1：准备（Prepare）          阶段2：提交（Commit/Rollback）
 
   ┌──────────┐                   ┌──────────┐
@@ -269,7 +269,7 @@ public class OrderTccService {
 
 Saga 将长事务拆成一系列本地事务，每个事务有对应的补偿操作：
 
-```
+```text
 正向流程：T1 → T2 → T3 → T4（成功）
 补偿流程：T1 → T2 → T3(失败) → C2 → C1（回滚）
 
@@ -335,7 +335,7 @@ public class OrderSaga {
 
 在单机环境下，Java 的 `synchronized` 或 `ReentrantLock` 就能解决并发问题。但在分布式系统中，多个 JVM 进程运行在不同机器上，JVM 级别的锁失效了：
 
-```
+```text
   JVM-1 (机器A)              JVM-2 (机器B)
   ┌─────────────┐           ┌─────────────┐
   │ synchronized│           │ synchronized│
@@ -425,7 +425,7 @@ public class InventoryService {
 }
 ```
 
-```
+```text
 看门狗续期机制：
 
   线程 A 获取锁（过期时间 30s）
@@ -473,7 +473,7 @@ public class OrderService {
 }
 ```
 
-```
+```text
 ZooKeeper 锁原理（临时顺序节点）：
 
   /locks/create-order/

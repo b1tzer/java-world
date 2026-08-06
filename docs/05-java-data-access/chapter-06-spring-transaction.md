@@ -48,7 +48,7 @@ Spring 并没有"消灭"事务管理，而是把它搬到了方法的外面—�
 
 整个过程可以用以下流程来描述：
 
-```
+```text
 客户端调用 createOrder()
         │
         ▼
@@ -154,7 +154,7 @@ public class AuditLogService {
 
 执行流程：
 
-```
+```text
 OrderService.createOrder()  ← 开启事务 T1
     │
     ├─ orderDao.insert()    ← 在 T1 中执行
@@ -402,7 +402,7 @@ public class ReportService {
 
 **根因：** Spring 事务的核心存储是 `TransactionSynchronizationManager`，它内部使用 `ThreadLocal` 保存当前线程的数据库连接和事务状态。新线程 = 新 `ThreadLocal` = 空白的事务上下文。
 
-```
+```text
 Thread-1 (主线程)                Thread-2 (子线程)
 ┌─────────────────┐             ┌─────────────────┐
 │ ThreadLocal:    │             │ ThreadLocal:    │
@@ -513,7 +513,7 @@ public class AdvancedTransferService {
 
 理解 Spring 事务，本质上就是在理解 AOP（面向切面编程）。`@Transactional` 是 Spring AOP 最典型的应用之一：
 
-```
+```text
                     ┌────────────────────────────┐
                     │     @Transactional         │  ← 注解（元数据）
                     └────────────┬───────────────┘
@@ -588,7 +588,7 @@ public class OrderService {
 
 事务管理只是 AOP 能力的一个切面。在第六卷中，你会看到 AOP 的更多应用：
 
-```
+```text
 Spring AOP 应用全景
 ├── 事务管理 (@Transactional)       ← 本章
 ├── 日志记录 (自定义 @Log)

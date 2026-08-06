@@ -146,7 +146,7 @@ if (method.isAnnotationPresent(Retryable.class)) {
 
 RUNTIME 注解（如 Spring 的 `@Component`）在运行时通过反射读取。但还有一类强大的机制——**编译期注解处理（Annotation Processing Tool, APT）**，它在编译阶段就根据注解生成新的源代码。
 
-```
+```text
 Java Source → Annotation Processor → 生成新的 Java Source → 编译
 ```
 
@@ -217,7 +217,7 @@ public class OrderService {
 
 Spring 启动时的处理流程：
 
-```
+```text
 1. 扫描 classpath 下的所有类
 2. 检查每个类是否有 @Service / @Component / @Repository 等注解
 3. 有？读取注解信息，创建 BeanDefinition
@@ -462,7 +462,7 @@ Lambda 不是匿名内部类的语法糖——它们的编译产物完全不同�
 
 Lambda 表达式编译后，生成的是一条 `invokedynamic` 指令：
 
-```
+```text
 源码：x -> x + 1
         ↓
   invokedynamic #0, LambdaMetafactory
@@ -470,7 +470,7 @@ Lambda 表达式编译后，生成的是一条 `invokedynamic` 指令：
 
 ### invokedynamic 的工作流程
 
-```
+```text
 1. 第一次执行时，JVM 调用 Bootstrap Method（LambdaMetafactory）
 2. LambdaMetafactory 在运行时生成一个实现类
 3. 后续执行直接调用这个实现类

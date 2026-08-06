@@ -8,7 +8,7 @@
 
 以电商下单为例，用户的 `POST /orders` 请求在同步模型中可能经历如下链路：
 
-```
+```text
 客户端 → API Gateway → 订单服务 → 库存服务 → 支付服务 → 通知服务 → 返回
          ~5ms          ~20ms      ~30ms      ~50ms      ~100ms
 ```
@@ -27,7 +27,7 @@
 
 假设每个服务的可用性是 99.9%（三个 9），一条同步链路串联 5 个服务：
 
-```
+```text
 整体可用性 = 99.9% × 99.9% × 99.9% × 99.9% × 99.9%
            = 99.9%^5
            ≈ 99.5%
@@ -36,7 +36,7 @@
 
 如果用消息异步解耦，每个环节独立：
 
-```
+```text
 任一环节失败 → 消息进入重试队列 → 稍后重试
 整体可用性取决于最核心的一环（如数据库），而非全链路
 ```
@@ -94,7 +94,7 @@ return order;  // 立即响应客户端
 
 ### 7.2.2 事件驱动的架构模式
 
-```
+```text
 ┌─────────────┐     Event Bus      ┌──────────────────┐
 │  订单服务    │ ──OrderCreated──→  │  库存消费者       │
 │  (Producer)  │                    │  支付消费者       │
@@ -114,7 +114,7 @@ return order;  // 立即响应客户端
 3. **识别聚合根**：黄色便签纸写处理命令的实体（`Order`）
 4. **识别策略**：紫色便签纸写响应事件的自动化流程
 
-```
+```text
 [PlaceOrder] → (Order) → [OrderCreated] → 策略: 扣减库存
                                           → 策略: 创建支付单
                                           → 策略: 发送通知
@@ -124,7 +124,7 @@ return order;  // 立即响应客户端
 
 事件溯源是一种更极端的事件驱动模式：**不存储当前状态，只存储状态变更的事件序列。**
 
-```
+```text
 传统模式：
   数据库记录：{ orderId: 1, status: 'PAID', amount: 100 }
   → 每次状态变更直接 UPDATE
@@ -173,7 +173,7 @@ public class OrderAggregate {
 
 CQRS（Command Query Responsibility Segregation）将写模型和读模型分开：
 
-```
+```text
 写侧（Command）          读侧（Query）
 ┌──────────────┐        ┌──────────────┐
 │  命令处理器   │        │  查询处理器   │
@@ -239,7 +239,7 @@ Kafka 是一个**分布式提交日志**（Distributed Commit Log）。它的核
 - **Offset**：消息在 Partition 中的位移，消费者通过 Offset 追踪消费进度
 - **Consumer Group**：一组消费者协作消费一个 Topic，每个 Partition 只分配给组内一个消费者
 
-```
+```text
 Topic: order-events
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
 │  Partition 0    │  │  Partition 1    │  │  Partition 2    │
@@ -298,7 +298,7 @@ producer.send(new ProducerRecord<>(
 
 ### 7.4.1 消息丢失的三个环节
 
-```
+```text
 Producer ──→ Broker ──→ Consumer
   ①发送失败    ②存储丢失    ③消费丢失
 ```

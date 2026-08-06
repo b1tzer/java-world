@@ -28,7 +28,7 @@ Java 的设计者 James Gosling 和他的团队在设计 Java（最初叫 Oak）
 
 这是 Java 最重要的设计目标。解决方案是在源码和机器码之间插入一层抽象——字节码（Bytecode）和虚拟机（JVM）。源码编译成字节码，字节码在 JVM 上运行，JVM 屏蔽了底层操作系统的差异。
 
-```
+```text
 C/C++：Source → Machine Code → 只能在特定平台运行
 Java：  Source → Bytecode → JVM → 任何平台都能运行
 ```
@@ -79,7 +79,7 @@ public class Hello {
 
 这段代码从源码到 CPU 执行，经历了这些步骤：
 
-```
+```text
 Hello.java（源码）
     ↓ javac 编译
 Hello.class（字节码）
@@ -117,7 +117,7 @@ Java 的类型世界分为两大阵营：基本类型（Primitive）和引用类
 
 ### 类型体系总览
 
-```
+```text
           Type
             |
     ┌───────┴───────┐
@@ -257,7 +257,7 @@ User user = new User();
 
 很多人认为"变量 `user` 就是对象"。实际上：
 
-```
+```text
 栈（Stack）                 堆（Heap）
 ┌─────────────┐           ┌──────────────────┐
 │  user       │──────────→│  User 对象        │
@@ -368,7 +368,7 @@ NPE 是 Java 中最常见的运行时异常之一。后面的 Lambda 章节会�
 
 当你写 `new User()` 时，JVM 做了什么？
 
-```
+```text
 1. 检查 User 类是否已加载
    └─ 没有？先执行类加载（第二卷第 1 章）
 2. 在堆上分配内存
@@ -387,7 +387,7 @@ NPE 是 Java 中最常见的运行时异常之一。后面的 Lambda 章节会�
 
 HotSpot JVM 中，一个 Java 对象在堆中的结构：
 
-```
+```text
 ┌──────────────────┐
 │     对象头        │
 │  ├─ Mark Word     │  8 字节（存 hashCode、GC 年龄、锁状态）
@@ -604,7 +604,7 @@ Java 的类型系统在编译期和运行期都有检查机制，这使得很多
 
 **自动扩大（Widening）**——安全，编译器自动完成：
 
-```
+```text
 byte → short → int → long → float → double
          char →
 ```

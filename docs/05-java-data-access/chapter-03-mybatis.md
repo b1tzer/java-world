@@ -97,7 +97,7 @@ sequenceDiagram
 
 整个执行链路涉及六个核心组件，各司其职：
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                     MyBatis 核心架构                      │
 ├─────────────────────────────────────────────────────────┤
@@ -319,7 +319,7 @@ public abstract class BaseExecutor implements Executor {
 
 **二级缓存的工作机制：**
 
-```
+```text
 SqlSession A                    SqlSession B
     │                               │
     ├─ query(UserMapper.getById)    │
@@ -431,7 +431,7 @@ public class SlowSqlPlugin implements Interceptor {
 
 ### 3.5.2 四个拦截点
 
-```
+```text
                     可拦截的四个对象
     ┌──────────────────────────────────────────┐
     │                                          │
@@ -601,7 +601,7 @@ MyBatis 的动态 SQL 通过 XML 标签，根据运行时参数动态拼装 SQL 
 
 MyBatis 的动态 SQL 并非简单的字符串拼接。它使用 **OGNL 表达式引擎** 解析 `test` 条件，通过 `SqlNode` 树形结构组织 SQL 片段，最终由 `DynamicSqlSource` 在运行时生成最终的 `BoundSql`。
 
-```
+```text
 XML 解析阶段（启动时）        运行时（每次调用）
 ┌──────────────────┐       ┌──────────────────┐
 │  <select>        │       │  MixedSqlNode     │

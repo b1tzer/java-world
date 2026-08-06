@@ -63,7 +63,7 @@ public class UserService {
 | **线程安全** | SqlSession 非线程安全，需小心 | `SqlSessionTemplate` 内部线程安全 |
 | **缓存行为** | 一级缓存在 SqlSession 生命周期内有效 | 一级缓存与事务绑定（详见 5.4） |
 
-```
+```text
 独立 MyBatis 流程：
 ┌──────────┐    ┌──────────────┐    ┌───────────┐
 │ 手动读取  │───→│ 手动创建      │───→│ 手动获取   │
@@ -97,7 +97,7 @@ Spring 整合后流程：
 
 MyBatis 的 Mapper 接口没有 `@Component` 注解，Spring 默认不会扫描它们。如果不做任何配置，直接 `@Autowired UserMapper` 会报错：
 
-```
+```text
 NoSuchBeanDefinitionException: No qualifying bean of type 'UserMapper'
 ```
 
@@ -130,7 +130,7 @@ public class MyApplication {
 
 `@MapperScan` 的核心流程分为三步：
 
-```
+```text
 @MapperScan("com.example.mapper")
     │
     ▼
@@ -174,7 +174,7 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport
 
 **时序图**：
 
-```
+```text
 Spring 容器启动
     │
     ├── 1. 处理 @MapperScan
@@ -327,7 +327,7 @@ private class SqlSessionInterceptor implements InvocationHandler {
 | 生命周期管理 | ❌ 需手动 close | ✅ 自动管理（finally 中关闭） |
 | 使用方式 | 手动创建和销毁 | 注入后直接使用 |
 
-```
+```text
 DefaultSqlSession（非线程安全）：
 Thread-1 ──┐
             ├──→ [同一个 SqlSession] ──→ 数据错乱！
@@ -422,7 +422,7 @@ public class UserService {
 
 **有 `@Transactional` 时**：Spring 的事务管理器确保整个事务期间复用同一个 SqlSession：
 
-```
+```text
 没有 @Transactional：
 调用 selectById(1)
     │
@@ -460,7 +460,7 @@ public class UserService {
 
 **有事务场景**：同一事务内的操作天然具有隔离性保证，复用 SqlSession 是安全的。缓存在事务范围内有效，事务提交/回滚后 SqlSession 被关闭，缓存自然清除。
 
-```
+```text
 ┌──────────────────────────────────────────────────────────┐
 │              一级缓存在 Spring 中的行为                     │
 ├──────────────────────────────────────────────────────────┤

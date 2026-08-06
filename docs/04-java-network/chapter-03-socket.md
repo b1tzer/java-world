@@ -10,7 +10,7 @@
 
 一台计算机要和另一台计算机通信，底层需要网卡、驱动、协议栈（TCP/IP）等一系列软硬件协作。对应用程序而言，不可能直接操作网卡寄存器——操作系统需要提供一个**统一的编程抽象**，这就是 **Socket（套接字）**。
 
-```
+```text
 ┌──────────────┐
 │  Application │
 └──────┬───────┘
@@ -46,7 +46,7 @@
 
 ### 3.1.3 Socket 的生命周期
 
-```
+```text
   Server                          Client
     │                                │
     │ bind() + listen()              │
@@ -84,7 +84,7 @@ int data = in.read();  // 线程在此阻塞，直到有数据可读
 
 为了让多个客户端能同时被服务，BIO 的经典做法是：**每接受一个连接，就创建一个新线程来处理它。**
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │              Main Thread                 │
 │   serverSocket.accept()  ◄── 阻塞等待   │
@@ -130,7 +130,7 @@ void handleClient(Socket socket) {
 
 ### 3.2.3 BIO 的工作流程
 
-```
+```text
 时间轴 ──────────────────────────────────────►
 
 Thread-1: [accept]──[read 阻塞 50ms]──[write]──[read 阻塞 200ms]──[write]──[close]
@@ -164,7 +164,7 @@ Thread-3:                        [accept]──[read 阻塞 80ms]──[write]�
 
 当线程数远超 CPU 核心数时，CPU 大量时间花在"切换线程"而非"执行任务"上：
 
-```
+```text
 CPU 核心数: 8
 线程数:     5000
 
@@ -176,7 +176,7 @@ CPU 核心数: 8
 
 BIO 线程在 `read()` 阻塞期间：
 
-```
+```text
 线程状态分布（典型 Web 服务器）:
 ┌──────────────────────────────────────────────┐
 │ ████████ 10%  计算（业务逻辑）                 │
@@ -307,7 +307,7 @@ public class EchoClient {
 
 ### 3.4.3 运行效果
 
-```
+```text
 终端 1 (Server):                          终端 2 (Client):
 $ java EchoServer                         $ java EchoClient
 Echo Server started on port 8080          Connected to Echo Server

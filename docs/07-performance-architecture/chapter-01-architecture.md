@@ -38,7 +38,7 @@ Map<String, List<Order>> ordersByRegion = orders.stream()
 
 架构不是一成不变的，它随着业务规模和团队规模共同演进。以下是常见的演进路径：
 
-```
+```text
 ┌─────────┐   业务增长   ┌──────────┐   团队拆分   ┌──────────┐
 │  单体    │ ─────────→ │ 垂直拆分  │ ─────────→ │   SOA    │
 │ (All-in) │            │ (按模块)  │            │ (服务化)  │
@@ -73,7 +73,7 @@ Map<String, List<Order>> ordersByRegion = orders.stream()
 
 架构演进中最大的陷阱不是选错了某种模式，而是**时机不对**：
 
-```
+```text
         过度设计                          不足设计
   ┌─────────────────┐            ┌─────────────────┐
   │ 5 个人的团队      │            │ 日活百万的系统     │
@@ -98,7 +98,7 @@ Map<String, List<Order>> ordersByRegion = orders.stream()
 
 用人话说：**系统架构会 mirror 团队结构。**
 
-```
+```text
 3 人团队硬拆 6 个微服务：
   服务 A（无人维护）→ 版本落后 → 成为技术债
   服务 B（张三维护）→ 张三离职 → 无人能改
@@ -129,7 +129,7 @@ Map<String, List<Order>> ordersByRegion = orders.stream()
 
 ### 经典三层架构
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │         表现层 (Presentation)            │
 │   Controller / REST API / View          │
@@ -224,7 +224,7 @@ public class JpaOrderRepository implements OrderRepository {
 
 六边形架构（Hexagonal Architecture），又称 Ports & Adapters，由 Alistair Cockburn 在 2005 年提出。其核心思想是：**业务核心在中心，外部世界通过端口和适配器与业务交互**。
 
-```
+```text
          ┌─────────────────────────────────┐
          │          适配器 (Adapters)        │
          │  ┌───────┐  ┌───────┐  ┌──────┐ │
@@ -332,7 +332,7 @@ public class JpaOrderAdapter implements OrderRepository {
 
 Robert C. Martin（Uncle Bob）在 2012 年提出的 Clean Architecture，是六边形架构思想的进一步抽象。它用**同心圆**描述依赖方向：**依赖只能从外向内，永远不能从内向外**。
 
-```
+```text
             ┌─────────────────────────────────────┐
             │         Frameworks & Drivers         │
             │   (Web框架、数据库驱动、外部服务)       │
@@ -399,7 +399,7 @@ public class Order {
 
 ### 高内聚、低耦合
 
-```
+```text
     高内聚（模块内部紧密相关）         低耦合（模块之间松散依赖）
 
     ┌─────────────────┐           ┌────────┐    ┌────────┐

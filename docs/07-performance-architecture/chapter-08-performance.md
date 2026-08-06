@@ -19,7 +19,7 @@ Google 在《Site Reliability Engineering》中提出四个黄金信号，是衡
 
 平均值（Average）会掩盖长尾问题。假设 100 个请求中 99 个 10ms、1 个 5000ms，平均值 59.9ms 看起来很好，但那个 5s 的请求对用户是灾难。
 
-```
+```text
 延迟分布示例（1000 个请求）：
 
   请求数
@@ -43,7 +43,7 @@ Google 在《Site Reliability Engineering》中提出四个黄金信号，是衡
 
 一个请求的延迟不仅仅是代码执行时间：
 
-```
+```text
 总延迟 = 网络传输 + 排队等待 + 业务处理 + I/O 等待
           ~5ms      变化大      应优化      最大变量
 ```
@@ -121,7 +121,7 @@ watch com.example.service.OrderService createOrder '{params, returnObj, throwExp
 ./profiler.sh -d 30 -e lock -f lock_flame.html -o flamegraph <pid>
 ```
 
-```
+```text
 火焰图阅读方法（ASCII 示意）：
 
      ┌──────────────────────────────────────────┐
@@ -172,7 +172,7 @@ public class StringConcatBenchmark {
 
 运行结果示例：
 
-```
+```text
 Benchmark                   Mode  Cnt    Score    Error  Units
 concatOperator              avgt   10   18.342 ±  0.521  ns/op
 stringBuilder               avgt   10   17.891 ±  0.443  ns/op
@@ -181,7 +181,7 @@ stringFormat                avgt   10   68.215 ±  1.876  ns/op  ← 慢 3-4 倍
 
 ### 8.2.5 压测方法论
 
-```
+```text
 压测流程：
 
   环境准备 → 基线测试 → 梯度加压 → 瓶颈定位 → 优化 → 回归验证
@@ -248,7 +248,7 @@ jmap -dump:live,format=b,file=heap.hprof <pid>
 
 MAT 分析的核心视图：
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │  Leak Suspects (内存泄漏嫌疑)            │
 ├─────────────────────────────────────────┤
@@ -309,7 +309,7 @@ jstat -gcutil <pid> 1000 20
 
 GC 调优思路：
 
-```
+```text
 频繁 Young GC          频繁 Full GC
   │                       │
   ▼                       ▼
@@ -326,7 +326,7 @@ GC 调优思路：
 
 **诊断方法**：分布式链路追踪（Tracing）
 
-```
+```text
 Trace ID: abc-123-def
 ┌────────────────────────────────────────────────────┐
 │ API Gateway          5ms                            │
@@ -354,7 +354,7 @@ ALTER TABLE orders ADD INDEX idx_user_status (user_id, status);
 
 ### 8.4.1 性能优化的六步循环
 
-```
+```text
     ┌──→ 发现问题 ──→ 定位瓶颈 ──→ 提出假设 ──┐
     │                                          │
     │                                          ▼
@@ -431,7 +431,7 @@ EXPLAIN SELECT * FROM orders WHERE user_id = 123;
 
 从高到低，优化的收益递减但难度递增：
 
-```
+```text
 优化层次（从上到下，收益递减）：
 
 ┌─────────────────────────────────────────┐
@@ -463,7 +463,7 @@ EXPLAIN SELECT * FROM orders WHERE user_id = 123;
 
 ### 8.4.5 性能优化的反模式
 
-```
+```text
 ❌ 过早优化："代码还没写完就开始调优"
    → 先让功能正确，再用数据驱动优化
 

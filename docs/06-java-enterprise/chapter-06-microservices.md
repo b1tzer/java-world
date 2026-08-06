@@ -8,7 +8,7 @@
 
 一个典型的单体应用，所有模块打包在一个 WAR/JAR 中：
 
-```
+```text
 单体电商应用
 ┌─────────────────────────────────────────────┐
 │                                             │
@@ -27,7 +27,7 @@
 
 **问题一：部署耦合**
 
-```
+```text
 场景：商品模块修了一个 Bug
 
 单体架构：
@@ -47,7 +47,7 @@
 
 **问题二：扩展困难**
 
-```
+```text
 双十一流量高峰：订单模块需要 10 倍扩容，用户模块流量平稳
 
 单体架构：
@@ -62,7 +62,7 @@
 
 **问题三：团队协作冲突**
 
-```
+```text
 5 个团队共用一个代码仓库：
 
 团队 A（用户）：要改数据库表结构
@@ -92,7 +92,7 @@
 
 ### 6.1.3 微服务拆分后的全景
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        微服务电商架构                             │
 │                                                                 │
@@ -137,7 +137,7 @@
 
 在微服务架构中，服务实例的 IP 和端口是动态变化的：
 
-```
+```text
 传统方式（硬编码地址）：
 OrderService 调用 UserService：
     → http://192.168.1.10:8081/user/1
@@ -150,7 +150,7 @@ OrderService 调用 UserService：
 
 ### 6.2.2 服务发现的核心流程
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────┐
 │                    服务发现全流程                               │
 │                                                              │
@@ -212,7 +212,7 @@ public class UserServiceApplication {
 
 启动后，Nacos 控制台会显示注册信息：
 
-```
+```text
 服务列表
 ├── user-service
 │   ├── 192.168.1.10:8081  (healthy)
@@ -290,7 +290,7 @@ public class OrderController {
 
 没有网关时，客户端直接调用各个微服务：
 
-```
+```text
 没有网关的问题：
 
 手机端 ──→ 用户服务（需要处理鉴权）
@@ -310,7 +310,7 @@ public class OrderController {
 
 引入网关后：
 
-```
+```text
 手机端 ──→ API Gateway ──→ 用户服务（专注业务）
                     ──→ 商品服务（专注业务）
                     ──→ 订单服务（专注业务）
@@ -329,7 +329,7 @@ public class OrderController {
 
 Spring Cloud Gateway 基于 WebFlux（响应式编程），核心由三部分组成：
 
-```
+```text
 请求进入
     │
     ▼
@@ -433,7 +433,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
 ### 6.3.5 网关处理流程
 
-```
+```text
 客户端请求 GET /api/order/123
     │
     ▼
@@ -560,7 +560,7 @@ public class OrderService {
 
 **OpenFeign 的工作原理**：
 
-```
+```text
 OrderService.createOrder()
     │
     ├── userClient.getUser(1L)     ← 看起来像本地调用
@@ -664,7 +664,7 @@ message UserResponse {
 
 ### 6.4.6 调用方式选择决策树
 
-```
+```text
 需要服务间调用
     │
     ├── 需要跨语言？（Go/Python/Java 混合）
@@ -718,7 +718,7 @@ public User getUserFallback(Long id, Throwable t) {
 }
 ```
 
-```
+```text
 服务调用可靠性保障链路：
 
 请求进入

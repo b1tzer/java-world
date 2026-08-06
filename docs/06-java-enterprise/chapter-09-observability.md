@@ -87,7 +87,7 @@ Spring Boot 默认使用 Logback 作为日志框架。一个生产级的 `logbac
 
 ELK（Elasticsearch + Logstash + Kibana）是最主流的日志采集方案。在高并发场景下，通常在 Logstash 前加一层 Kafka 做缓冲：
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        应用服务器集群                                 │
 │                                                                     │
@@ -236,7 +236,7 @@ public class OrderMetrics {
 
 ### 9.2.3 Prometheus + Grafana 监控体系
 
-```
+```text
 ┌──────────────────────────────────────────────────────┐
 │                    应用集群                            │
 │                                                      │
@@ -321,7 +321,7 @@ scrape_configs:
 
 可观测性三大支柱不是孤立的，它们通过**关联标识**（TraceID、时间戳）串联起来：
 
-```
+```text
                         可观测性
                            │
             ┌──────────────┼──────────────┐
@@ -355,7 +355,7 @@ scrape_configs:
 
 OpenTelemetry（OTel）是 CNCF 的可观测性标准，统一了指标、日志、追踪的数据格式和采集方式：
 
-```
+```text
 ┌──────────────────────────────────────────────────────────┐
 │                     应用层                                 │
 │                                                          │
@@ -481,7 +481,7 @@ service:
 
 线上问题排查的通用流程：
 
-```
+```text
 发现问题（告警/用户反馈）
     │
     ▼
@@ -518,7 +518,7 @@ service:
 
 以"接口响应变慢"为例，详细展示排查过程：
 
-```
+```text
 ① Grafana 发现 order-service 的 P99 从 200ms 升到 2s
    └─ 观察时间：14:00 开始变慢
 
@@ -586,7 +586,7 @@ thread -n 3                  # 查看最忙的 3 个线程
 
 Arthas 的 `trace` 命令输出示例：
 
-```
+```text
 $ trace com.example.service.OrderService getOrder
 Press Q or Ctrl+C to abort.
 Affect(class count: 1 , method count: 1) cost in 42 ms.

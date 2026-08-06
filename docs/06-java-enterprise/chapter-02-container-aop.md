@@ -16,7 +16,7 @@ ApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class)
 
 这行代码背后发生了什么：
 
-```
+```text
 new AnnotationConfigApplicationContext(AppConfig.class)
         │
         ▼
@@ -70,7 +70,7 @@ Spring 内置的重要 BeanFactoryPostProcessor：
 
 ### 2.1.3 Bean 的实例化顺序
 
-```
+```text
 1. BeanFactoryPostProcessor 修改 BeanDefinition
         │
         ▼
@@ -209,7 +209,7 @@ Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
 
 以 ServiceA 和 ServiceB 的循环依赖为例：
 
-```
+```text
 步骤1: 创建 ServiceA
   → singletonObjects: 无
   → 实例化 ServiceA（调用构造器）
@@ -601,7 +601,7 @@ public class EverythingAspect {
 
 由于代理的存在，堆栈信息中会出现 `$Proxy` 或 `$$EnhancerByCGLIB$$` 类名，增加调试难度：
 
-```
+```text
 // 典型的 AOP 堆栈
 at com.example.UserService$$EnhancerBySpringCGLIB$$abc123.findUser(<generated>)
 at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
