@@ -76,7 +76,7 @@ JVM 遇到 `volatile` 变量读写时，会在这次读写前后加入额外的�
 
 因此，`volatile` 的关键不在“变量本身有什么特殊形态”，而在于：**这次读写被赋予了同步语义。**
 
-通用的屏障类型和硬件差异，见 [chapter-03-jmm.md](/java-world/docs/03-java-concurrency/chapter-03-jmm.md)。`volatile` 的关键，是它在读写两侧建立的同步约束。
+通用的屏障类型和硬件差异，见 [chapter-03-jmm.md](./chapter-03-jmm.md)。`volatile` 的关键，是它在读写两侧建立的同步约束。
 
 ### 4.2.2 volatile 写与 volatile 读
 
