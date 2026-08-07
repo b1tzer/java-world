@@ -1,77 +1,77 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 560" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="10">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 476" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="10">
   <defs>
     <marker id="arX1" markerWidth="8" markerHeight="8" refX="4" refY="8" orient="auto">
       <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-arrow)"/>
     </marker>
   </defs>
 
-  <text x="360" y="28" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-text-1)">六边形架构（Ports &amp; Adapters）</text>
+  <text x="306" y="24" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-text-1)">六边形架构（Ports &amp; Adapters）</text>
 
   <!-- Outer hexagon container -->
-  <rect x="80" y="46" width="560" height="470" rx="12" fill="var(--diagram-surface-2)" stroke="var(--diagram-stroke-1)" stroke-width="1.5"/>
+  <rect x="68" y="39" width="476" height="400" rx="10" fill="var(--diagram-surface-2)" stroke="var(--diagram-stroke-1)" stroke-width="1.3"/>
 
   <!-- Input Adapters -->
   <g transform="translate(100,60)">
-    <text x="260" y="16" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-1)">适配器（输入端）</text>
-    <rect x="20" y="28" width="120" height="36" rx="4" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
-    <text x="80" y="50" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-1)">REST API</text>
-    <rect x="170" y="28" width="120" height="36" rx="4" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
-    <text x="230" y="50" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-1)">gRPC</text>
-    <rect x="320" y="28" width="120" height="36" rx="4" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
-    <text x="380" y="50" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-1)">MQ</text>
+    <text x="221" y="14" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-1)">适配器（输入端）</text>
+    <rect x="17" y="24" width="102" height="31" rx="3" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.3"/>
+    <text x="68" y="42" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-1)">REST API</text>
+    <rect x="144" y="24" width="102" height="31" rx="3" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.3"/>
+    <text x="196" y="42" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-1)">gRPC</text>
+    <rect x="272" y="24" width="102" height="31" rx="3" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.3"/>
+    <text x="323" y="42" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-1)">MQ</text>
   </g>
 
   <!-- Arrows from input adapters to input ports -->
-  <line x1="180" y1="130" x2="260" y2="162" stroke="var(--diagram-accent-1)" stroke-width="1.2" marker-end="url(#arX1)"/>
-  <line x1="350" y1="130" x2="340" y2="162" stroke="var(--diagram-accent-1)" stroke-width="1.2" marker-end="url(#arX1)"/>
-  <line x1="500" y1="130" x2="420" y2="162" stroke="var(--diagram-accent-1)" stroke-width="1.2" marker-end="url(#arX1)"/>
+  <line x1="153" y1="110" x2="221" y2="138" stroke="var(--diagram-accent-1)" stroke-width="1" marker-end="url(#arX1)"/>
+  <line x1="298" y1="110" x2="289" y2="138" stroke="var(--diagram-accent-1)" stroke-width="1" marker-end="url(#arX1)"/>
+  <line x1="425" y1="110" x2="357" y2="138" stroke="var(--diagram-accent-1)" stroke-width="1" marker-end="url(#arX1)"/>
 
   <!-- Input Ports -->
   <g transform="translate(140,166)">
-    <rect x="0" y="0" width="340" height="56" rx="6" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
-    <text x="170" y="20" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-2)">端口（Ports）</text>
-    <text x="85" y="42" text-anchor="middle" font-size="9" fill="var(--diagram-accent-2)">OrderService（输入端口）</text>
-    <text x="255" y="42" text-anchor="middle" font-size="9" fill="var(--diagram-accent-2)">OrderRepository（输出端口）</text>
+    <rect x="0" y="0" width="289" height="48" rx="5" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.3"/>
+    <text x="144" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-2)">端口（Ports）</text>
+    <text x="72" y="36" text-anchor="middle" font-size="9" fill="var(--diagram-accent-2)">OrderService（输入端口）</text>
+    <text x="217" y="36" text-anchor="middle" font-size="9" fill="var(--diagram-accent-2)">OrderRepository（输出端口）</text>
   </g>
 
   <!-- Arrow from ports to domain -->
-  <line x1="310" y1="226" x2="310" y2="250" stroke="var(--diagram-accent-2)" stroke-width="1.5" marker-end="url(#arX1)"/>
+  <line x1="264" y1="192" x2="264" y2="212" stroke="var(--diagram-accent-2)" stroke-width="1.3" marker-end="url(#arX1)"/>
 
   <!-- Domain Core -->
   <g transform="translate(140,254)">
-    <rect x="0" y="0" width="340" height="80" rx="8" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="2"/>
-    <text x="170" y="24" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-text-4)">业务核心（Domain）</text>
-    <text x="170" y="48" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-4)">Order / OrderItem / ...</text>
-    <text x="170" y="68" text-anchor="middle" font-size="9" fill="var(--diagram-stroke-1)">纯业务逻辑，零外部依赖</text>
+    <rect x="0" y="0" width="289" height="68" rx="7" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.7"/>
+    <text x="144" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-text-4)">业务核心（Domain）</text>
+    <text x="144" y="41" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-4)">Order / OrderItem / ...</text>
+    <text x="144" y="58" text-anchor="middle" font-size="9" fill="var(--diagram-stroke-1)">纯业务逻辑，零外部依赖</text>
   </g>
 
   <!-- Arrow from domain to output ports -->
-  <line x1="310" y1="338" x2="310" y2="362" stroke="var(--diagram-accent-4)" stroke-width="1.5" marker-end="url(#arX1)"/>
+  <line x1="264" y1="287" x2="264" y2="308" stroke="var(--diagram-accent-4)" stroke-width="1.3" marker-end="url(#arX1)"/>
 
   <!-- Output Ports -->
   <g transform="translate(140,366)">
-    <rect x="0" y="0" width="340" height="56" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.5"/>
-    <text x="170" y="20" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-4)">端口（Ports）</text>
-    <text x="85" y="42" text-anchor="middle" font-size="9" fill="var(--diagram-accent-4)">PaymentGateway（输出端口）</text>
-    <text x="255" y="42" text-anchor="middle" font-size="9" fill="var(--diagram-accent-4)">InventoryService（输出端口）</text>
+    <rect x="0" y="0" width="289" height="48" rx="5" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.3"/>
+    <text x="144" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-4)">端口（Ports）</text>
+    <text x="72" y="36" text-anchor="middle" font-size="9" fill="var(--diagram-accent-4)">PaymentGateway（输出端口）</text>
+    <text x="217" y="36" text-anchor="middle" font-size="9" fill="var(--diagram-accent-4)">InventoryService（输出端口）</text>
   </g>
 
   <!-- Arrows from output ports to output adapters -->
-  <line x1="220" y1="426" x2="180" y2="454" stroke="var(--diagram-accent-4)" stroke-width="1.2" marker-end="url(#arX1)"/>
-  <line x1="400" y1="426" x2="420" y2="454" stroke="var(--diagram-accent-4)" stroke-width="1.2" marker-end="url(#arX1)"/>
+  <line x1="187" y1="362" x2="153" y2="386" stroke="var(--diagram-accent-4)" stroke-width="1" marker-end="url(#arX1)"/>
+  <line x1="340" y1="362" x2="357" y2="386" stroke="var(--diagram-accent-4)" stroke-width="1" marker-end="url(#arX1)"/>
 
   <!-- Output Adapters -->
   <g transform="translate(100,456)">
-    <text x="260" y="14" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-5)">适配器（输出端）</text>
-    <rect x="60" y="22" width="120" height="36" rx="4" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1.5"/>
-    <text x="120" y="44" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-5)">MySQL</text>
-    <rect x="300" y="22" width="120" height="36" rx="4" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1.5"/>
-    <text x="360" y="44" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-5)">Redis</text>
+    <text x="221" y="12" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-5)">适配器（输出端）</text>
+    <rect x="51" y="19" width="102" height="31" rx="3" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1.3"/>
+    <text x="102" y="37" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-5)">MySQL</text>
+    <rect x="255" y="19" width="102" height="31" rx="3" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1.3"/>
+    <text x="306" y="37" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-5)">Redis</text>
   </g>
 
   <!-- Key benefit callout -->
   <g transform="translate(100,520)">
-    <rect x="0" y="0" width="520" height="28" rx="4" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
-    <text x="260" y="18" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-2)" font-weight="bold">关键收益：业务核心零外部依赖 — 换 REST 为 gRPC、换 MySQL 为 MongoDB，业务代码不动</text>
+    <rect x="0" y="0" width="442" height="24" rx="3" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="0.8"/>
+    <text x="221" y="15" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-2)" font-weight="bold">关键收益：业务核心零外部依赖 — 换 REST 为 gRPC、换 MySQL 为 MongoDB，业务代码不动</text>
   </g>
 </svg>

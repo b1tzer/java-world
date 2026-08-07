@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 800" width="750" height="800" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="11">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 637 680" width="638" height="680" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="11">
 <style>
   text { text-anchor: middle; dominant-baseline: central; }
   .title { font-size: 15px; font-weight: bold; fill: var(--diagram-text-1); }
@@ -25,31 +25,31 @@
     <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-4)"/>
   </marker>
 </defs>
-<text x="375" y="28" class="title">Spring MVC 请求处理流程</text>
-<rect x="125.0" y="50" width="500" height="54" class="box phase"/>
-<text x="375" y="68" class="label" font-weight="bold">HTTP Request</text>
-<text x="375" y="88" class="note">DispatcherServlet#doDispatch()</text>
-<line x1="375" y1="104" x2="375" y2="155" class="arrow"/><rect x="125.0" y="155" width="500" height="72" class="box step"/>
-<text x="375" y="173" class="label" font-weight="bold">① HandlerMapping.findHandler()</text>
-<text x="375" y="193" class="note">返回 HandlerExecutionChain</text>
-<text x="375" y="211" class="note">→ Handler + HandlerInterceptor[]</text>
-<line x1="375" y1="227" x2="375" y2="260" class="arrow"/><rect x="125.0" y="260" width="500" height="90" class="box action"/>
-<text x="375" y="278" class="label" font-weight="bold">② HandlerAdapter 选择</text>
-<text x="375" y="298" class="note">RequestMappingHandlerAdapter</text>
-<text x="375" y="316" class="note">HttpRequestHandlerAdapter</text>
-<text x="375" y="334" class="note">SimpleControllerHandlerAdapter</text>
-<line x1="375" y1="350" x2="375" y2="365" class="arrow"/><rect x="125.0" y="365" width="500" height="54" class="box highlight"/>
-<text x="375" y="383" class="label" font-weight="bold">③ Interceptor.preHandle()</text>
-<text x="375" y="403" class="note">按顺序执行，任一返回 false 则中断</text>
-<line x1="375" y1="419" x2="375" y2="470" class="arrow"/><rect x="125.0" y="470" width="500" height="72" class="box important"/>
-<text x="375" y="488" class="label" font-weight="bold">④ HandlerAdapter.handle()</text>
-<text x="375" y="508" class="note">参数解析 → 执行 Controller → 返回值处理</text>
-<text x="375" y="526" class="note">→ ModelAndView / @ResponseBody → HttpMessageConverter</text>
-<line x1="375" y1="542" x2="375" y2="575" class="arrow"/><rect x="125.0" y="575" width="500" height="36" class="box highlight"/>
-<text x="375" y="593" class="label" font-weight="bold">⑤ Interceptor.postHandle()</text>
-<line x1="375" y1="611" x2="375" y2="680" class="arrow"/><rect x="125.0" y="680" width="500" height="72" class="box step"/>
-<text x="375" y="698" class="label" font-weight="bold">⑥ processDispatchResult()</text>
-<text x="375" y="718" class="note">渲染视图（ViewResolver → View.render）</text>
-<text x="375" y="736" class="note">或直接返回（@ResponseBody 已在步骤④写入）</text>
+<text x="319" y="24" class="title">Spring MVC 请求处理流程</text>
+<rect x="125.0" y="42" width="425" height="46" class="box phase"/>
+<text x="319" y="58" class="label" font-weight="bold">HTTP Request</text>
+<text x="319" y="75" class="note">DispatcherServlet#doDispatch()</text>
+<line x1="319" y1="88" x2="319" y2="132" class="arrow"/><rect x="125.0" y="132" width="425" height="61" class="box step"/>
+<text x="319" y="147" class="label" font-weight="bold">① HandlerMapping.findHandler()</text>
+<text x="319" y="164" class="note">返回 HandlerExecutionChain</text>
+<text x="319" y="179" class="note">→ Handler + HandlerInterceptor[]</text>
+<line x1="319" y1="193" x2="319" y2="221" class="arrow"/><rect x="125.0" y="221" width="425" height="76" class="box action"/>
+<text x="319" y="236" class="label" font-weight="bold">② HandlerAdapter 选择</text>
+<text x="319" y="253" class="note">RequestMappingHandlerAdapter</text>
+<text x="319" y="269" class="note">HttpRequestHandlerAdapter</text>
+<text x="319" y="284" class="note">SimpleControllerHandlerAdapter</text>
+<line x1="319" y1="298" x2="319" y2="310" class="arrow"/><rect x="125.0" y="310" width="425" height="46" class="box highlight"/>
+<text x="319" y="326" class="label" font-weight="bold">③ Interceptor.preHandle()</text>
+<text x="319" y="343" class="note">按顺序执行，任一返回 false 则中断</text>
+<line x1="319" y1="356" x2="319" y2="400" class="arrow"/><rect x="125.0" y="400" width="425" height="61" class="box important"/>
+<text x="319" y="415" class="label" font-weight="bold">④ HandlerAdapter.handle()</text>
+<text x="319" y="432" class="note">参数解析 → 执行 Controller → 返回值处理</text>
+<text x="319" y="447" class="note">→ ModelAndView / @ResponseBody → HttpMessageConverter</text>
+<line x1="319" y1="461" x2="319" y2="489" class="arrow"/><rect x="125.0" y="489" width="425" height="31" class="box highlight"/>
+<text x="319" y="504" class="label" font-weight="bold">⑤ Interceptor.postHandle()</text>
+<line x1="319" y1="519" x2="319" y2="578" class="arrow"/><rect x="125.0" y="578" width="425" height="61" class="box step"/>
+<text x="319" y="593" class="label" font-weight="bold">⑥ processDispatchResult()</text>
+<text x="319" y="610" class="note">渲染视图（ViewResolver → View.render）</text>
+<text x="319" y="626" class="note">或直接返回（@ResponseBody 已在步骤④写入）</text>
 
 </svg>

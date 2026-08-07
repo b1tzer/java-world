@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 880" width="780" height="880" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="11">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 663 748" width="663" height="748" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="11">
 <style>
   text { text-anchor: middle; dominant-baseline: central; }
   .title { font-size: 15px; font-weight: bold; fill: var(--diagram-text-1); }
@@ -22,65 +22,65 @@
   </marker>
 </defs>
 
-<text x="390" y="28" class="title">Spring Security 认证流程</text>
+<text x="332" y="24" class="title">Spring Security 认证流程</text>
 
 <!-- Step 1: 用户提交 -->
-<rect x="190" y="50" width="400" height="36" class="box phase"/>
-<text x="390" y="68" class="label">用户提交用户名/密码</text>
-<line x1="390" y1="86" x2="390" y2="110" class="arrow"/>
+<rect x="162" y="42" width="340" height="31" class="box phase"/>
+<text x="332" y="58" class="label">用户提交用户名/密码</text>
+<line x1="332" y1="73" x2="332" y2="94" class="arrow"/>
 
 <!-- Step 2: AuthenticationFilter -->
-<rect x="190" y="110" width="400" height="48" class="box step"/>
-<text x="390" y="128" class="label" font-weight="bold">AuthenticationFilter</text>
-<text x="390" y="144" class="note">创建 Authentication 对象（未认证）</text>
-<line x1="390" y1="158" x2="390" y2="182" class="arrow"/>
+<rect x="162" y="94" width="340" height="41" class="box step"/>
+<text x="332" y="109" class="label" font-weight="bold">AuthenticationFilter</text>
+<text x="332" y="122" class="note">创建 Authentication 对象（未认证）</text>
+<line x1="332" y1="134" x2="332" y2="155" class="arrow"/>
 
 <!-- Step 3: AuthenticationManager -->
-<rect x="190" y="182" width="400" height="48" class="box action"/>
-<text x="390" y="200" class="label" font-weight="bold">AuthenticationManager</text>
-<text x="390" y="216" class="note">authenticate(authentication)</text>
-<line x1="390" y1="230" x2="390" y2="254" class="arrow"/>
+<rect x="162" y="155" width="340" height="41" class="box action"/>
+<text x="332" y="170" class="label" font-weight="bold">AuthenticationManager</text>
+<text x="332" y="184" class="note">authenticate(authentication)</text>
+<line x1="332" y1="196" x2="332" y2="216" class="arrow"/>
 
 <!-- Step 4: AuthenticationProvider -->
-<rect x="190" y="254" width="400" height="48" class="box highlight"/>
-<text x="390" y="272" class="label" font-weight="bold">AuthenticationProvider</text>
-<text x="390" y="288" class="note">DaoAuthenticationProvider</text>
+<rect x="162" y="216" width="340" height="41" class="box highlight"/>
+<text x="332" y="231" class="label" font-weight="bold">AuthenticationProvider</text>
+<text x="332" y="245" class="note">DaoAuthenticationProvider</text>
 
 <!-- Branch: two sub-steps -->
-<line x1="390" y1="302" x2="190" y2="330" class="arrow"/>
-<line x1="390" y1="302" x2="590" y2="330" class="arrow"/>
+<line x1="332" y1="257" x2="162" y2="280" class="arrow"/>
+<line x1="332" y1="257" x2="502" y2="280" class="arrow"/>
 
 <!-- Left branch: UserDetailsService -->
-<rect x="40" y="330" width="300" height="48" class="box cache"/>
-<text x="190" y="348" class="label" font-weight="bold">UserDetailsService</text>
-<text x="190" y="364" class="note">loadUserByUsername(username)</text>
-<text x="190" y="395" class="note">→ 返回 UserDetails（从数据库查询）</text>
+<rect x="34" y="280" width="255" height="41" class="box cache"/>
+<text x="162" y="296" class="label" font-weight="bold">UserDetailsService</text>
+<text x="162" y="309" class="note">loadUserByUsername(username)</text>
+<text x="162" y="336" class="note">→ 返回 UserDetails（从数据库查询）</text>
 
 <!-- Right branch: PasswordEncoder -->
-<rect x="440" y="330" width="300" height="48" class="box cache"/>
-<text x="590" y="348" class="label" font-weight="bold">PasswordEncoder</text>
-<text x="590" y="364" class="note">matches(rawPassword, encodedPassword)</text>
-<text x="590" y="395" class="note">→ 验证密码是否匹配</text>
+<rect x="374" y="280" width="255" height="41" class="box cache"/>
+<text x="502" y="296" class="label" font-weight="bold">PasswordEncoder</text>
+<text x="502" y="309" class="note">matches(rawPassword, encodedPassword)</text>
+<text x="502" y="336" class="note">→ 验证密码是否匹配</text>
 
 <!-- Converge -->
-<line x1="190" y1="378" x2="390" y2="430" class="arrow" stroke="var(--diagram-accent-2)" marker-end="url(#arrowhead-green)"/>
-<line x1="590" y1="378" x2="390" y2="430" class="arrow" stroke="var(--diagram-accent-2)" marker-end="url(#arrowhead-green)"/>
+<line x1="162" y1="321" x2="332" y2="366" class="arrow" stroke="var(--diagram-accent-2)" marker-end="url(#arrowhead-green)"/>
+<line x1="502" y1="321" x2="332" y2="366" class="arrow" stroke="var(--diagram-accent-2)" marker-end="url(#arrowhead-green)"/>
 
 <!-- Step 5: 认证成功 -->
-<rect x="170" y="430" width="440" height="56" class="box important"/>
-<text x="390" y="450" class="label" font-weight="bold">认证成功：返回 Authentication 对象</text>
-<text x="390" y="470" class="note">已认证，包含权限信息</text>
-<line x1="390" y1="486" x2="390" y2="516" class="arrow"/>
+<rect x="144" y="366" width="374" height="48" class="box important"/>
+<text x="332" y="382" class="label" font-weight="bold">认证成功：返回 Authentication 对象</text>
+<text x="332" y="400" class="note">已认证，包含权限信息</text>
+<line x1="332" y1="413" x2="332" y2="439" class="arrow"/>
 
 <!-- Step 6: SecurityContextHolder -->
-<rect x="170" y="516" width="440" height="48" class="box step"/>
-<text x="390" y="534" class="label" font-weight="bold">SecurityContextHolder</text>
-<text x="390" y="550" class="note">getContext().setAuthentication(auth)</text>
-<line x1="390" y1="564" x2="390" y2="594" class="arrow"/>
+<rect x="144" y="439" width="374" height="41" class="box step"/>
+<text x="332" y="454" class="label" font-weight="bold">SecurityContextHolder</text>
+<text x="332" y="468" class="note">getContext().setAuthentication(auth)</text>
+<line x1="332" y1="479" x2="332" y2="505" class="arrow"/>
 
 <!-- Step 7: 后续请求 -->
-<rect x="170" y="594" width="440" height="48" class="box phase"/>
-<text x="390" y="612" class="label">后续请求通过 SecurityContextHolder</text>
-<text x="390" y="628" class="note">获取当前用户信息</text>
+<rect x="144" y="505" width="374" height="41" class="box phase"/>
+<text x="332" y="520" class="label">后续请求通过 SecurityContextHolder</text>
+<text x="332" y="534" class="note">获取当前用户信息</text>
 
 </svg>

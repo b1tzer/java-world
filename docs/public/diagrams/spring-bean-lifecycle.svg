@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 780" width="720" height="780" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="11">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 663" width="612" height="663" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="11">
 <style>
   text { text-anchor: middle; dominant-baseline: central; }
   .title { font-size: 15px; font-weight: bold; fill: var(--diagram-text-1); }
@@ -25,31 +25,31 @@
     <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-4)"/>
   </marker>
 </defs>
-<text x="360" y="30" class="title">Bean 生命周期全流程</text>
-<rect x="180.0" y="55" width="360" height="48" class="box phase"/>
+<text x="306" y="26" class="title">Bean 生命周期全流程</text>
+<rect x="180.0" y="47" width="306" height="41" class="box phase"/>
 <text x="360.0" y="79.0" class="label">BeanDefinition 加载</text>
 <text x="555.0" y="79.0" text-anchor="start" class="note">← 构造器调用</text>
-<line x1="360" y1="103" x2="360" y2="133" class="arrow"/><rect x="180.0" y="133" width="360" height="48" class="box phase"/>
+<line x1="306" y1="88" x2="306" y2="113" class="arrow"/><rect x="180.0" y="113" width="306" height="41" class="box phase"/>
 <text x="360.0" y="157.0" class="label">实例化（Instantiation）</text>
 <text x="555.0" y="157.0" text-anchor="start" class="note">← @Autowired / @Value 注入</text>
-<line x1="360" y1="181" x2="360" y2="211" class="arrow"/><rect x="180.0" y="211" width="360" height="48" class="box action"/>
+<line x1="306" y1="154" x2="306" y2="179" class="arrow"/><rect x="180.0" y="179" width="306" height="41" class="box action"/>
 <text x="360.0" y="235.0" class="label">属性赋值（Populate）</text>
 <text x="555.0" y="235.0" text-anchor="start" class="note">← BeanNameAware / BeanFactoryAware / ApplicationContextAware</text>
-<line x1="360" y1="259" x2="360" y2="289" class="arrow"/><rect x="180.0" y="289" width="360" height="48" class="box phase"/>
+<line x1="306" y1="220" x2="306" y2="246" class="arrow"/><rect x="180.0" y="246" width="306" height="41" class="box phase"/>
 <text x="360.0" y="313.0" class="label">Aware 接口回调</text>
-<line x1="360" y1="337" x2="360" y2="367" class="arrow"/><rect x="180.0" y="367" width="360" height="48" class="box step"/>
+<line x1="306" y1="286" x2="306" y2="312" class="arrow"/><rect x="180.0" y="312" width="306" height="41" class="box step"/>
 <text x="360.0" y="391.0" class="label">BeanPostProcessor
 postProcessBeforeInitialization</text>
-<line x1="360" y1="415" x2="360" y2="445" class="arrow"/><rect x="180.0" y="445" width="360" height="48" class="box highlight"/>
+<line x1="306" y1="353" x2="306" y2="378" class="arrow"/><rect x="180.0" y="378" width="306" height="41" class="box highlight"/>
 <text x="360.0" y="469.0" class="label">@PostConstruct / InitializingBean
 afterPropertiesSet / init-method</text>
 <text x="555.0" y="469.0" text-anchor="start" class="note">← AOP 代理在此创建</text>
-<line x1="360" y1="493" x2="360" y2="523" class="arrow"/><rect x="180.0" y="523" width="360" height="48" class="box step"/>
+<line x1="306" y1="419" x2="306" y2="445" class="arrow"/><rect x="180.0" y="445" width="306" height="41" class="box step"/>
 <text x="360.0" y="547.0" class="label">BeanPostProcessor
 postProcessAfterInitialization</text>
-<line x1="360" y1="571" x2="360" y2="601" class="arrow"/><rect x="180.0" y="601" width="360" height="48" class="box important"/>
+<line x1="306" y1="485" x2="306" y2="511" class="arrow"/><rect x="180.0" y="511" width="306" height="41" class="box important"/>
 <text x="360.0" y="625.0" class="label">Bean 就绪，可被使用</text>
-<line x1="360" y1="649" x2="360" y2="679" class="arrow"/><rect x="180.0" y="679" width="360" height="48" class="box phase"/>
+<line x1="306" y1="552" x2="306" y2="577" class="arrow"/><rect x="180.0" y="577" width="306" height="41" class="box phase"/>
 <text x="360.0" y="703.0" class="label">@PreDestroy / DisposableBean
 destroy / destroy-method</text>
 
