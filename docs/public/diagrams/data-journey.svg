@@ -18,26 +18,26 @@
   <!-- 链路层 -->
   <rect x="160" y="128" width="200" height="44" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.5"/>
   <text x="260" y="148" text-anchor="middle" fill="var(--diagram-accent-text-4)" font-weight="bold">链路层</text>
-  <text x="260" y="164" text-anchor="middle" fill="#666" font-size="12">校验 MAC 地址，剥离帧头</text>
+  <text x="260" y="164" text-anchor="middle" fill="var(--diagram-text-2)" font-size="12">校验 MAC 地址，剥离帧头</text>
   <line x1="260" y1="172" x2="260" y2="202" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrowDown)"/>
 
   <!-- 网络层 -->
   <rect x="160" y="206" width="200" height="44" rx="6" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
   <text x="260" y="226" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold">网络层</text>
-  <text x="260" y="242" text-anchor="middle" fill="#666" font-size="12">校验 IP 地址，路由判断</text>
+  <text x="260" y="242" text-anchor="middle" fill="var(--diagram-text-2)" font-size="12">校验 IP 地址，路由判断</text>
   <line x1="260" y1="250" x2="260" y2="280" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrowDown)"/>
 
   <!-- 传输层 -->
   <rect x="160" y="284" width="200" height="56" rx="6" fill="var(--diagram-accent-bg-3)" stroke="var(--diagram-accent-3)" stroke-width="1.5"/>
   <text x="260" y="304" text-anchor="middle" fill="var(--diagram-accent-text-3)" font-weight="bold">传输层</text>
-  <text x="260" y="320" text-anchor="middle" fill="#666" font-size="12">根据端口号找到对应的 Socket</text>
-  <text x="260" y="334" text-anchor="middle" fill="#666" font-size="12">数据写入 Socket 的接收缓冲区</text>
+  <text x="260" y="320" text-anchor="middle" fill="var(--diagram-text-2)" font-size="12">根据端口号找到对应的 Socket</text>
+  <text x="260" y="334" text-anchor="middle" fill="var(--diagram-text-2)" font-size="12">数据写入 Socket 的接收缓冲区</text>
   <line x1="260" y1="340" x2="260" y2="370" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrowDown)"/>
 
   <!-- 应用程序 -->
   <rect x="160" y="374" width="200" height="44" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.5"/>
   <text x="260" y="394" text-anchor="middle" fill="var(--diagram-accent-4)" font-weight="bold">应用程序</text>
-  <text x="260" y="410" text-anchor="middle" fill="#666" font-size="12">read() 从缓冲区取出数据</text>
+  <text x="260" y="410" text-anchor="middle" fill="var(--diagram-text-2)" font-size="12">read() 从缓冲区取出数据</text>
 
   <!-- 侧边注释 -->
   <rect x="30" y="280" width="110" height="70" rx="4" fill="none" stroke="var(--diagram-accent-3)" stroke-width="1" stroke-dasharray="4,3"/>

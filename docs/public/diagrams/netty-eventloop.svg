@@ -1,56 +1,56 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 380" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="13">
   <defs>
     <marker id="arD2" markerWidth="8" markerHeight="8" refX="4" refY="8" orient="auto">
-      <path d="M0,0 L8,4 L0,8 Z" fill="#555"/>
+      <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-arrow)"/>
     </marker>
   </defs>
 
-  <text x="280" y="26" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">EventLoop 生命周期</text>
+  <text x="280" y="26" text-anchor="middle" font-size="16" font-weight="bold" fill="var(--diagram-text-1)">EventLoop 生命周期</text>
 
   <!-- 启动 -->
-  <rect x="210" y="44" width="140" height="40" rx="20" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1.5"/>
-  <text x="280" y="68" text-anchor="middle" font-size="13" fill="#1B5E20" font-weight="bold">启动</text>
-  <line x1="280" y1="84" x2="280" y2="106" stroke="#555" stroke-width="1.5" marker-end="url(#arD2)"/>
+  <rect x="210" y="44" width="140" height="40" rx="20" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+  <text x="280" y="68" text-anchor="middle" font-size="13" fill="var(--diagram-accent-text-2)" font-weight="bold">启动</text>
+  <line x1="280" y1="84" x2="280" y2="106" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arD2)"/>
 
   <!-- Event Loop body -->
-  <rect x="80" y="110" width="400" height="160" rx="10" fill="#E3F2FD" stroke="#1565C0" stroke-width="2"/>
-  <text x="280" y="134" text-anchor="middle" font-size="14" fill="#0D47A1" font-weight="bold">for (;;) {</text>
+  <rect x="80" y="110" width="400" height="160" rx="10" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="2"/>
+  <text x="280" y="134" text-anchor="middle" font-size="14" fill="var(--diagram-accent-text-1)" font-weight="bold">for (;;) {</text>
 
   <!-- Step 1 -->
-  <rect x="110" y="146" width="340" height="32" rx="6" fill="#fff" stroke="#90CAF9" stroke-width="1"/>
-  <text x="126" y="166" fill="#1565C0" font-weight="bold">1.</text>
-  <text x="144" y="166" fill="#333">select() — 阻塞等待就绪事件</text>
+  <rect x="110" y="146" width="340" height="32" rx="6" fill="var(--diagram-surface-1)" stroke="var(--diagram-accent-1)" stroke-width="1"/>
+  <text x="126" y="166" fill="var(--diagram-accent-1)" font-weight="bold">1.</text>
+  <text x="144" y="166" fill="var(--diagram-text-1)">select() — 阻塞等待就绪事件</text>
 
   <!-- Step 2 -->
-  <rect x="110" y="186" width="340" height="32" rx="6" fill="#fff" stroke="#90CAF9" stroke-width="1"/>
-  <text x="126" y="206" fill="#1565C0" font-weight="bold">2.</text>
-  <text x="144" y="206" fill="#333">processSelectedKeys() — 处理 I/O 事件</text>
+  <rect x="110" y="186" width="340" height="32" rx="6" fill="var(--diagram-surface-1)" stroke="var(--diagram-accent-1)" stroke-width="1"/>
+  <text x="126" y="206" fill="var(--diagram-accent-1)" font-weight="bold">2.</text>
+  <text x="144" y="206" fill="var(--diagram-text-1)">processSelectedKeys() — 处理 I/O 事件</text>
 
   <!-- Step 3 -->
-  <rect x="110" y="226" width="340" height="32" rx="6" fill="#fff" stroke="#90CAF9" stroke-width="1"/>
-  <text x="126" y="246" fill="#1565C0" font-weight="bold">3.</text>
-  <text x="144" y="246" fill="#333">runAllTasks() — 执行任务队列中的任务</text>
+  <rect x="110" y="226" width="340" height="32" rx="6" fill="var(--diagram-surface-1)" stroke="var(--diagram-accent-1)" stroke-width="1"/>
+  <text x="126" y="246" fill="var(--diagram-accent-1)" font-weight="bold">3.</text>
+  <text x="144" y="246" fill="var(--diagram-text-1)">runAllTasks() — 执行任务队列中的任务</text>
 
-  <text x="280" y="262" text-anchor="middle" font-size="14" fill="#0D47A1" font-weight="bold">}</text>
+  <text x="280" y="262" text-anchor="middle" font-size="14" fill="var(--diagram-accent-text-1)" font-weight="bold">}</text>
 
   <!-- Loop-back arrow -->
-  <path d="M 480,190 Q 520,190 520,140 Q 520,90 480,90" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arD2)"/>
-  <text x="530" y="140" font-size="10" fill="#1565C0">循环</text>
+  <path d="M 480,190 Q 520,190 520,140 Q 520,90 480,90" fill="none" stroke="var(--diagram-accent-1)" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arD2)"/>
+  <text x="530" y="140" font-size="10" fill="var(--diagram-accent-1)">循环</text>
 
   <!-- Arrow down to 关闭 -->
-  <line x1="280" y1="270" x2="280" y2="296" stroke="#555" stroke-width="1.5" marker-end="url(#arD2)"/>
+  <line x1="280" y1="270" x2="280" y2="296" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arD2)"/>
 
   <!-- 关闭 -->
-  <rect x="210" y="300" width="140" height="40" rx="20" fill="#FFCDD2" stroke="#C62828" stroke-width="1.5"/>
-  <text x="280" y="324" text-anchor="middle" font-size="13" fill="#B71C1C" font-weight="bold">关闭</text>
+  <rect x="210" y="300" width="140" height="40" rx="20" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1.5"/>
+  <text x="280" y="324" text-anchor="middle" font-size="13" fill="var(--diagram-accent-text-5)" font-weight="bold">关闭</text>
 
   <!-- 3 queues annotation -->
   <g transform="translate(100, 350)">
-    <rect x="0" y="0" width="110" height="24" rx="4" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1"/>
-    <text x="55" y="16" text-anchor="middle" font-size="10" fill="#2E7D32">普通任务队列</text>
-    <rect x="120" y="0" width="110" height="24" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
-    <text x="175" y="16" text-anchor="middle" font-size="10" fill="#E65100">定时任务队列</text>
-    <rect x="240" y="0" width="110" height="24" rx="4" fill="#F3E5F5" stroke="#7B1FA2" stroke-width="1"/>
-    <text x="295" y="16" text-anchor="middle" font-size="10" fill="#7B1FA2">尾部任务队列</text>
+    <rect x="0" y="0" width="110" height="24" rx="4" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+    <text x="55" y="16" text-anchor="middle" font-size="10" fill="var(--diagram-accent-2)">普通任务队列</text>
+    <rect x="120" y="0" width="110" height="24" rx="4" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
+    <text x="175" y="16" text-anchor="middle" font-size="10" fill="var(--diagram-accent-4)">定时任务队列</text>
+    <rect x="240" y="0" width="110" height="24" rx="4" fill="var(--diagram-accent-bg-3)" stroke="var(--diagram-accent-3)" stroke-width="1"/>
+    <text x="295" y="16" text-anchor="middle" font-size="10" fill="var(--diagram-accent-3)">尾部任务队列</text>
   </g>
 </svg>

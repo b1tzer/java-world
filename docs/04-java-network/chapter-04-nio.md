@@ -30,7 +30,7 @@
 
 每个线程的生命周期：
 
-![BIO 线程生命周期](/diagrams/bio-thread-timeline.svg)
+<SvgDiagram src="/diagrams/bio-thread-timeline.svg" />
 
 线程 90% 的时间都阻塞在 `read()` 上——不消耗 CPU，但**内存和调度资源一直被占着**。
 

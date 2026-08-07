@@ -16,20 +16,20 @@
 </style>
 <defs>
   <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-    <polygon points="0 0, 10 3.5, 0 7" fill="#6c5ce7"/>
+    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-3)"/>
   </marker>
   <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-    <polygon points="0 0, 10 3.5, 0 7" fill="#00b894"/>
+    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-2)"/>
   </marker>
   <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-    <polygon points="0 0, 10 3.5, 0 7" fill="#e17055"/>
+    <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-accent-4)"/>
   </marker>
 </defs>
 <text x="390" y="28" class="title">微服务网关请求处理流程</text>
 <rect x="210" y="45" width="360" height="36" class="box phase"/>
 <text x="390.0" y="63.0" class="label">客户端请求 GET /api/order/123</text>
-<line x1="390" y1="81" x2="390" y2="105" class="arrow"/><rect x="50" y="105" width="680" height="520" rx="12" fill="#f0f0ff" stroke="#6c5ce7" stroke-width="2"/>
-<text x="390" y="127" class="label" font-weight="bold" font-size="15" fill="#6c5ce7">API Gateway</text>
+<line x1="390" y1="81" x2="390" y2="105" class="arrow"/><rect x="50" y="105" width="680" height="520" rx="12" fill="var(--diagram-accent-bg-3)" stroke="var(--diagram-accent-3)" stroke-width="2"/>
+<text x="390" y="127" class="label" font-weight="bold" font-size="15" fill="var(--diagram-accent-3)">API Gateway</text>
 <rect x="80" y="145" width="280" height="28" class="box step"/>
 <text x="220" y="159" class="label" font-weight="bold">1. 路由匹配</text>
 <rect x="370" y="145" width="340" height="44" class="box note-box"/>
@@ -58,8 +58,8 @@
 <text x="385" y="421" text-anchor="start" class="note">Header: X-User-Id: 1001</text>
 <line x1="390" y1="625" x2="390" y2="645" class="arrow"/><rect x="250" y="645" width="280" height="36" class="box action"/>
 <text x="390.0" y="663.0" class="label">order-service 处理并返回响应</text>
-<line x1="390" y1="681" x2="390" y2="705" class="arrow"/><rect x="100" y="705" width="580" height="120" rx="12" fill="#f0fff0" stroke="#00b894" stroke-width="2"/>
-<text x="390" y="727" class="label" font-weight="bold" fill="#00b894">响应处理</text>
+<line x1="390" y1="681" x2="390" y2="705" class="arrow"/><rect x="100" y="705" width="580" height="120" rx="12" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="2"/>
+<text x="390" y="727" class="label" font-weight="bold" fill="var(--diagram-accent-2)">响应处理</text>
 <text x="130" y="755" text-anchor="start" class="note">6. 响应过滤器链: LogGlobalFilter → 记录响应日志</text>
 <text x="130" y="777" text-anchor="start" class="note">7. 响应头添加: X-Response-Time: 45ms</text>
 <text x="130" y="799" text-anchor="start" class="note">8. 返回响应给客户端</text>

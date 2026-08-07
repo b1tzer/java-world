@@ -1,94 +1,94 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 580" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="12">
   <defs>
     <marker id="arD3" markerWidth="8" markerHeight="8" refX="4" refY="8" orient="auto">
-      <path d="M0,0 L8,4 L0,8 Z" fill="#555"/>
+      <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-arrow)"/>
     </marker>
     <marker id="arR3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-      <path d="M0,0 L8,4 L0,8 Z" fill="#C62828"/>
+      <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-accent-5)"/>
     </marker>
   </defs>
 
-  <text x="300" y="26" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">HTTP 状态码选择决策树</text>
+  <text x="300" y="26" text-anchor="middle" font-size="16" font-weight="bold" fill="var(--diagram-text-1)">HTTP 状态码选择决策树</text>
 
   <!-- Root node -->
-  <rect x="200" y="42" width="200" height="36" rx="18" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.5"/>
-  <text x="300" y="64" text-anchor="middle" font-size="13" fill="#0D47A1" font-weight="bold">请求到达</text>
-  <line x1="300" y1="78" x2="300" y2="96" stroke="#555" stroke-width="1.5" marker-end="url(#arD3)"/>
+  <rect x="200" y="42" width="200" height="36" rx="18" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+  <text x="300" y="64" text-anchor="middle" font-size="13" fill="var(--diagram-accent-text-1)" font-weight="bold">请求到达</text>
+  <line x1="300" y1="78" x2="300" y2="96" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arD3)"/>
 
   <!-- Decision nodes and results -->
   <!-- 400 -->
-  <line x1="300" y1="96" x2="140" y2="96" stroke="#C62828" stroke-width="1"/>
-  <line x1="140" y1="96" x2="140" y2="110" stroke="#C62828" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="50" y="112" width="180" height="30" rx="6" fill="#FFEBEE" stroke="#C62828" stroke-width="1"/>
-  <text x="140" y="131" text-anchor="middle" font-size="11" fill="#B71C1C">语法/格式错误？</text>
-  <line x1="140" y1="142" x2="140" y2="156" stroke="#C62828" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="50" y="158" width="180" height="28" rx="4" fill="#FFCDD2" stroke="#C62828" stroke-width="1"/>
-  <text x="140" y="176" text-anchor="middle" font-size="12" fill="#B71C1C" font-weight="bold">400 Bad Request</text>
+  <line x1="300" y1="96" x2="140" y2="96" stroke="var(--diagram-accent-5)" stroke-width="1"/>
+  <line x1="140" y1="96" x2="140" y2="110" stroke="var(--diagram-accent-5)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="50" y="112" width="180" height="30" rx="6" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1"/>
+  <text x="140" y="131" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-5)">语法/格式错误？</text>
+  <line x1="140" y1="142" x2="140" y2="156" stroke="var(--diagram-accent-5)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="50" y="158" width="180" height="28" rx="4" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1"/>
+  <text x="140" y="176" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-5)" font-weight="bold">400 Bad Request</text>
 
   <!-- 401 -->
-  <line x1="300" y1="96" x2="300" y2="110" stroke="#E65100" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="210" y="112" width="180" height="30" rx="6" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
-  <text x="300" y="131" text-anchor="middle" font-size="11" fill="#BF360C">需要认证？</text>
-  <line x1="300" y1="142" x2="300" y2="156" stroke="#E65100" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="210" y="158" width="180" height="28" rx="4" fill="#FFE0B2" stroke="#E65100" stroke-width="1"/>
-  <text x="300" y="176" text-anchor="middle" font-size="12" fill="#BF360C" font-weight="bold">401 Unauthorized</text>
+  <line x1="300" y1="96" x2="300" y2="110" stroke="var(--diagram-accent-4)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="210" y="112" width="180" height="30" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
+  <text x="300" y="131" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-4)">需要认证？</text>
+  <line x1="300" y1="142" x2="300" y2="156" stroke="var(--diagram-accent-4)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="210" y="158" width="180" height="28" rx="4" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
+  <text x="300" y="176" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-4)" font-weight="bold">401 Unauthorized</text>
 
   <!-- 403 -->
-  <line x1="300" y1="190" x2="300" y2="210" stroke="#555" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="210" y="212" width="180" height="30" rx="6" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
-  <text x="300" y="231" text-anchor="middle" font-size="11" fill="#BF360C">已认证但无权限？</text>
-  <line x1="300" y1="242" x2="300" y2="256" stroke="#E65100" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="210" y="258" width="180" height="28" rx="4" fill="#FFE0B2" stroke="#E65100" stroke-width="1"/>
-  <text x="300" y="276" text-anchor="middle" font-size="12" fill="#BF360C" font-weight="bold">403 Forbidden</text>
+  <line x1="300" y1="190" x2="300" y2="210" stroke="var(--diagram-arrow)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="210" y="212" width="180" height="30" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
+  <text x="300" y="231" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-4)">已认证但无权限？</text>
+  <line x1="300" y1="242" x2="300" y2="256" stroke="var(--diagram-accent-4)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="210" y="258" width="180" height="28" rx="4" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
+  <text x="300" y="276" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-4)" font-weight="bold">403 Forbidden</text>
 
   <!-- 404 -->
-  <line x1="300" y1="290" x2="300" y2="310" stroke="#555" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="210" y="312" width="180" height="30" rx="6" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
-  <text x="300" y="331" text-anchor="middle" font-size="11" fill="#BF360C">资源不存在？</text>
-  <line x1="300" y1="342" x2="300" y2="356" stroke="#E65100" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="210" y="358" width="180" height="28" rx="4" fill="#FFE0B2" stroke="#E65100" stroke-width="1"/>
-  <text x="300" y="376" text-anchor="middle" font-size="12" fill="#BF360C" font-weight="bold">404 Not Found</text>
+  <line x1="300" y1="290" x2="300" y2="310" stroke="var(--diagram-arrow)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="210" y="312" width="180" height="30" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
+  <text x="300" y="331" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-4)">资源不存在？</text>
+  <line x1="300" y1="342" x2="300" y2="356" stroke="var(--diagram-accent-4)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="210" y="358" width="180" height="28" rx="4" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
+  <text x="300" y="376" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-4)" font-weight="bold">404 Not Found</text>
 
   <!-- 405 -->
-  <line x1="300" y1="390" x2="300" y2="410" stroke="#555" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="210" y="412" width="180" height="30" rx="6" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
-  <text x="300" y="431" text-anchor="middle" font-size="11" fill="#BF360C">方法不支持？</text>
-  <line x1="300" y1="442" x2="300" y2="456" stroke="#E65100" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="210" y="458" width="180" height="28" rx="4" fill="#FFE0B2" stroke="#E65100" stroke-width="1"/>
-  <text x="300" y="476" text-anchor="middle" font-size="12" fill="#BF360C" font-weight="bold">405 Method Not Allowed</text>
+  <line x1="300" y1="390" x2="300" y2="410" stroke="var(--diagram-arrow)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="210" y="412" width="180" height="30" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
+  <text x="300" y="431" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-4)">方法不支持？</text>
+  <line x1="300" y1="442" x2="300" y2="456" stroke="var(--diagram-accent-4)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="210" y="458" width="180" height="28" rx="4" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
+  <text x="300" y="476" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-4)" font-weight="bold">405 Method Not Allowed</text>
 
   <!-- Success branch (right side) -->
-  <line x1="300" y1="96" x2="460" y2="96" stroke="#2E7D32" stroke-width="1"/>
-  <line x1="460" y1="96" x2="460" y2="110" stroke="#2E7D32" stroke-width="1" marker-end="url(#arD3)"/>
+  <line x1="300" y1="96" x2="460" y2="96" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+  <line x1="460" y1="96" x2="460" y2="110" stroke="var(--diagram-accent-2)" stroke-width="1" marker-end="url(#arD3)"/>
 
   <!-- 201 -->
-  <rect x="370" y="112" width="180" height="30" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1"/>
-  <text x="460" y="131" text-anchor="middle" font-size="11" fill="#1B5E20">创建成功？</text>
-  <line x1="460" y1="142" x2="460" y2="156" stroke="#2E7D32" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="370" y="158" width="180" height="28" rx="4" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1"/>
-  <text x="460" y="176" text-anchor="middle" font-size="12" fill="#1B5E20" font-weight="bold">201 Created</text>
+  <rect x="370" y="112" width="180" height="30" rx="6" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+  <text x="460" y="131" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-2)">创建成功？</text>
+  <line x1="460" y1="142" x2="460" y2="156" stroke="var(--diagram-accent-2)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="370" y="158" width="180" height="28" rx="4" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+  <text x="460" y="176" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-2)" font-weight="bold">201 Created</text>
 
   <!-- 204 -->
-  <line x1="460" y1="190" x2="460" y2="210" stroke="#555" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="370" y="212" width="180" height="30" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1"/>
-  <text x="460" y="231" text-anchor="middle" font-size="11" fill="#1B5E20">删除成功（无返回）？</text>
-  <line x1="460" y1="242" x2="460" y2="256" stroke="#2E7D32" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="370" y="258" width="180" height="28" rx="4" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1"/>
-  <text x="460" y="276" text-anchor="middle" font-size="12" fill="#1B5E20" font-weight="bold">204 No Content</text>
+  <line x1="460" y1="190" x2="460" y2="210" stroke="var(--diagram-arrow)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="370" y="212" width="180" height="30" rx="6" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+  <text x="460" y="231" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-2)">删除成功（无返回）？</text>
+  <line x1="460" y1="242" x2="460" y2="256" stroke="var(--diagram-accent-2)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="370" y="258" width="180" height="28" rx="4" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+  <text x="460" y="276" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-2)" font-weight="bold">204 No Content</text>
 
   <!-- 200 -->
-  <line x1="460" y1="290" x2="460" y2="310" stroke="#555" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="370" y="312" width="180" height="30" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1"/>
-  <text x="460" y="331" text-anchor="middle" font-size="11" fill="#1B5E20">普通成功？</text>
-  <line x1="460" y1="342" x2="460" y2="356" stroke="#2E7D32" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="370" y="358" width="180" height="28" rx="4" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1"/>
-  <text x="460" y="376" text-anchor="middle" font-size="12" fill="#1B5E20" font-weight="bold">200 OK</text>
+  <line x1="460" y1="290" x2="460" y2="310" stroke="var(--diagram-arrow)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="370" y="312" width="180" height="30" rx="6" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+  <text x="460" y="331" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-2)">普通成功？</text>
+  <line x1="460" y1="342" x2="460" y2="356" stroke="var(--diagram-accent-2)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="370" y="358" width="180" height="28" rx="4" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+  <text x="460" y="376" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-2)" font-weight="bold">200 OK</text>
 
   <!-- 500 -->
-  <line x1="460" y1="390" x2="460" y2="410" stroke="#555" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="370" y="412" width="180" height="30" rx="6" fill="#F3E5F5" stroke="#7B1FA2" stroke-width="1"/>
-  <text x="460" y="431" text-anchor="middle" font-size="11" fill="#4A148C">服务器异常？</text>
-  <line x1="460" y1="442" x2="460" y2="456" stroke="#7B1FA2" stroke-width="1" marker-end="url(#arD3)"/>
-  <rect x="370" y="458" width="180" height="28" rx="4" fill="#E1BEE7" stroke="#7B1FA2" stroke-width="1"/>
-  <text x="460" y="476" text-anchor="middle" font-size="12" fill="#4A148C" font-weight="bold">500 Internal Server Error</text>
+  <line x1="460" y1="390" x2="460" y2="410" stroke="var(--diagram-arrow)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="370" y="412" width="180" height="30" rx="6" fill="var(--diagram-accent-bg-3)" stroke="var(--diagram-accent-3)" stroke-width="1"/>
+  <text x="460" y="431" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-3)">服务器异常？</text>
+  <line x1="460" y1="442" x2="460" y2="456" stroke="var(--diagram-accent-3)" stroke-width="1" marker-end="url(#arD3)"/>
+  <rect x="370" y="458" width="180" height="28" rx="4" fill="var(--diagram-accent-bg-3b)" stroke="var(--diagram-accent-3)" stroke-width="1"/>
+  <text x="460" y="476" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-3)" font-weight="bold">500 Internal Server Error</text>
 </svg>

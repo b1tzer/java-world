@@ -1,96 +1,96 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 500" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="12">
   <defs>
     <marker id="arT1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-      <path d="M0,0 L8,4 L0,8 Z" fill="#1565C0"/>
+      <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-accent-1)"/>
     </marker>
     <marker id="arT2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-      <path d="M0,0 L8,4 L0,8 Z" fill="#2E7D32"/>
+      <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-accent-2)"/>
     </marker>
     <marker id="arT3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-      <path d="M0,0 L8,4 L0,8 Z" fill="#C62828"/>
+      <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-accent-5)"/>
     </marker>
   </defs>
 
-  <text x="390" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">TCC 事务流程图</text>
+  <text x="390" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="var(--diagram-text-1)">TCC 事务流程图</text>
 
   <!-- Service columns -->
   <g transform="translate(80,50)">
-    <rect x="0" y="0" width="160" height="36" rx="6" fill="#1565C0" stroke="none"/>
-    <text x="80" y="23" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">业务服务</text>
+    <rect x="0" y="0" width="160" height="36" rx="6" fill="var(--diagram-accent-1)" stroke="none"/>
+    <text x="80" y="23" text-anchor="middle" font-size="13" font-weight="bold" fill="var(--diagram-surface-1)">业务服务</text>
   </g>
   <g transform="translate(310,50)">
-    <rect x="0" y="0" width="160" height="36" rx="6" fill="#2E7D32" stroke="none"/>
-    <text x="80" y="23" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">账户服务</text>
+    <rect x="0" y="0" width="160" height="36" rx="6" fill="var(--diagram-accent-2)" stroke="none"/>
+    <text x="80" y="23" text-anchor="middle" font-size="13" font-weight="bold" fill="var(--diagram-surface-1)">账户服务</text>
   </g>
   <g transform="translate(540,50)">
-    <rect x="0" y="0" width="160" height="36" rx="6" fill="#E65100" stroke="none"/>
-    <text x="80" y="23" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">库存服务</text>
+    <rect x="0" y="0" width="160" height="36" rx="6" fill="var(--diagram-accent-4)" stroke="none"/>
+    <text x="80" y="23" text-anchor="middle" font-size="13" font-weight="bold" fill="var(--diagram-surface-1)">库存服务</text>
   </g>
 
   <!-- Vertical lifelines -->
-  <line x1="160" y1="90" x2="160" y2="460" stroke="#BDBDBD" stroke-width="1" stroke-dasharray="6,4"/>
-  <line x1="390" y1="90" x2="390" y2="460" stroke="#BDBDBD" stroke-width="1" stroke-dasharray="6,4"/>
-  <line x1="620" y1="90" x2="620" y2="460" stroke="#BDBDBD" stroke-width="1" stroke-dasharray="6,4"/>
+  <line x1="160" y1="90" x2="160" y2="460" stroke="var(--diagram-stroke-1)" stroke-width="1" stroke-dasharray="6,4"/>
+  <line x1="390" y1="90" x2="390" y2="460" stroke="var(--diagram-stroke-1)" stroke-width="1" stroke-dasharray="6,4"/>
+  <line x1="620" y1="90" x2="620" y2="460" stroke="var(--diagram-stroke-1)" stroke-width="1" stroke-dasharray="6,4"/>
 
   <!-- TRY phase -->
-  <rect x="20" y="100" width="740" height="90" rx="4" fill="#E3F2FD" stroke="#1565C0" stroke-width="1" opacity="0.3"/>
-  <text x="40" y="118" font-size="12" font-weight="bold" fill="#1565C0">Try 阶段：资源预留</text>
+  <rect x="20" y="100" width="740" height="90" rx="4" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1" opacity="0.3"/>
+  <text x="40" y="118" font-size="12" font-weight="bold" fill="var(--diagram-accent-1)">Try 阶段：资源预留</text>
 
   <!-- Try: Business → Account -->
-  <line x1="170" y1="140" x2="378" y2="140" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arT1)"/>
-  <rect x="210" y="126" width="130" height="20" rx="3" fill="#E3F2FD" stroke="#1565C0" stroke-width="1"/>
-  <text x="275" y="140" text-anchor="middle" font-size="11" fill="#0D47A1">Try：冻结 100 元</text>
+  <line x1="170" y1="140" x2="378" y2="140" stroke="var(--diagram-accent-1)" stroke-width="1.5" marker-end="url(#arT1)"/>
+  <rect x="210" y="126" width="130" height="20" rx="3" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1"/>
+  <text x="275" y="140" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-1)">Try：冻结 100 元</text>
 
   <!-- Try: Business → Inventory -->
-  <line x1="170" y1="170" x2="608" y2="170" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arT1)"/>
-  <rect x="330" y="156" width="160" height="20" rx="3" fill="#E3F2FD" stroke="#1565C0" stroke-width="1"/>
-  <text x="410" y="170" text-anchor="middle" font-size="11" fill="#0D47A1">Try：冻结 1 件库存</text>
+  <line x1="170" y1="170" x2="608" y2="170" stroke="var(--diagram-accent-1)" stroke-width="1.5" marker-end="url(#arT1)"/>
+  <rect x="330" y="156" width="160" height="20" rx="3" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1"/>
+  <text x="410" y="170" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-1)">Try：冻结 1 件库存</text>
 
   <!-- Decision point -->
   <g transform="translate(60,200)">
-    <rect x="0" y="0" width="200" height="28" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
-    <text x="100" y="18" text-anchor="middle" font-size="11" fill="#BF360C" font-weight="bold">全部 Try 成功？</text>
+    <rect x="0" y="0" width="200" height="28" rx="4" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
+    <text x="100" y="18" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-4)" font-weight="bold">全部 Try 成功？</text>
   </g>
 
   <!-- CONFIRM phase (success path) -->
-  <rect x="20" y="240" width="740" height="90" rx="4" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1" opacity="0.3"/>
-  <text x="40" y="258" font-size="12" font-weight="bold" fill="#2E7D32">Confirm 阶段：确认提交</text>
+  <rect x="20" y="240" width="740" height="90" rx="4" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1" opacity="0.3"/>
+  <text x="40" y="258" font-size="12" font-weight="bold" fill="var(--diagram-accent-2)">Confirm 阶段：确认提交</text>
 
   <!-- Confirm: Business → Account -->
-  <line x1="170" y1="280" x2="378" y2="280" stroke="#2E7D32" stroke-width="1.5" marker-end="url(#arT2)"/>
-  <rect x="210" y="266" width="130" height="20" rx="3" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1"/>
-  <text x="275" y="280" text-anchor="middle" font-size="11" fill="#1B5E20">Confirm：扣减冻结金额</text>
+  <line x1="170" y1="280" x2="378" y2="280" stroke="var(--diagram-accent-2)" stroke-width="1.5" marker-end="url(#arT2)"/>
+  <rect x="210" y="266" width="130" height="20" rx="3" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+  <text x="275" y="280" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-2)">Confirm：扣减冻结金额</text>
 
   <!-- Confirm: Business → Inventory -->
-  <line x1="170" y1="310" x2="608" y2="310" stroke="#2E7D32" stroke-width="1.5" marker-end="url(#arT2)"/>
-  <rect x="330" y="296" width="160" height="20" rx="3" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1"/>
-  <text x="410" y="310" text-anchor="middle" font-size="11" fill="#1B5E20">Confirm：扣减冻结库存</text>
+  <line x1="170" y1="310" x2="608" y2="310" stroke="var(--diagram-accent-2)" stroke-width="1.5" marker-end="url(#arT2)"/>
+  <rect x="330" y="296" width="160" height="20" rx="3" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+  <text x="410" y="310" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-2)">Confirm：扣减冻结库存</text>
 
   <!-- CANCEL phase (failure path) -->
-  <rect x="20" y="346" width="740" height="90" rx="4" fill="#FFEBEE" stroke="#C62828" stroke-width="1" opacity="0.3"/>
-  <text x="40" y="364" font-size="12" font-weight="bold" fill="#C62828">Cancel 阶段：回滚（任何 Try 失败时）</text>
+  <rect x="20" y="346" width="740" height="90" rx="4" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1" opacity="0.3"/>
+  <text x="40" y="364" font-size="12" font-weight="bold" fill="var(--diagram-accent-5)">Cancel 阶段：回滚（任何 Try 失败时）</text>
 
   <!-- Cancel: Business → Account -->
-  <line x1="170" y1="386" x2="378" y2="386" stroke="#C62828" stroke-width="1.5" marker-end="url(#arT3)"/>
-  <rect x="210" y="372" width="130" height="20" rx="3" fill="#FFEBEE" stroke="#C62828" stroke-width="1"/>
-  <text x="275" y="386" text-anchor="middle" font-size="11" fill="#B71C1C">Cancel：解冻金额</text>
+  <line x1="170" y1="386" x2="378" y2="386" stroke="var(--diagram-accent-5)" stroke-width="1.5" marker-end="url(#arT3)"/>
+  <rect x="210" y="372" width="130" height="20" rx="3" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1"/>
+  <text x="275" y="386" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-5)">Cancel：解冻金额</text>
 
   <!-- Cancel: Business → Inventory -->
-  <line x1="170" y1="416" x2="608" y2="416" stroke="#C62828" stroke-width="1.5" marker-end="url(#arT3)"/>
-  <rect x="330" y="402" width="160" height="20" rx="3" fill="#FFEBEE" stroke="#C62828" stroke-width="1"/>
-  <text x="410" y="416" text-anchor="middle" font-size="11" fill="#B71C1C">Cancel：解冻库存</text>
+  <line x1="170" y1="416" x2="608" y2="416" stroke="var(--diagram-accent-5)" stroke-width="1.5" marker-end="url(#arT3)"/>
+  <rect x="330" y="402" width="160" height="20" rx="3" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1"/>
+  <text x="410" y="416" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-5)">Cancel：解冻库存</text>
 
   <!-- Arrows from decision -->
-  <line x1="260" y1="214" x2="260" y2="240" stroke="#2E7D32" stroke-width="1.5" marker-end="url(#arT2)"/>
-  <text x="274" y="232" font-size="10" fill="#2E7D32">是</text>
+  <line x1="260" y1="214" x2="260" y2="240" stroke="var(--diagram-accent-2)" stroke-width="1.5" marker-end="url(#arT2)"/>
+  <text x="274" y="232" font-size="10" fill="var(--diagram-accent-2)">是</text>
 
-  <line x1="60" y1="232" x2="60" y2="350" stroke="#C62828" stroke-width="1.5" marker-end="url(#arT3)"/>
-  <text x="44" y="290" font-size="10" fill="#C62828" transform="rotate(-90,44,290)">否</text>
+  <line x1="60" y1="232" x2="60" y2="350" stroke="var(--diagram-accent-5)" stroke-width="1.5" marker-end="url(#arT3)"/>
+  <text x="44" y="290" font-size="10" fill="var(--diagram-accent-5)" transform="rotate(-90,44,290)">否</text>
 
   <!-- Summary -->
   <g transform="translate(100,452)">
-    <rect x="0" y="0" width="580" height="36" rx="6" fill="#FAFAFA" stroke="#E0E0E0" stroke-width="1"/>
-    <text x="290" y="14" text-anchor="middle" font-size="11" fill="#555">Try 阶段冻结资源 → 全部成功则 Confirm 提交 → 任一失败则 Cancel 回滚</text>
-    <text x="290" y="30" text-anchor="middle" font-size="10" fill="#999">适用于资金、库存等需要资源预留的场景，比 Saga 一致性更强</text>
+    <rect x="0" y="0" width="580" height="36" rx="6" fill="var(--diagram-surface-2)" stroke="var(--diagram-stroke-2)" stroke-width="1"/>
+    <text x="290" y="14" text-anchor="middle" font-size="11" fill="var(--diagram-text-2)">Try 阶段冻结资源 → 全部成功则 Confirm 提交 → 任一失败则 Cancel 回滚</text>
+    <text x="290" y="30" text-anchor="middle" font-size="10" fill="var(--diagram-ghost)">适用于资金、库存等需要资源预留的场景，比 Saga 一致性更强</text>
   </g>
 </svg>

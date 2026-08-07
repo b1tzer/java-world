@@ -20,7 +20,7 @@ Socket 的价值就在这里：**它把复杂的网络协议栈封装成了一�
 
 在 Unix/Linux 中，Socket 本质上是一个**文件描述符（File Descriptor, fd）**。操作系统把一切 I/O 资源都抽象为 fd——普通文件、管道、设备、网络连接，对应用来说都是一个 `int` 数字。
 
-![进程的文件描述符表](/diagrams/fd-table.svg)
+<SvgDiagram src="/diagrams/fd-table.svg" />
 
 创建一个 Socket 时，内核做的事情：
 
@@ -267,7 +267,7 @@ close(connFd)  ◄── 四次挥手 ──── close(fd)
 
 `listen()` 之后，内核为这个监听 Socket 维护两个队列：
 
-![全连接队列与半连接队列](/diagrams/kernel-queues.svg)
+<SvgDiagram src="/diagrams/kernel-queues.svg" />
 
 **全连接队列满（accept queue full）时：**
 
