@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 380" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="13">
+  <text x="260" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">Selector 多路复用器</text>
+  <!-- Selector thread -->
+  <rect x="160" y="50" width="200" height="60" rx="8" fill="#F3E5F5" stroke="#7B1FA2" stroke-width="2"/>
+  <text x="260" y="76" text-anchor="middle" fill="#4A148C" font-weight="bold">Selector 线程</text>
+  <text x="260" y="96" text-anchor="middle" fill="#666" font-size="12">select() 阻塞等待事件</text>
+  <!-- Channels -->
+  <rect x="40" y="200" width="120" height="70" rx="8" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.5"/>
+  <text x="100" y="228" text-anchor="middle" fill="#0D47A1" font-weight="bold">Channel 1</text>
+  <text x="100" y="248" text-anchor="middle" fill="#666" font-size="12">可读事件 ✓</text>
+  <text x="100" y="263" text-anchor="middle" fill="#888" font-size="11">客户端连接</text>
+  <rect x="200" y="200" width="120" height="70" rx="8" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="260" y="228" text-anchor="middle" fill="#1B5E20" font-weight="bold">Channel 2</text>
+  <text x="260" y="248" text-anchor="middle" fill="#666" font-size="12">可写事件 ✓</text>
+  <text x="260" y="263" text-anchor="middle" fill="#888" font-size="11">客户端连接</text>
+  <rect x="360" y="200" width="120" height="70" rx="8" fill="#ECEFF1" stroke="#90A4AE" stroke-width="1.5"/>
+  <text x="420" y="228" text-anchor="middle" fill="#546E7A" font-weight="bold">Channel N</text>
+  <text x="420" y="248" text-anchor="middle" fill="#999" font-size="12">无事件</text>
+  <text x="420" y="263" text-anchor="middle" fill="#888" font-size="11">客户端连接</text>
+  <!-- Arrows -->
+  <line x1="200" y1="110" x2="100" y2="198" stroke="#1565C0" stroke-width="1.5" marker-end="url(#ar2)"/>
+  <line x1="260" y1="110" x2="260" y2="198" stroke="#2E7D32" stroke-width="1.5" marker-end="url(#ar2)"/>
+  <line x1="320" y1="110" x2="420" y2="198" stroke="#90A4AE" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ar2)"/>
+  <!-- Event labels -->
+  <text x="130" y="160" fill="#1565C0" font-size="11">OP_READ</text>
+  <text x="268" y="160" fill="#2E7D32" font-size="11">OP_WRITE</text>
+  <!-- Footer -->
+  <text x="260" y="310" text-anchor="middle" fill="#888" font-size="12">一个线程通过 select() 同时监听多个 Channel 的 I/O 事件</text>
+  <text x="260" y="330" text-anchor="middle" fill="#888" font-size="12">只有就绪的 Channel 才会被处理，无需为每个连接阻塞一个线程</text>
+  <defs><marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#555"/></marker></defs>
+</svg>
