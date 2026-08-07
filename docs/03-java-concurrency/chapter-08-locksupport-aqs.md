@@ -277,6 +277,25 @@ for (;;) {
 
 `parkAndCheckInterrupt` 内部就是 §8.2 讲的 `LockSupport.park(this)`。线程从此挂起，直到前驱调用 `unpark`。
 
+把这三步串起来，完整的 `acquire` 流程如下：
+
+```mermaid
+flowchart TD
+    A["acquire(arg)"] --> B["tryAcquire(arg)\n子类实现，CAS 修改 state"]
+    B -->|成功| C["返回，获取锁成功"]
+    B -->|失败| D["addWaiter(EXCLUSIVE)\n创建 Node 加入 CLH 队列尾部"]
+    D --> E{"前驱节点是 head？"}
+    E -->|是| F["再次 tryAcquire(arg)"]
+    F -->|成功| G["setHead(node)\n释放旧 head，返回"]
+    F -->|失败| H["shouldParkAfterFailedAcquire\n将前驱 waitStatus 设为 SIGNAL"]
+    E -->|否| H
+    H --> I["parkAndCheckInterrupt()\nLockSupport.park 挂起"]
+    I -->|被前驱 unpark 唤醒| E
+    G --> J["结束"]
+```
+
+整个过程中，`shouldParkAfterFailedAcquire` 可能需要多次自旋：如果前驱节点是 `CANCELLED` 状态（线程超时或被中断放弃），就跳过它往前找一个有效的前驱，再把那个前驱的 `waitStatus` 设为 `SIGNAL`。这个清理过程保证了队列中 `CANCELLED` 节点不会阻塞后续节点的唤醒链。
+
 ### 8.4.2 独占模式的 `release`：只干两件事
 
 ```java
@@ -292,6 +311,18 @@ public final boolean release(int arg) {
 ```
 
 `tryRelease` 由子类决定"归零"的条件。`ReentrantLock` 里必须减到 0 才算真释放——重入了三次要 `unlock` 三次。归零后，`unparkSuccessor` 找到队列里第一个未取消的节点，`LockSupport.unpark`。被唤醒的线程从 `acquireQueued` 的 `park` 处返回，回到自旋，再次 `tryAcquire`。
+
+```mermaid
+flowchart TD
+    A["release(arg)"] --> B["tryRelease(arg)\n子类实现，修改 state"]
+    B -->|state 归零| C["锁完全释放"]
+    C --> D{"head != null 且\nwaitStatus != 0？"}
+    D -->|是| E["unparkSuccessor(head)\n从 tail 往回找有效后继"]
+    D -->|否| F["无需唤醒"]
+    E --> G["LockSupport.unpark(后继线程)\n后继从 parkAndCheckInterrupt 返回"]
+    G --> H["后继再次 tryAcquire\n回到 acquireQueued 自旋"]
+    B -->|state 仍 > 0| I["锁仍被持有（重入未完全释放）\n不唤醒任何人"]
+```
 
 `unparkSuccessor` 里藏着一个反直觉的细节：找后继时**从 tail 往回遍历**。原因是入队的顺序是"先设 prev，再 CAS tail，最后设 prev.next"——`next` 指针可能是过时的，`prev` 链才是可靠的。
 
