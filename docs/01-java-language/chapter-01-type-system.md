@@ -79,19 +79,7 @@ public class Hello {
 
 这段代码从源码到 CPU 执行，经历了这些步骤：
 
-```text
-Hello.java（源码）
-    ↓ javac 编译
-Hello.class（字节码）
-    ↓ JVM 加载
-ClassLoader 加载字节码
-    ↓
-JVM 验证、准备、初始化
-    ↓
-解释执行 / JIT 编译
-    ↓
-CPU 执行机器码
-```
+<SvgDiagram src="/diagrams/java-compile-pipeline.svg" />
 
 后面的每一章，都是在解释这条链路中的某一个环节。现在只需要建立这个整体认知，知道"Java 代码不是直接在 CPU 上跑的"就够了。
 
@@ -117,20 +105,7 @@ Java 的类型世界分为两大阵营：基本类型（Primitive）和引用类
 
 ### 类型体系总览
 
-```text
-          Type
-            |
-    ┌───────┴───────┐
-    |               |
-Primitive       Reference
-    |               |
-  int            Class
-  boolean        Interface
-  char           Array
-  long           Enum
-  double         Record
-  ...            ...
-```
+<SvgDiagram src="/diagrams/type-hierarchy.svg" />
 
 ### Enum：编译器魔法加持的引用类型
 
@@ -257,15 +232,7 @@ User user = new User();
 
 很多人认为"变量 `user` 就是对象"。实际上：
 
-```text
-栈（Stack）                 堆（Heap）
-┌─────────────┐           ┌──────────────────┐
-│  user       │──────────→│  User 对象        │
-│  (引用地址)  │           │  ├─ 对象头        │
-└─────────────┘           │  ├─ name: null    │
-                          │  └─ age: 0        │
-                          └──────────────────┘
-```
+<SvgDiagram src="/diagrams/stack-heap.svg" />
 
 - **变量 `user`** 存在栈上，保存的是一个**引用**（本质上是一个内存地址）
 - **对象本身** 存在堆上，包含对象头和实例数据
@@ -368,18 +335,7 @@ NPE 是 Java 中最常见的运行时异常之一。后面的 Lambda 章节会�
 
 当你写 `new User()` 时，JVM 做了什么？
 
-```text
-1. 检查 User 类是否已加载
-   └─ 没有？先执行类加载（第二卷第 1 章）
-2. 在堆上分配内存
-   └─ 指针碰撞 or 空闲列表（第二卷第 3 章）
-3. 初始化零值
-   └─ 所有字段设为默认值（0 / null / false）
-4. 设置对象头
-   └─ Mark Word + Klass Pointer（第二卷第 3 章）
-5. 执行构造方法 <init>
-   └─ 你写的构造函数代码
-```
+<SvgDiagram src="/diagrams/jvm-object-creation.svg" />
 
 现在只需要知道：对象创建不是一瞬间的事，JVM 做了很多幕后工作。第二卷"对象模型"一章会详细展开。
 
@@ -387,17 +343,7 @@ NPE 是 Java 中最常见的运行时异常之一。后面的 Lambda 章节会�
 
 HotSpot JVM 中，一个 Java 对象在堆中的结构：
 
-```text
-┌──────────────────┐
-│     对象头        │
-│  ├─ Mark Word     │  8 字节（存 hashCode、GC 年龄、锁状态）
-│  └─ Klass Pointer │  4 或 8 字节（指向类元数据）
-├──────────────────┤
-│     实例数据      │  各个字段的值
-├──────────────────┤
-│     对齐填充      │  保证 8 字节对齐
-└──────────────────┘
-```
+<SvgDiagram src="/diagrams/jvm-object-layout.svg" />
 
 对象头中的 **Mark Word** 非常重要——它不仅存储 hashCode 和 GC 年龄，还存储锁状态信息。当对象被 `synchronized` 锁住时，Mark Word 的内容会发生变化（偏向锁 → 轻量级锁 → 重量级锁）。这是第三卷 `synchronized` 的关键前置知识。
 
