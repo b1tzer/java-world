@@ -6,9 +6,29 @@
 
 ## 4.1 为什么需要 NIO
 
-### 4.1.1 BIO 的核心矛盾回顾
+### 4.1.1 BIO 模型回顾
 
-上一章我们看到，BIO 的本质问题是：**线程被阻塞在 `read()` 上，即使没有数据到来也不释放。**
+上一章 §3.5 我们用 Java Socket 写了一个 Echo Server。它的模型很简单：**每 accept 一个连接，就分配一个线程去处理它**——这就是 BIO（Blocking I/O）。
+
+```text
+┌─────────────────────────────────────────┐
+│              Main Thread                 │
+│   serverSocket.accept()  ◄── 阻塞等待   │
+└──────────────┬──────────────────────────┘
+               │ 新连接到达
+       ┌───────▼───────┐
+       │  Thread Pool   │
+       ├───────┬───────┤
+       │ T1    │ T2    │  T3 ...
+       │       │       │
+       │ read()│ read()│ read()
+       │ 阻塞  │ 阻塞  │ 阻塞
+       │ write()│write()│write()
+       │ 阻塞  │ 阻塞  │ 阻塞
+       └───────┴───────┘
+```
+
+每个线程的生命周期：
 
 ```text
 BIO 时间线（单个连接）:
@@ -16,7 +36,95 @@ BIO 时间线（单个连接）:
 │◄────────── 线程被白白占用 ──────────────►│              │◄──── 又白等 ────────────►│
 ```
 
-### 4.1.2 NIO 的核心思想：事件驱动
+线程 90% 的时间都阻塞在 `read()` 上——不消耗 CPU，但**内存和调度资源一直被占着**。
+
+### 4.1.2 BIO 的三大瓶颈
+
+BIO 的问题不在于"慢"，而在于"等"——用最昂贵的资源（线程）去做最廉价的事情（等待）。具体表现为三个层面：
+
+**一、内存开销**
+
+每个 Java 线程需要独立的栈空间，默认约 512KB ~ 1MB。
+
+| 连接数 | 线程数 | 栈内存（按 1MB/线程） | 结果 |
+| :-- | :-- | :-- | :-- |
+| 1,000 | 1,000 | ~1 GB | 勉强可用 |
+| 10,000 | 10,000 | ~10 GB | 一台普通服务器扛不住 |
+| 100,000 | 100,000 | ~100 GB | 物理上不可能 |
+
+**二、调度开销**
+
+线程数远超 CPU 核心数时，操作系统大量时间花在**上下文切换**（保存/恢复寄存器、刷新 TLB）而非执行业务逻辑上。CPU 缓存也会因频繁切换而失效。
+
+**三、资源浪费**
+
+很多连接是"空闲"的——比如长连接客户端每隔 30 秒发一次心跳，但线程依然被占用在阻塞 `read()` 上，白白消耗内存。
+
+```text
+线程状态分布（典型 Web 服务器）:
+┌──────────────────────────────────────────────┐
+│ ████████ 10%  计算（业务逻辑）                 │
+│ ████████████████████████████████████ 70% 阻塞等待 I/O │
+│ ██████ 10%  等待调度                          │
+│ ██████ 10%  其他（GC 等）                      │
+└──────────────────────────────────────────────┘
+```
+
+### 4.1.3 压测验证：BIO 的极限在哪里
+
+用压测脚本模拟并发连接，直观感受 BIO 的天花板：
+
+```java
+// 压测：同时发起 N 个长连接
+public class BioStressTest {
+    public static void main(String[] args) throws Exception {
+        int connectionCount = 5000;
+        CountDownLatch latch = new CountDownLatch(connectionCount);
+
+        for (int i = 0; i < connectionCount; i++) {
+            final int id = i;
+            new Thread(() -> {
+                try {
+                    Socket s = new Socket("localhost", 8080);
+                    s.getOutputStream().write(("ping-" + id + "\n").getBytes());
+                    s.getOutputStream().flush();
+                    byte[] buf = new byte[1024];
+                    s.getInputStream().read(buf);
+                    latch.countDown();
+                    Thread.sleep(Long.MAX_VALUE);     // 保持连接
+                } catch (Exception e) {
+                    latch.countDown();
+                }
+            }).start();
+        }
+        latch.await();
+        System.out.println("All " + connectionCount + " connections established.");
+    }
+}
+```
+
+| 连接数 | 结果 | 瓶颈 |
+| :-- | :-- | :-- |
+| 1,000 | ✅ 正常 | — |
+| 5,000 | ⚠️ 变慢 | 线程数过多，GC 频繁 |
+| 10,000 | ❌ OOM | `OutOfMemoryError: unable to create new native thread` |
+
+### 4.1.4 BIO 的适用边界
+
+尽管 BIO 有明显的天花板，它并没有完全过时：
+
+| 场景 | 为什么 BIO 仍然合理 |
+| :-- | :-- |
+| 连接数少（< 100） | 线程开销可忽略 |
+| 请求-响应模式，连接生命周期短 | 每个连接占用时间极短 |
+| 原型开发、Demo | 代码简单，50 行搞定 |
+| 遗留系统集成 | 旧框架基于 BIO（如 Servlet 2.x） |
+
+> Tomcat 7 以前默认使用 BIO Connector，每个请求占用一个线程。Tomcat 8.5 起彻底移除了 BIO，全面转向 NIO——这是 Java 生态从 BIO 过渡到 NIO 的标志性事件。
+
+### 4.1.5 NIO 的核心思想：事件驱动
+
+BIO 的根因是：**线程在"等数据来"**。不管有没有数据，线程都被占着。
 
 NIO 换了一个思路：**不问"有没有数据"，而是让操作系统在"有数据可读"时通知我。**
 
@@ -26,7 +134,7 @@ NIO:  线程 → 注册关心 READ 事件 → 做其他事 → Selector 通知"�
 ```
 
 | 对比维度 | BIO | NIO |
-|----------|-----|-----|
+| :-- | :-- | :-- |
 | I/O 模型 | 阻塞（Blocking） | 非阻塞（Non-blocking） |
 | 线程与连接 | 1 : 1 | 1 : N |
 | 等待方式 | 线程挂起 | 事件通知（多路复用） |
@@ -34,7 +142,7 @@ NIO:  线程 → 注册关心 READ 事件 → 做其他事 → Selector 通知"�
 | 编程复杂度 | 低 | 高 |
 | 适用场景 | 连接数少、延迟不敏感 | 高并发、低延迟 |
 
-### 4.1.3 NIO 的三大核心组件
+### 4.1.6 NIO 的三大核心组件
 
 ```text
 ┌──────────────────────────────────────────────────┐
@@ -272,7 +380,7 @@ allocateDirect()： 直接内存 → 内核缓冲区 → 网卡
 
 ## 4.5 Selector：一个线程管理万千连接
 
-### 4.4.1 多路复用器是什么
+### 4.5.1 多路复用器是什么
 
 **Selector（选择器）** 是 NIO 实现高并发的核心。它的作用是：**让一个线程同时监听多个 Channel 的 I/O 事件。**
 
@@ -291,7 +399,7 @@ allocateDirect()： 直接内存 → 内核缓冲区 → 网卡
     └──────────┘     └──────────┘     └──────────┘
 ```
 
-### 4.4.2 事件类型
+### 4.5.2 事件类型
 
 | 事件 | 常量 | 含义 |
 |------|------|------|
@@ -300,7 +408,7 @@ allocateDirect()： 直接内存 → 内核缓冲区 → 网卡
 | 读就绪 | `SelectionKey.OP_READ` | Channel 有数据可读 |
 | 写就绪 | `SelectionKey.OP_WRITE` | Channel 可以写入数据 |
 
-### 4.4.3 Selector 的使用流程
+### 4.5.3 Selector 的使用流程
 
 ```java
 // 第一步：创建 Selector
@@ -336,7 +444,7 @@ while (true) {
 }
 ```
 
-### 4.4.4 select() 的三种变体
+### 4.5.4 select() 的三种变体
 
 ```java
 selector.select();              // 阻塞，直到有事件就绪
@@ -344,7 +452,7 @@ selector.select(1000);          // 阻塞最多 1000ms，超时返回 0
 selector.selectNow();           // 非阻塞，立即返回当前就绪数
 ```
 
-### 4.4.5 SelectionKey：事件与数据的桥梁
+### 4.5.5 SelectionKey：事件与数据的桥梁
 
 `SelectionKey` 是 Channel 和 Selector 之间的"注册凭证"，它可以附带一个**附件对象**（通常用于存储该连接的状态或缓冲区）：
 
@@ -361,7 +469,7 @@ ClientState state = (ClientState) key.attachment();
 
 ## 4.6 NIO Reactor 模式
 
-### 4.7.1 从 Selector 到 Reactor
+### 4.6.1 从 Selector 到 Reactor
 
 直接使用 Selector 的代码虽然能工作，但在生产环境中需要考虑：
 - 事件分发的线程安全
@@ -370,7 +478,7 @@ ClientState state = (ClientState) key.attachment();
 
 **Reactor 模式**是对 Selector 使用方式的标准化抽象。
 
-### 4.7.2 单线程 Reactor
+### 4.6.2 单线程 Reactor
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -437,7 +545,7 @@ public class NioEchoServer {
 }
 ```
 
-### 4.7.3 多线程 Reactor
+### 4.6.3 多线程 Reactor
 
 单线程 Reactor 的问题是：**业务逻辑处理会阻塞 Selector 线程**，导致其他连接的事件无法及时处理。
 
@@ -463,7 +571,7 @@ public class NioEchoServer {
         └──────────┴──────────┘
 ```
 
-### 4.7.4 主从多 Reactor 模式
+### 4.6.4 主从多 Reactor 模式
 
 大型框架（如 Netty）采用的模式：
 
