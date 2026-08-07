@@ -98,10 +98,9 @@ sequenceDiagram
 整个执行链路涉及六个核心组件，各司其职：
 
 <SvgDiagram src="/diagrams/mybatis-flow.svg" />
-```
 
 | 组件 | 职责 | 类比 |
-|------|------|------|
+| :-- | :-- | :-- |
 | **SqlSession** | 对话入口，提供 CRUD API | 银行柜台窗口 |
 | **Executor** | SQL 执行引擎，管理缓存和事务 | 银行后台审批员 |
 | **StatementHandler** | 创建和管理 JDBC Statement | 业务表单填写员 |
@@ -250,7 +249,7 @@ User user2 = mapper.getById(1);  // 无 SQL 执行！
 **缓存失效的四种触发条件：**
 
 | 触发条件 | 说明 |
-|---------|------|
+| :-- | :-- |
 | 执行 `update`/`insert`/`delete` | 任何写操作都会清空当前 SqlSession 的缓存 |
 | 调用 `session.commit()` | 提交事务时清空缓存 |
 | 调用 `session.close()` | 关闭会话时缓存自然消亡 |
@@ -489,7 +488,7 @@ MyBatis 的动态 SQL 通过 XML 标签，根据运行时参数动态拼装 SQL 
 **各标签速查：**
 
 | 标签 | 作用 | 关键行为 |
-|------|------|---------|
+| :-- | :-- | :-- |
 | `<if>` | 条件判断 | `test` 属性使用 OGNL 表达式 |
 | `<choose>/<when>/<otherwise>` | 多选一（类似 switch） | 只执行第一个匹配的分支 |
 | `<where>` | 智能 WHERE | 自动去除多余 AND/OR |
@@ -595,7 +594,7 @@ MyBatis 的动态 SQL 并非简单的字符串拼接。它使用 **OGNL 表达�
 ## 本章小结
 
 | 要点 | 核心结论 |
-|------|---------|
+| :-- | :-- |
 | MyBatis 定位 | SQL 映射框架，不是 ORM。SQL 由开发者掌控 |
 | 核心机制 | Mapper 接口 → JDK 动态代理 → SqlSession → Executor → JDBC |
 | 一级缓存 | SqlSession 级别，Spring 整合后不可依赖 |
