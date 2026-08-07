@@ -203,3 +203,25 @@
     font-size: 13px;
   }
 }
+
+/* ---------- Mermaid 图 ---------- */
+.vp-doc .mermaid {
+  display: flex;
+  justify-content: center;
+  margin: 2em 0;
+  padding: 28px 24px;
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  overflow: visible;
+}
+
+.vp-doc .mermaid svg {
+  max-width: 100%;
+  height: auto;
+  overflow: visible !important;
+}
+
+.vp-doc .mermaid .node foreignObject {
+  overflow: visible !important;
+}

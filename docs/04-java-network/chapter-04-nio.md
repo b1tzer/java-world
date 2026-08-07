@@ -172,7 +172,7 @@ NIO:  线程 → 注册关心 READ 事件 → 做其他事 → Selector 通知"�
 NIO 引入了 **Channel（通道）**，它是**双向**的——同一个 Channel 既可以读也可以写。
 
 | 特性 | Stream | Channel |
-|------|--------|---------|
+| :--- | :--- | :--- |
 | 方向 | 单向（in 或 out） | 双向（可读可写） |
 | 阻塞 | 默认阻塞 | 默认非阻塞 |
 | 数据操作 | 直接读写字节 | 必须通过 Buffer |
@@ -194,7 +194,7 @@ DatagramChannel udpChannel = DatagramChannel.open();
 ```
 
 | Channel 类型 | 用途 | 对应 BIO 类 |
-|-------------|------|------------|
+| :--- | :--- | :--- |
 | `ServerSocketChannel` | 监听 TCP 连接 | `ServerSocket` |
 | `SocketChannel` | TCP 双向读写 | `Socket` |
 | `DatagramChannel` | UDP 读写 | `DatagramSocket` |
@@ -233,7 +233,7 @@ NIO:   Channel ──read──►  Buffer ──get()──►  byte[]
 ![Buffer 的内存布局与核心操作](/diagrams/buffer-ops.svg)
 
 | 属性 | 含义 | 取值范围 |
-|------|------|----------|
+| :--- | :--- | :--- |
 | **capacity** | Buffer 的总容量，创建后不可变 | 固定 |
 | **limit** | 第一个不可读/写的索引 | 0 ≤ limit ≤ capacity |
 | **position** | 下一个要读/写的位置 | 0 ≤ position ≤ limit |
@@ -275,7 +275,7 @@ LongBuffer longBuf = LongBuffer.allocate(32);
 ```
 
 | 分配方式 | 优点 | 缺点 |
-|----------|------|------|
+| :--- | :--- | :--- |
 | `allocate()` | 分配快，受 GC 管理 | I/O 时可能需要额外拷贝 |
 | `allocateDirect()` | 减少内核态/用户态拷贝 | 分配慢，不当使用会内存泄漏 |
 
@@ -319,7 +319,7 @@ fileChannel.transferTo(0, fileChannel.size(), socketChannel);
 ### 零拷贝的适用场景
 
 | 场景 | 是否适合 | 原因 |
-|------|---------|------|
+| :--- | :--- | :--- |
 | 文件服务器（Nginx、静态资源） | ✅ 非常适合 | 大文件传输，数据不需要修改 |
 | 消息队列（Kafka） | ✅ 非常适合 | 消息从磁盘直接发到网络 |
 | 数据压缩/加密 | ❌ 不适合 | 数据需要在用户空间处理 |
@@ -349,22 +349,22 @@ allocateDirect()： 直接内存 → 内核缓冲区 → 网卡
 ```text
                     ┌───────────────────┐
                     │    Selector 线程   │
-                    │   (单个 Event Loop) │
+                    │  (单个 Event Loop) │
                     └────────┬──────────┘
                              │ select() 阻塞等待事件
             ┌────────────────┼────────────────┐
             ▼                ▼                ▼
     ┌──────────┐     ┌──────────┐     ┌──────────┐
     │Channel 1 │     │Channel 2 │     │Channel N │
-    │客户端连接 │     │客户端连接 │     │客户端连接 │
-    │(可读事件) │     │(可写事件) │     │(可读事件) │
+    │客户端连接  │     │客户端连接 │      │客户端连接 │
+    │(可读事件)  │    │(可写事件) │      │(可读事件) │
     └──────────┘     └──────────┘     └──────────┘
 ```
 
 ### 4.5.2 事件类型
 
 | 事件 | 常量 | 含义 |
-|------|------|------|
+| :--- | :--- | :--- |
 | 连接就绪 | `SelectionKey.OP_CONNECT` | 客户端连接建立完成 |
 | 接受就绪 | `SelectionKey.OP_ACCEPT` | 有新连接到达（ServerSocketChannel） |
 | 读就绪 | `SelectionKey.OP_READ` | Channel 有数据可读 |
@@ -434,6 +434,7 @@ ClientState state = (ClientState) key.attachment();
 ### 4.6.1 从 Selector 到 Reactor
 
 直接使用 Selector 的代码虽然能工作，但在生产环境中需要考虑：
+
 - 事件分发的线程安全
 - 读写操作不应阻塞 Selector 线程
 - 不同事件应由不同处理器处理
@@ -444,15 +445,15 @@ ClientState state = (ClientState) key.attachment();
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                     Reactor Thread                           │
+│                     Reactor Thread                          │
 │                                                             │
-│   ┌──────────┐     ┌───────────┐     ┌──────────────────┐  │
-│   │ Selector │────►│ Dispatcher│────►│ Handler          │  │
-│   │ select() │     │ 分发事件   │     │ 处理业务逻辑     │  │
-│   └──────────┘     └───────────┘     │ (read/decode/    │  │
-│                                      │  process/encode/  │  │
-│                                      │  write)           │  │
-│                                      └──────────────────┘  │
+│   ┌──────────┐     ┌───────────┐     ┌──────────────────┐   │
+│   │ Selector │────►│ Dispatcher│────►│ Handler          │   │
+│   │ select() │     │ 分发事件   │      │ 处理业务逻辑      │   │
+│   └──────────┘     └───────────┘     │ (read/decode/    │   │
+│                                      │  process/encode/ │   │
+│                                      │  write)          │   │
+│                                      └──────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -518,8 +519,8 @@ public class NioEchoServer {
 │         Main Reactor Thread         │
 │                                     │
 │   Selector.select()                 │
-│   ├── Accept ──► 注册 READ 事件     │
-│   └── Read ──► 提交给 Worker Pool   │
+│   ├── Accept ──► 注册 READ 事件      │
+│   └── Read ──► 提交给 Worker Pool    │
 └──────────────────┬──────────────────┘
                    │
         ┌──────────▼──────────┐
@@ -540,19 +541,19 @@ public class NioEchoServer {
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
-│  ┌──────────────┐         ┌──────────────────────────────┐ │
-│  │ Boss Reactor  │         │      Worker Reactor Pool     │ │
-│  │ (1 个线程)    │         │      (N 个线程)              │ │
-│  │              │  accept  │                              │ │
-│  │ Selector     ├────────►│  Worker-1  Worker-2  ...     │ │
-│  │ 只处理 ACCEPT│         │  处理 READ/WRITE 事件        │ │
-│  └──────────────┘         └──────────────────────────────┘ │
+│  ┌──────────────┐         ┌──────────────────────────────┐  │
+│  │ Boss Reactor │         │      Worker Reactor Pool     │  │
+│  │ (1 个线程)    │         │      (N 个线程)               │  │
+│  │              │  accept │                              │  │
+│  │ Selector     ├────────►│  Worker-1  Worker-2  ...     │  │
+│  │ 只处理 ACCEPT │         │  处理 READ/WRITE 事件          │ │
+│  └──────────────┘         └──────────────────────────────┘  │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 | 角色 | 职责 | 线程数 |
-|------|------|--------|
+| :--- | :--- | :--- |
 | Boss Reactor | 接受新连接，注册到 Worker | 1 |
 | Worker Reactor | 处理已建立连接的读写事件 | CPU 核心数 × 2 |
 
@@ -619,7 +620,7 @@ while (true) {
 ### 4.7.3 其他痛点
 
 | 问题 | 描述 |
-|------|------|
+| :--- | :--- |
 | **API 设计反人类** | `ByteBuffer` 的 `flip/clear/compact` 容易遗忘，导致数据错乱 |
 | **缺少协议支持** | HTTP、WebSocket、SSL 都要自己实现 |
 | **Buffer 只能操作 position 和 limit 之间** | 不能像数组一样随机读写 |
@@ -647,7 +648,7 @@ epoll 空轮询 Bug       ──►  自动检测 + 重建 Selector
 ## 本章小结
 
 | 组件 | 职责 | 核心类 |
-|------|------|--------|
+| :--- | :--- | :--- |
 | **Channel** | 双向数据通道 | `SocketChannel`, `ServerSocketChannel` |
 | **Buffer** | 数据读写的容器 | `ByteBuffer`, `CharBuffer` |
 | **Selector** | 多路复用器，事件通知 | `Selector`, `SelectionKey` |
@@ -658,6 +659,7 @@ epoll 空轮询 Bug       ──►  自动检测 + 重建 Selector
 ---
 
 > **纵横联系：**
+>
 > - **本卷第3章** 讲述的 BIO 模型是 NIO 的对比基准——正是因为 BIO 的"一连接一线程"无法扩展，才催生了 NIO。
 > - **本卷第5章** 将讲解 Netty 框架，它是本章 NIO 三大组件（Channel + Buffer + Selector）加上 Reactor 模式的工业级封装。
 > - **第一卷《Java 语言基础》** 中的泛型（`SelectionKey.attach()` 的类型安全）、异常处理（`IOException` 的各种子类）在本章代码中反复出现。

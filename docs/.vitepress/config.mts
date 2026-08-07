@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
-export default defineConfig({
+export default withMermaid(
+  defineConfig({
   title: 'Java World',
   description: '从语言到架构的 Java 完整知识体系',
   lang: 'zh-CN',
@@ -179,4 +181,10 @@ export default defineConfig({
   markdown: {
     lineNumbers: true,
   },
-})
+
+  mermaid: {
+    flowchart: {
+      padding: 24,
+    },
+  },
+}))
