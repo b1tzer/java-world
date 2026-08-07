@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 820" width="780" height="820" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="13">
+<style>
+  text { text-anchor: middle; dominant-baseline: central; }
+  .title { font-size: 15px; font-weight: bold; fill: #1a1a2e; }
+  .label { font-size: 12px; fill: #2d3436; }
+  .note { font-size: 11px; fill: #636e72; }
+  .arrow { stroke: #6c5ce7; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+  .box { rx: 8; ry: 8; }
+  .phase { fill: #dfe6e9; stroke: #636e72; stroke-width: 1.5; }
+  .highlight { fill: #ffeaa7; stroke: #fdcb6e; stroke-width: 1.5; }
+  .action { fill: #81ecec; stroke: #00b894; stroke-width: 1.5; }
+  .important { fill: #fab1a0; stroke: #e17055; stroke-width: 1.5; }
+  .step { fill: #a29bfe; stroke: #6c5ce7; stroke-width: 1.5; }
+  .note-box { fill: #f8f9fa; stroke: #b2bec3; stroke-width: 1; }
+  .cache { fill: #fdcb6e; stroke: #f39c12; stroke-width: 1.5; }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+    <polygon points="0 0, 10 3.5, 0 7" fill="#6c5ce7"/>
+  </marker>
+  <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+    <polygon points="0 0, 10 3.5, 0 7" fill="#00b894"/>
+  </marker>
+  <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+    <polygon points="0 0, 10 3.5, 0 7" fill="#e17055"/>
+  </marker>
+</defs>
+<text x="390" y="28" class="title">Spring 循环依赖与三级缓存</text>
+<rect x="40" y="55" width="340" height="32" rx="6" class="box step"/>
+<text x="210.0" y="71" class="label" font-weight="bold">步骤1: 创建 ServiceA</text>
+<rect x="40" y="87" width="340" height="82" rx="0 0 6 6" class="box note-box"/>
+<text x="55" y="105" text-anchor="start" class="note">singletonObjects: 无</text>
+<text x="55" y="123" text-anchor="start" class="note">实例化 ServiceA（调用构造器）</text>
+<text x="55" y="141" text-anchor="start" class="note">将 ServiceA 的 ObjectFactory 放入三级缓存</text>
+<text x="55" y="159" text-anchor="start" class="note">开始填充属性，发现需要 ServiceB</text>
+<line x1="210" y1="173" x2="210" y2="225" class="arrow"/><rect x="40" y="225" width="340" height="32" rx="6" class="box action"/>
+<text x="210.0" y="241" class="label" font-weight="bold">步骤2: 创建 ServiceB</text>
+<rect x="40" y="257" width="340" height="82" rx="0 0 6 6" class="box note-box"/>
+<text x="55" y="275" text-anchor="start" class="note">singletonObjects: 无</text>
+<text x="55" y="293" text-anchor="start" class="note">实例化 ServiceB</text>
+<text x="55" y="311" text-anchor="start" class="note">将 ServiceB 的 ObjectFactory 放入三级缓存</text>
+<text x="55" y="329" text-anchor="start" class="note">开始填充属性，发现需要 ServiceA</text>
+<line x1="210" y1="343" x2="210" y2="395" class="arrow"/><rect x="40" y="395" width="340" height="32" rx="6" class="box highlight"/>
+<text x="210.0" y="411" class="label" font-weight="bold">步骤3: 解决 ServiceA 的依赖</text>
+<rect x="40" y="427" width="340" height="118" rx="0 0 6 6" class="box note-box"/>
+<text x="55" y="445" text-anchor="start" class="note">一级缓存: 无 → 二级缓存: 无</text>
+<text x="55" y="463" text-anchor="start" class="note">三级缓存: 有 ServiceA 的 ObjectFactory</text>
+<text x="55" y="481" text-anchor="start" class="note">调用 ObjectFactory.getObject()</text>
+<text x="55" y="499" text-anchor="start" class="note">→ 有 AOP 代理则返回代理对象</text>
+<text x="55" y="517" text-anchor="start" class="note">将结果移入二级缓存</text>
+<text x="55" y="535" text-anchor="start" class="note">ServiceB 初始化完成 → 放入一级缓存</text>
+<line x1="210" y1="549" x2="210" y2="565" class="arrow"/><rect x="40" y="565" width="340" height="32" rx="6" class="box important"/>
+<text x="210.0" y="581" class="label" font-weight="bold">步骤4: 回到 ServiceA</text>
+<rect x="40" y="597" width="340" height="64" rx="0 0 6 6" class="box note-box"/>
+<text x="55" y="615" text-anchor="start" class="note">从一级缓存获取 ServiceB</text>
+<text x="55" y="633" text-anchor="start" class="note">ServiceA 属性填充完成，初始化完成</text>
+<text x="55" y="651" text-anchor="start" class="note">放入一级缓存，移除二级和三级缓存</text>
+<rect x="430" y="80" width="300" height="36" class="box phase"/>
+<text x="580" y="98" class="label">一级缓存 singletonObjects</text>
+<rect x="430" y="130" width="300" height="36" class="box cache"/>
+<text x="580" y="148" class="label">二级缓存 earlySingletonObjects</text>
+<rect x="430" y="180" width="300" height="36" class="box highlight"/>
+<text x="580" y="198" class="label">三级缓存 singletonFactories</text>
+
+</svg>

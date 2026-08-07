@@ -433,49 +433,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
 ### 6.3.5 网关处理流程
 
-```text
-客户端请求 GET /api/order/123
-    │
-    ▼
-┌─────────────────────────────────────────────┐
-│              API Gateway                     │
-│                                             │
-│  1. 路由匹配                                 │
-│     Path=/api/order/** ✓ → order-service     │
-│     Method=GET ✓                             │
-│                                             │
-│  2. 全局过滤器链                              │
-│     ├── AuthGlobalFilter  → JWT 验证通过     │
-│     ├── LogGlobalFilter   → 记录请求日志     │
-│     └── RateLimitFilter   → 限流检查通过     │
-│                                             │
-│  3. 路由过滤器链                              │
-│     ├── StripPrefix=1     → /api/order/123  │
-│     │                    → /order/123       │
-│     └── AddRequestHeader  → 添加自定义头     │
-│                                             │
-│  4. 负载均衡选择实例                           │
-│     order-service: 3 个实例                   │
-│     选择 192.168.1.20:8082                   │
-│                                             │
-│  5. 转发请求                                 │
-│     GET http://192.168.1.20:8082/order/123  │
-│     Header: X-User-Id: 1001                 │
-└─────────────────────────────────────────────┘
-    │
-    ▼
-order-service 处理并返回响应
-    │
-    ▼
-┌─────────────────────────────────────────────┐
-│  6. 响应过滤器链                              │
-│     ├── LogGlobalFilter   → 记录响应日志     │
-│     └── 响应头添加                          │
-│         X-Response-Time: 45ms               │
-│                                             │
-│  7. 返回响应给客户端                          │
-└─────────────────────────────────────────────┘
-```
+![微服务网关请求处理流程图](/diagrams/microservice-request-flow.svg)
 
 ---
 

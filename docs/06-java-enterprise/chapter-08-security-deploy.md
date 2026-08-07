@@ -139,37 +139,7 @@ HTTP Request
 
 一次登录认证的完整流程涉及多个组件的协作：
 
-```text
-用户提交用户名/密码
-        │
-        ▼
-AuthenticationFilter（如 UsernamePasswordAuthenticationFilter）
-        │ 创建 Authentication 对象（未认证）
-        ▼
-AuthenticationManager.authenticate(authentication)
-        │
-        ▼
-AuthenticationProvider（如 DaoAuthenticationProvider）
-        │
-        ├──▶ UserDetailsService.loadUserByUsername(username)
-        │         │
-        │         ▼
-        │    返回 UserDetails（从数据库查询用户信息）
-        │
-        ├──▶ PasswordEncoder.matches(rawPassword, encodedPassword)
-        │         │
-        │         ▼
-        │    验证密码是否匹配
-        │
-        ▼
-认证成功：返回 Authentication 对象（已认证，包含权限信息）
-        │
-        ▼
-SecurityContextHolder.getContext().setAuthentication(auth)
-        │
-        ▼
-后续请求通过 SecurityContextHolder 获取当前用户信息
-```
+![Spring Security 认证流程图](/diagrams/security-auth-flow.svg)
 
 ### 8.2.3 核心代码示例
 

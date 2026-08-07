@@ -148,37 +148,7 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 
 ### 3.2.2 流程图解
 
-```text
-HTTP Request
-     │
-     ▼
-DispatcherServlet#doDispatch()
-     │
-     ├──① HandlerMapping.findHandler(request)
-     │     → 返回 HandlerExecutionChain
-     │       ├── Handler (Controller 方法)
-     │       └── HandlerInterceptor[] (拦截器链)
-     │
-     ├──② HandlerAdapter 选择
-     │     → RequestMappingHandlerAdapter  ← 处理 @RequestMapping
-     │     → HttpRequestHandlerAdapter    ← 处理静态资源
-     │     → SimpleControllerHandlerAdapter ← 处理 Controller 接口
-     │
-     ├──③ Interceptor.preHandle()  ← 按顺序执行，任一返回 false 则中断
-     │
-     ├──④ HandlerAdapter.handle()
-     │     ├── 参数解析（ArgumentResolver）
-     │     ├── 执行 Controller 方法
-     │     └── 返回值处理（ReturnValueHandler）
-     │       → ModelAndView（视图场景）
-     │       → @ResponseBody → HttpMessageConverter 写入响应
-     │
-     ├──⑤ Interceptor.postHandle()
-     │
-     └──⑥ processDispatchResult()
-           ├── 渲染视图（ViewResolver → View.render）
-           └── 或直接返回（@ResponseBody 已在步骤④写入）
-```
+![Spring MVC 请求处理流程图](/diagrams/spring-mvc-flow.svg)
 
 ### 3.2.3 HandlerMapping 的职责
 

@@ -174,38 +174,7 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport
 
 **时序图**：
 
-```text
-Spring 容器启动
-    │
-    ├── 1. 处理 @MapperScan
-    │       │
-    │       ▼
-    │   MapperScannerRegistrar.registerBeanDefinitions()
-    │       │
-    │       ▼
-    │   ClassPathMapperScanner.doScan("com.example.mapper")
-    │       │
-    │       ├── 找到 UserMapper 接口
-    │       ├── 找到 OrderMapper 接口
-    │       └── 找到 ProductMapper 接口
-    │
-    ├── 2. 注册 BeanDefinition
-    │       │
-    │       ├── UserMapper → MapperFactoryBean (mapperInterface=UserMapper.class)
-    │       ├── OrderMapper → MapperFactoryBean (mapperInterface=OrderMapper.class)
-    │       └── ProductMapper → MapperFactoryBean (mapperInterface=ProductMapper.class)
-    │
-    └── 3. 创建 Bean
-            │
-            ▼
-        MapperFactoryBean.getObject()
-            │
-            ▼
-        SqlSession.getMapper(UserMapper.class)
-            │
-            ▼
-        返回 MapperProxy 代理对象 → 注册到容器
-```
+![Spring-MyBatis 整合流程图](/diagrams/spring-mybatis-integration.svg)
 
 ### 5.2.4 MapperProxy 的本质
 

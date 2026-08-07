@@ -518,33 +518,7 @@ service:
 
 以"接口响应变慢"为例，详细展示排查过程：
 
-```text
-① Grafana 发现 order-service 的 P99 从 200ms 升到 2s
-   └─ 观察时间：14:00 开始变慢
-
-② 登录 Jaeger，选择 order-service，时间范围 14:00-14:10
-   └─ 找到一个耗时 2.1s 的 Trace
-
-③ 查看 Trace 的 Span 树：
-
-   order-service  [GET /api/order/10086]  总耗时 2100ms
-   ├── order-service  [Controller.getOrder]  5ms
-   ├── order-service  [MyBatis: selectOrder]  15ms
-   ├── order-service  [Feign: payment-service]  1800ms  ← 问题在这里！
-   │   └── payment-service  [POST /api/payment/query]  1780ms
-   │       ├── payment-service  [MyBatis: selectPayment]  20ms
-   │       └── payment-service  [Feign: account-service]  1750ms  ← 继续追踪
-   │           └── account-service  [POST /api/account/balance]  1740ms
-   │               └── account-service  [Redis: get]  1730ms  ← 根因！
-   └── order-service  [MyBatis: selectItems]  10ms
-
-④ 用 TraceID 到 Kibana 搜索日志：
-   └─ account-service 的日志显示：
-      "Redis connection timeout after 1730ms, host: redis-cluster:6379"
-
-⑤ 根因：Redis 集群某个节点网络抖动，导致连接超时
-   修复：Redis 集群增加节点 + 应用层增加 Redis 读超时兜底
-```
+![可观测性排障流程图](/diagrams/observability-troubleshoot.svg)
 
 ### 9.4.4 排查工具速查表
 

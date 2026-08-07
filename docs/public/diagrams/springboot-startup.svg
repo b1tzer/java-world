@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 700" width="780" height="700" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="13">
+<style>
+  text { text-anchor: middle; dominant-baseline: central; }
+  .title { font-size: 15px; font-weight: bold; fill: #1a1a2e; }
+  .label { font-size: 12px; fill: #2d3436; }
+  .note { font-size: 11px; fill: #636e72; }
+  .arrow { stroke: #6c5ce7; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+  .box { rx: 8; ry: 8; }
+  .phase { fill: #dfe6e9; stroke: #636e72; stroke-width: 1.5; }
+  .highlight { fill: #ffeaa7; stroke: #fdcb6e; stroke-width: 1.5; }
+  .action { fill: #81ecec; stroke: #00b894; stroke-width: 1.5; }
+  .important { fill: #fab1a0; stroke: #e17055; stroke-width: 1.5; }
+  .step { fill: #a29bfe; stroke: #6c5ce7; stroke-width: 1.5; }
+  .note-box { fill: #f8f9fa; stroke: #b2bec3; stroke-width: 1; }
+  .cache { fill: #fdcb6e; stroke: #f39c12; stroke-width: 1.5; }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+    <polygon points="0 0, 10 3.5, 0 7" fill="#6c5ce7"/>
+  </marker>
+  <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+    <polygon points="0 0, 10 3.5, 0 7" fill="#00b894"/>
+  </marker>
+  <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+    <polygon points="0 0, 10 3.5, 0 7" fill="#e17055"/>
+  </marker>
+</defs>
+<text x="390" y="28" class="title">Spring Boot 自动配置流程</text>
+<rect x="250" y="50" width="280" height="40" class="box important"/>
+<text x="390.0" y="70.0" class="label">@SpringBootApplication</text>
+<line x1="320" y1="90" x2="180" y2="120" class="arrow"/>
+<line x1="460" y1="90" x2="600" y2="120" class="arrow"/>
+<rect x="50" y="120" width="260" height="36" class="box action"/>
+<text x="180.0" y="138.0" class="label">@ComponentScan</text>
+<rect x="470" y="120" width="260" height="36" class="box step"/>
+<text x="600.0" y="138.0" class="label">@EnableAutoConfiguration</text>
+<text x="180" y="175" class="note">扫描 @Component/@Service/@Controller</text>
+<line x1="600" y1="156" x2="600" y2="185" class="arrow"/>
+<rect x="470" y="185" width="260" height="36" class="box highlight"/>
+<text x="600.0" y="203.0" class="label">AutoConfiguration.imports</text>
+<line x1="600" y1="221" x2="600" y2="245" class="arrow"/>
+<line x1="600" y1="245" x2="170" y2="270" class="arrow"/>
+<rect x="60" y="270" width="220" height="28" class="box step"/>
+<text x="170" y="284" class="label" font-weight="bold">DataSourceAutoConfiguration</text>
+<rect x="60" y="298" width="220" height="68" class="box note-box"/>
+<text x="68" y="314" text-anchor="start" class="note">@ConditionalOnClass(DataSource.class) ✓</text>
+<text x="68" y="334" text-anchor="start" class="note">@ConditionalOnMissingBean(DataSource.class) ✓</text>
+<text x="68" y="354" text-anchor="start" class="note">绑定 spring.datasource.*</text>
+<line x1="600" y1="245" x2="430" y2="270" class="arrow"/>
+<rect x="320" y="270" width="220" height="28" class="box step"/>
+<text x="430" y="284" class="label" font-weight="bold">WebMvcAutoConfiguration</text>
+<rect x="320" y="298" width="220" height="28" class="box note-box"/>
+<text x="328" y="314" text-anchor="start" class="note">@ConditionalOnWebApplication ✓</text>
+<line x1="600" y1="245" x2="690" y2="270" class="arrow"/>
+<rect x="580" y="270" width="220" height="28" class="box step"/>
+<text x="690" y="284" class="label" font-weight="bold">JacksonAutoConfiguration</text>
+<rect x="580" y="298" width="220" height="28" class="box note-box"/>
+<text x="588" y="314" text-anchor="start" class="note">@ConditionalOnClass(ObjectMapper.class) ✓</text>
+<text x="390" y="520" class="label" font-size="14">💡 自动配置是&quot;兜底&quot;而非&quot;强制&quot;</text>
+<text x="390" y="545" class="note">开发者自定义 Bean 优先（@ConditionalOnMissingBean）</text>
+
+</svg>

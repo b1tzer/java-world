@@ -171,32 +171,7 @@ Spring Boot 提供了一整套 `@Conditional` 注解，构成自动配置的"开
 
 ### 4.2.4 自动配置的核心流程图
 
-```text
-@SpringBootApplication
-        │
-        ├── @ComponentScan ──→ 扫描开发者写的 @Component/@Service/@Controller
-        │
-        └── @EnableAutoConfiguration
-                │
-                ▼
-        AutoConfiguration.imports
-                │
-                ├── DataSourceAutoConfiguration
-                │       │
-                │       ├── @ConditionalOnClass(DataSource.class) ✓
-                │       ├── @ConditionalOnMissingBean(DataSource.class) ✓
-                │       └── @EnableConfigurationProperties(DataSourceProperties.class)
-                │               │
-                │               └── 绑定 spring.datasource.* 到 DataSourceProperties
-                │
-                ├── WebMvcAutoConfiguration
-                │       └── @ConditionalOnWebApplication ✓
-                │
-                ├── JacksonAutoConfiguration
-                │       └── @ConditionalOnClass(ObjectMapper.class) ✓
-                │
-                └── ... (100+ 自动配置类)
-```
+![Spring Boot 自动配置流程图](/diagrams/springboot-startup.svg)
 
 关键理解：**自动配置是"兜底"而非"强制"**。当开发者自己注册了同类型的 Bean 时，`@ConditionalOnMissingBean` 确保自动配置会"让路"。这就是"用户定义优先"原则。
 

@@ -279,33 +279,7 @@ public class UserService {
 
 Bean 从定义到销毁，经历以下阶段：
 
-```text
-BeanDefinition 加载
-        │
-        ▼
-实例化（Instantiation）  ←── 构造器调用
-        │
-        ▼
-属性赋值（Populate）     ←── @Autowired / @Value 注入
-        │
-        ▼
-Aware 接口回调          ←── BeanNameAware / BeanFactoryAware / ApplicationContextAware
-        │
-        ▼
-BeanPostProcessor#postProcessBeforeInitialization
-        │
-        ▼
-@PostConstruct / InitializingBean#afterPropertiesSet / init-method
-        │
-        ▼
-BeanPostProcessor#postProcessAfterInitialization  ←── AOP 代理在此创建
-        │
-        ▼
-   Bean 就绪，可被使用
-        │
-        ▼
-@PreDestroy / DisposableBean#destroy / destroy-method
-```
+![Bean 生命周期流程图](/diagrams/spring-bean-lifecycle.svg)
 
 ### 1.4.3 各阶段代码示例
 

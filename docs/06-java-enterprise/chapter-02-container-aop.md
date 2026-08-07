@@ -209,36 +209,7 @@ Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
 
 以 ServiceA 和 ServiceB 的循环依赖为例：
 
-```text
-步骤1: 创建 ServiceA
-  → singletonObjects: 无
-  → 实例化 ServiceA（调用构造器）
-  → 将 ServiceA 的 ObjectFactory 放入三级缓存
-     singletonFactories.put("serviceA", () → getEarlyBeanReference(serviceA))
-  → 开始填充属性，发现需要 ServiceB
-
-步骤2: 创建 ServiceB
-  → singletonObjects: 无
-  → 实例化 ServiceB
-  → 将 ServiceB 的 ObjectFactory 放入三级缓存
-  → 开始填充属性，发现需要 ServiceA
-
-步骤3: 解决 ServiceA 的依赖
-  → 一级缓存: 无 ServiceA
-  → 二级缓存: 无 ServiceA
-  → 三级缓存: 有 ServiceA 的 ObjectFactory
-  → 调用 ObjectFactory.getObject()
-     → 如果有 AOP 代理，此处返回代理对象
-     → 否则返回原始对象
-  → 将结果移入二级缓存，移除三级缓存
-  → ServiceB 属性填充完成，初始化完成
-  → 放入一级缓存
-
-步骤4: 回到 ServiceA 的属性填充
-  → 从一级缓存获取 ServiceB
-  → ServiceA 属性填充完成，初始化完成
-  → 放入一级缓存，移除二级和三级缓存
-```
+![Spring 循环依赖与三级缓存流程图](/diagrams/spring-aop-proxy.svg)
 
 ### 2.3.4 为什么需要三级缓存而不是两级
 
