@@ -1,137 +1,137 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 720" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="13">
   <defs>
     <marker id="arDown" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
-      <path d="M0,0 L8,4 L0,8 Z" fill="var(--svg-arrow)"/>
+      <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-arrow)"/>
     </marker>
     <marker id="arRight" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-      <path d="M0,0 L8,4 L0,8 Z" fill="var(--svg-purple-stroke)"/>
+      <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-accent-3)"/>
     </marker>
   </defs>
 
-  <text x="350" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="var(--svg-text)">Buffer 的内存布局与核心操作</text>
+  <text x="350" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="var(--diagram-text-1)">Buffer 的内存布局与核心操作</text>
 
   <!-- ===== Step 1: put() 写入 3 字节 ===== -->
-  <text x="40" y="62" font-size="14" font-weight="bold" fill="var(--svg-blue-stroke)">① put() 写入 3 字节后</text>
+  <text x="40" y="62" font-size="14" font-weight="bold" fill="var(--diagram-accent-1)">① put() 写入 3 字节后</text>
 
   <!-- cells -->
   <g transform="translate(40, 74)">
-    <rect x="0" y="0" width="56" height="40" fill="var(--svg-green-bg-light)" stroke="var(--svg-green-stroke)" stroke-width="1.5"/>
-    <text x="28" y="26" text-anchor="middle" fill="var(--svg-green-text)" font-weight="bold">A</text>
-    <rect x="56" y="0" width="56" height="40" fill="var(--svg-green-bg-light)" stroke="var(--svg-green-stroke)" stroke-width="1.5"/>
-    <text x="84" y="26" text-anchor="middle" fill="var(--svg-green-text)" font-weight="bold">B</text>
-    <rect x="112" y="0" width="56" height="40" fill="var(--svg-green-bg-light)" stroke="var(--svg-green-stroke)" stroke-width="1.5"/>
-    <text x="140" y="26" text-anchor="middle" fill="var(--svg-green-text)" font-weight="bold">C</text>
-    <rect x="168" y="0" width="56" height="40" fill="var(--svg-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="224" y="0" width="56" height="40" fill="var(--svg-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="280" y="0" width="56" height="40" fill="var(--svg-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="336" y="0" width="56" height="40" fill="var(--svg-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="392" y="0" width="56" height="40" fill="var(--svg-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
+    <rect x="0" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+    <text x="28" y="26" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold">A</text>
+    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+    <text x="84" y="26" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold">B</text>
+    <rect x="112" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+    <text x="140" y="26" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold">C</text>
+    <rect x="168" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="224" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="280" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="336" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="392" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
   </g>
   <!-- position marker -->
-  <line x1="212" y1="114" x2="212" y2="130" stroke="var(--svg-orange-stroke)" stroke-width="2"/>
-  <polygon points="208,130 216,130 212,138" fill="var(--svg-orange-stroke)"/>
-  <text x="212" y="150" text-anchor="middle" fill="var(--svg-orange-stroke)" font-size="12" font-weight="bold">position=3</text>
+  <line x1="212" y1="114" x2="212" y2="130" stroke="var(--diagram-accent-4)" stroke-width="2"/>
+  <polygon points="208,130 216,130 212,138" fill="var(--diagram-accent-4)"/>
+  <text x="212" y="150" text-anchor="middle" fill="var(--diagram-accent-4)" font-size="12" font-weight="bold">position=3</text>
   <!-- limit marker -->
-  <line x1="492" y1="114" x2="492" y2="130" stroke="var(--svg-red-stroke)" stroke-width="2"/>
-  <polygon points="488,130 496,130 492,138" fill="var(--svg-red-stroke)"/>
-  <text x="492" y="150" text-anchor="middle" fill="var(--svg-red-stroke)" font-size="12" font-weight="bold">limit=8</text>
+  <line x1="492" y1="114" x2="492" y2="130" stroke="var(--diagram-accent-5)" stroke-width="2"/>
+  <polygon points="488,130 496,130 492,138" fill="var(--diagram-accent-5)"/>
+  <text x="492" y="150" text-anchor="middle" fill="var(--diagram-accent-5)" font-size="12" font-weight="bold">limit=8</text>
   <!-- capacity label -->
-  <text x="468" y="168" fill="var(--svg-text-muted)" font-size="11">capacity=8</text>
+  <text x="468" y="168" fill="var(--diagram-text-1-muted)" font-size="11">capacity=8</text>
 
   <!-- ===== Step 2: flip() ===== -->
-  <line x1="250" y1="178" x2="250" y2="206" stroke="var(--svg-arrow)" stroke-width="1.5" marker-end="url(#arDown)"/>
-  <text x="266" y="196" fill="var(--svg-purple-stroke)" font-size="12" font-weight="bold">flip()</text>
+  <line x1="250" y1="178" x2="250" y2="206" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arDown)"/>
+  <text x="266" y="196" fill="var(--diagram-accent-3)" font-size="12" font-weight="bold">flip()</text>
 
-  <text x="40" y="226" font-size="14" font-weight="bold" fill="var(--svg-blue-stroke)">② flip() 后（准备读）</text>
+  <text x="40" y="226" font-size="14" font-weight="bold" fill="var(--diagram-accent-1)">② flip() 后（准备读）</text>
 
   <g transform="translate(40, 238)">
-    <rect x="0" y="0" width="56" height="40" fill="var(--svg-blue-bg-light)" stroke="var(--svg-blue-stroke)" stroke-width="1.5"/>
-    <text x="28" y="26" text-anchor="middle" fill="var(--svg-blue-text)" font-weight="bold">A</text>
-    <rect x="56" y="0" width="56" height="40" fill="var(--svg-blue-bg-light)" stroke="var(--svg-blue-stroke)" stroke-width="1.5"/>
-    <text x="84" y="26" text-anchor="middle" fill="var(--svg-blue-text)" font-weight="bold">B</text>
-    <rect x="112" y="0" width="56" height="40" fill="var(--svg-blue-bg-light)" stroke="var(--svg-blue-stroke)" stroke-width="1.5"/>
-    <text x="140" y="26" text-anchor="middle" fill="var(--svg-blue-text)" font-weight="bold">C</text>
-    <rect x="168" y="0" width="56" height="40" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="224" y="0" width="56" height="40" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="280" y="0" width="56" height="40" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="336" y="0" width="56" height="40" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="392" y="0" width="56" height="40" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
+    <rect x="0" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+    <text x="28" y="26" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold">A</text>
+    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+    <text x="84" y="26" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold">B</text>
+    <rect x="112" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+    <text x="140" y="26" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold">C</text>
+    <rect x="168" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="224" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="280" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="336" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="392" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
   </g>
   <!-- position=0 -->
-  <line x1="52" y1="278" x2="52" y2="294" stroke="var(--svg-orange-stroke)" stroke-width="2"/>
-  <polygon points="48,294 56,294 52,302" fill="var(--svg-orange-stroke)"/>
-  <text x="52" y="314" text-anchor="middle" fill="var(--svg-orange-stroke)" font-size="12" font-weight="bold">position=0</text>
+  <line x1="52" y1="278" x2="52" y2="294" stroke="var(--diagram-accent-4)" stroke-width="2"/>
+  <polygon points="48,294 56,294 52,302" fill="var(--diagram-accent-4)"/>
+  <text x="52" y="314" text-anchor="middle" fill="var(--diagram-accent-4)" font-size="12" font-weight="bold">position=0</text>
   <!-- limit=3 -->
-  <line x1="212" y1="278" x2="212" y2="294" stroke="var(--svg-red-stroke)" stroke-width="2"/>
-  <polygon points="208,294 216,294 212,302" fill="var(--svg-red-stroke)"/>
-  <text x="212" y="314" text-anchor="middle" fill="var(--svg-red-stroke)" font-size="12" font-weight="bold">limit=3</text>
+  <line x1="212" y1="278" x2="212" y2="294" stroke="var(--diagram-accent-5)" stroke-width="2"/>
+  <polygon points="208,294 216,294 212,302" fill="var(--diagram-accent-5)"/>
+  <text x="212" y="314" text-anchor="middle" fill="var(--diagram-accent-5)" font-size="12" font-weight="bold">limit=3</text>
   <!-- 可读区域标注 -->
-  <line x1="42" y1="328" x2="214" y2="328" stroke="var(--svg-blue-stroke)" stroke-width="1"/>
-  <text x="128" y="344" text-anchor="middle" fill="var(--svg-blue-stroke)" font-size="11">可读数据 [position, limit)</text>
+  <line x1="42" y1="328" x2="214" y2="328" stroke="var(--diagram-accent-1)" stroke-width="1"/>
+  <text x="128" y="344" text-anchor="middle" fill="var(--diagram-accent-1)" font-size="11">可读数据 [position, limit)</text>
 
   <!-- ===== Step 3: get() ===== -->
-  <line x1="250" y1="350" x2="250" y2="378" stroke="var(--svg-arrow)" stroke-width="1.5" marker-end="url(#arDown)"/>
-  <text x="266" y="368" fill="var(--svg-purple-stroke)" font-size="12" font-weight="bold">get()</text>
+  <line x1="250" y1="350" x2="250" y2="378" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arDown)"/>
+  <text x="266" y="368" fill="var(--diagram-accent-3)" font-size="12" font-weight="bold">get()</text>
 
-  <text x="40" y="398" font-size="14" font-weight="bold" fill="var(--svg-blue-stroke)">③ get() 读取 1 字节后</text>
+  <text x="40" y="398" font-size="14" font-weight="bold" fill="var(--diagram-accent-1)">③ get() 读取 1 字节后</text>
 
   <g transform="translate(40, 410)">
-    <rect x="0" y="0" width="56" height="40" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <text x="28" y="26" text-anchor="middle" fill="var(--svg-gray-text-light)">A</text>
-    <rect x="56" y="0" width="56" height="40" fill="var(--svg-blue-bg-light)" stroke="var(--svg-blue-stroke)" stroke-width="1.5"/>
-    <text x="84" y="26" text-anchor="middle" fill="var(--svg-blue-text)" font-weight="bold">B</text>
-    <rect x="112" y="0" width="56" height="40" fill="var(--svg-blue-bg-light)" stroke="var(--svg-blue-stroke)" stroke-width="1.5"/>
-    <text x="140" y="26" text-anchor="middle" fill="var(--svg-blue-text)" font-weight="bold">C</text>
-    <rect x="168" y="0" width="56" height="40" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="224" y="0" width="56" height="40" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="280" y="0" width="56" height="40" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="336" y="0" width="56" height="40" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="392" y="0" width="56" height="40" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
+    <rect x="0" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <text x="28" y="26" text-anchor="middle" fill="var(--diagram-text-2-light)">A</text>
+    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+    <text x="84" y="26" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold">B</text>
+    <rect x="112" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+    <text x="140" y="26" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold">C</text>
+    <rect x="168" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="224" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="280" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="336" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="392" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
   </g>
   <!-- position=1 -->
-  <line x1="108" y1="450" x2="108" y2="466" stroke="var(--svg-orange-stroke)" stroke-width="2"/>
-  <polygon points="104,466 112,466 108,474" fill="var(--svg-orange-stroke)"/>
-  <text x="108" y="490" text-anchor="middle" fill="var(--svg-orange-stroke)" font-size="12" font-weight="bold">position=1</text>
+  <line x1="108" y1="450" x2="108" y2="466" stroke="var(--diagram-accent-4)" stroke-width="2"/>
+  <polygon points="104,466 112,466 108,474" fill="var(--diagram-accent-4)"/>
+  <text x="108" y="490" text-anchor="middle" fill="var(--diagram-accent-4)" font-size="12" font-weight="bold">position=1</text>
   <!-- limit=3 -->
-  <line x1="212" y1="450" x2="212" y2="466" stroke="var(--svg-red-stroke)" stroke-width="2"/>
-  <polygon points="208,466 216,466 212,474" fill="var(--svg-red-stroke)"/>
-  <text x="212" y="490" text-anchor="middle" fill="var(--svg-red-stroke)" font-size="12" font-weight="bold">limit=3</text>
+  <line x1="212" y1="450" x2="212" y2="466" stroke="var(--diagram-accent-5)" stroke-width="2"/>
+  <polygon points="208,466 216,466 212,474" fill="var(--diagram-accent-5)"/>
+  <text x="212" y="490" text-anchor="middle" fill="var(--diagram-accent-5)" font-size="12" font-weight="bold">limit=3</text>
 
   <!-- ===== Step 4: compact() ===== -->
-  <line x1="250" y1="496" x2="250" y2="524" stroke="var(--svg-arrow)" stroke-width="1.5" marker-end="url(#arDown)"/>
-  <text x="266" y="514" fill="var(--svg-purple-stroke)" font-size="12" font-weight="bold">compact()</text>
+  <line x1="250" y1="496" x2="250" y2="524" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arDown)"/>
+  <text x="266" y="514" fill="var(--diagram-accent-3)" font-size="12" font-weight="bold">compact()</text>
 
-  <text x="40" y="544" font-size="14" font-weight="bold" fill="var(--svg-blue-stroke)">④ compact() 后（保留未读，准备继续写）</text>
+  <text x="40" y="544" font-size="14" font-weight="bold" fill="var(--diagram-accent-1)">④ compact() 后（保留未读，准备继续写）</text>
 
   <g transform="translate(40, 556)">
-    <rect x="0" y="0" width="56" height="40" fill="var(--svg-green-bg-light)" stroke="var(--svg-green-stroke)" stroke-width="1.5"/>
-    <text x="28" y="26" text-anchor="middle" fill="var(--svg-green-text)" font-weight="bold">B</text>
-    <rect x="56" y="0" width="56" height="40" fill="var(--svg-green-bg-light)" stroke="var(--svg-green-stroke)" stroke-width="1.5"/>
-    <text x="84" y="26" text-anchor="middle" fill="var(--svg-green-text)" font-weight="bold">C</text>
-    <rect x="112" y="0" width="56" height="40" fill="var(--svg-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="168" y="0" width="56" height="40" fill="var(--svg-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="224" y="0" width="56" height="40" fill="var(--svg-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="280" y="0" width="56" height="40" fill="var(--svg-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="336" y="0" width="56" height="40" fill="var(--svg-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-    <rect x="392" y="0" width="56" height="40" fill="var(--svg-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
+    <rect x="0" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+    <text x="28" y="26" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold">B</text>
+    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+    <text x="84" y="26" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold">C</text>
+    <rect x="112" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="168" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="224" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="280" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="336" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+    <rect x="392" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
   </g>
   <!-- position=2 -->
-  <line x1="164" y1="596" x2="164" y2="612" stroke="var(--svg-orange-stroke)" stroke-width="2"/>
-  <polygon points="160,612 168,612 164,620" fill="var(--svg-orange-stroke)"/>
-  <text x="164" y="638" text-anchor="middle" fill="var(--svg-orange-stroke)" font-size="12" font-weight="bold">position=2</text>
+  <line x1="164" y1="596" x2="164" y2="612" stroke="var(--diagram-accent-4)" stroke-width="2"/>
+  <polygon points="160,612 168,612 164,620" fill="var(--diagram-accent-4)"/>
+  <text x="164" y="638" text-anchor="middle" fill="var(--diagram-accent-4)" font-size="12" font-weight="bold">position=2</text>
   <!-- limit=8 -->
-  <line x1="492" y1="596" x2="492" y2="612" stroke="var(--svg-red-stroke)" stroke-width="2"/>
-  <polygon points="488,612 496,612 492,620" fill="var(--svg-red-stroke)"/>
-  <text x="492" y="638" text-anchor="middle" fill="var(--svg-red-stroke)" font-size="12" font-weight="bold">limit=8</text>
+  <line x1="492" y1="596" x2="492" y2="612" stroke="var(--diagram-accent-5)" stroke-width="2"/>
+  <polygon points="488,612 496,612 492,620" fill="var(--diagram-accent-5)"/>
+  <text x="492" y="638" text-anchor="middle" fill="var(--diagram-accent-5)" font-size="12" font-weight="bold">limit=8</text>
 
   <!-- 图例 -->
-  <rect x="40" y="660" width="620" height="44" rx="6" fill="var(--svg-bg)" stroke="var(--svg-border)" stroke-width="1"/>
-  <rect x="56" y="672" width="16" height="16" fill="var(--svg-green-bg-light)" stroke="var(--svg-green-stroke)" stroke-width="1"/>
-  <text x="78" y="685" fill="var(--svg-text)" font-size="12">已写入 / 可写</text>
-  <rect x="170" y="672" width="16" height="16" fill="var(--svg-blue-bg-light)" stroke="var(--svg-blue-stroke)" stroke-width="1"/>
-  <text x="192" y="685" fill="var(--svg-text)" font-size="12">可读数据</text>
-  <rect x="274" y="672" width="16" height="16" fill="var(--svg-gray-bg)" stroke="var(--svg-divider)" stroke-width="1"/>
-  <text x="296" y="685" fill="var(--svg-text)" font-size="12">已读 / 不可访问</text>
-  <text x="440" y="685" fill="var(--svg-orange-stroke)" font-size="12">▼ position</text>
-  <text x="540" y="685" fill="var(--svg-red-stroke)" font-size="12">▼ limit</text>
+  <rect x="40" y="660" width="620" height="44" rx="6" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-2)" stroke-width="1"/>
+  <rect x="56" y="672" width="16" height="16" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+  <text x="78" y="685" fill="var(--diagram-text-1)" font-size="12">已写入 / 可写</text>
+  <rect x="170" y="672" width="16" height="16" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1"/>
+  <text x="192" y="685" fill="var(--diagram-text-1)" font-size="12">可读数据</text>
+  <rect x="274" y="672" width="16" height="16" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
+  <text x="296" y="685" fill="var(--diagram-text-1)" font-size="12">已读 / 不可访问</text>
+  <text x="440" y="685" fill="var(--diagram-accent-4)" font-size="12">▼ position</text>
+  <text x="540" y="685" fill="var(--diagram-accent-5)" font-size="12">▼ limit</text>
 </svg>
