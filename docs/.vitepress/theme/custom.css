@@ -189,6 +189,100 @@
   box-shadow: 0 4px 20px rgba(96, 165, 250, 0.08);
 }
 
+/* ---------- SVG 暗色模式支持 ---------- */
+:root {
+  /* 通用色板 — SVG 图表引用这些变量 */
+  --svg-bg: #ffffff;
+  --svg-text: #333333;
+  --svg-text-secondary: #666666;
+  --svg-text-muted: #888888;
+  --svg-border: #E0E0E0;
+  --svg-divider: #BDBDBD;
+
+  /* 蓝色系（Channel/网络层/主流程） */
+  --svg-blue-bg: #E3F2FD;
+  --svg-blue-bg-light: #BBDEFB;
+  --svg-blue-stroke: #1565C0;
+  --svg-blue-text: #0D47A1;
+  --svg-blue-text-light: #1976D2;
+
+  /* 绿色系（成功/数据/Buffer） */
+  --svg-green-bg: #E8F5E9;
+  --svg-green-bg-light: #C8E6C9;
+  --svg-green-stroke: #2E7D32;
+  --svg-green-text: #1B5E20;
+
+  /* 紫色系（Selector/Reactor/高级特性） */
+  --svg-purple-bg: #F3E5F5;
+  --svg-purple-bg-light: #E1BEE7;
+  --svg-purple-stroke: #7B1FA2;
+  --svg-purple-text: #4A148C;
+
+  /* 橙色系（警告/position/重要标记） */
+  --svg-orange-stroke: #E65100;
+  --svg-orange-text: #BF360C;
+
+  /* 红色系（错误/limit/阻塞） */
+  --svg-red-bg: #FFCDD2;
+  --svg-red-stroke: #C62828;
+  --svg-red-text: #B71C1C;
+
+  /* 灰色系（已读/不可用/注释） */
+  --svg-gray-bg: #ECEFF1;
+  --svg-gray-stroke: #90A4AE;
+  --svg-gray-text: #546E7A;
+  --svg-gray-text-light: #999999;
+
+  /* 黄色系（构造/强调） */
+  --svg-yellow-bg: #FFF9C4;
+  --svg-yellow-stroke: #F57F17;
+
+  /* 箭头/连线 */
+  --svg-arrow: #555555;
+}
+
+.dark {
+  --svg-bg: #1a1a1a;
+  --svg-text: #e0e0e0;
+  --svg-text-secondary: #b0b0b0;
+  --svg-text-muted: #808080;
+  --svg-border: #333333;
+  --svg-divider: #444444;
+
+  --svg-blue-bg: #0d2137;
+  --svg-blue-bg-light: #1a3a5c;
+  --svg-blue-stroke: #5C9CE6;
+  --svg-blue-text: #90CAF9;
+  --svg-blue-text-light: #64B5F6;
+
+  --svg-green-bg: #0d2818;
+  --svg-green-bg-light: #1b4332;
+  --svg-green-stroke: #66BB6A;
+  --svg-green-text: #A5D6A7;
+
+  --svg-purple-bg: #2d1b3d;
+  --svg-purple-bg-light: #3d2550;
+  --svg-purple-stroke: #CE93D8;
+  --svg-purple-text: #E1BEE7;
+
+  --svg-orange-stroke: #FFB74D;
+  --svg-orange-text: #FFCC80;
+
+  --svg-red-bg: #3d1520;
+  --svg-red-stroke: #EF9A9A;
+  --svg-red-text: #FFCDD2;
+
+  --svg-gray-bg: #2a2a2a;
+  --svg-gray-stroke: #607D8B;
+  --svg-gray-text: #90A4AE;
+  --svg-gray-text-light: #666666;
+
+  --svg-yellow-bg: #3d3520;
+  --svg-yellow-stroke: #FFD54F;
+
+  --svg-arrow: #b0b0b0;
+}
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 768px) {
   .vp-doc h1 {

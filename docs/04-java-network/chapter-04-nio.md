@@ -140,7 +140,7 @@ NIO:  线程 → 注册关心 READ 事件 → 做其他事 → Selector 通知"�
 
 ### 4.1.6 NIO 的三大核心组件
 
-![NIO 三大核心组件](/diagrams/nio-components.svg)
+<SvgDiagram src="/diagrams/nio-components.svg" />
 
 下面逐一深入。
 
@@ -213,7 +213,7 @@ NIO:   Channel ──read──►  Buffer ──get()──►  byte[]
 
 每个 Buffer 内部维护三个关键指针：
 
-![Buffer 的内存布局与核心操作](/diagrams/buffer-ops.svg)
+<SvgDiagram src="/diagrams/buffer-ops.svg" />
 
 | 属性 | 含义 | 取值范围 |
 | :--- | :--- | :--- |
