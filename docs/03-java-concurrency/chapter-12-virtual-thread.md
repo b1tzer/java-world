@@ -96,24 +96,7 @@ Reactor 版本换来的是吞吐，付出的是：
 
 ### 12.2.1 虚拟线程与平台线程的对照
 
-```text
-用户视角：
-        VT1  VT2  VT3  VT4  VT5  ... VT_1000000
-         │    │    │    │    │           │
-         └────┴────┴────┴────┴───────────┘
-                       │
-                       │  挂载 (mount) / 卸载 (unmount)
-                       ▼
-JVM 视角：
-        ┌────────────────────────────────┐
-        │  Carrier Thread 池             │
-        │  Carrier1  Carrier2  ...       │  个数 ≈ CPU 核数
-        └────────────────────────────────┘
-                       │
-                       ▼
-OS 视角：
-        OS Thread 1  OS Thread 2  ...
-```
+![虚拟线程与载体线程映射图](/diagrams/vt-mapping.svg)
 
 - **虚拟线程（Virtual Thread, VT）**：`java.lang.Thread` 的子类实例，栈保存在堆上，个数可达百万级
 - **载体线程（Carrier Thread）**：真正的平台线程，是 VT 运行时实际占用的 CPU 执行流；VT 只在 Carrier 上"临时挂载"
@@ -484,36 +467,7 @@ try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
 
 **判断决策**：
 
-```text
-                任务是 CPU 密集吗？
-                       │
-                ┌──────┴──────┐
-              是               否
-                │               │
-                ▼               ▼
-        平台线程池          用了 synchronized + 阻塞 IO 吗？
-        (N_CPU + 1)              │
-                          ┌──────┴──────┐
-                        是               否
-                          │               │
-                          ▼               ▼
-                    JDK < 24？       虚拟线程
-                     │                    │
-              ┌──────┴──────┐             │
-            是               否           │
-              │               │           │
-              ▼               ▼           │
-        改 ReentrantLock  虚拟线程       │
-        或平台线程                        │
-                                         │
-                                     还需要背压吗？
-                                          │
-                                   ┌──────┴──────┐
-                                 是               否
-                                   │               │
-                                   ▼               ▼
-                          VT + Semaphore    直接用 VT
-```
+![虚拟线程选型决策树](/diagrams/vt-decision-tree.svg)
 
 ---
 
