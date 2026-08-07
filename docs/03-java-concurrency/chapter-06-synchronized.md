@@ -95,26 +95,7 @@ public void syncBlock() {
 
 用 `javap -c` 反编译得到（简化）：
 
-```text
-public void syncBlock();
-  Code:
-     0: aload_0
-     1: getfield    #2    // 获取 obj 引用
-     4: dup
-     5: astore_1           // 将 obj 存入局部变量（用于 monitorexit）
-     6: monitorenter       // ← 进入同步块，获取 obj 的监视器
-     7: aload_0
-     8: invokevirtual #3   // 调用 doSomething()
-    11: aload_1
-    12: monitorexit        // ← 正常退出，释放监视器
-    13: goto          21
-    16: astore_2           // 异常处理
-    17: aload_1
-    18: monitorexit        // ← 异常退出，也要释放监视器
-    19: aload_2
-    20: athrow
-    21: return
-```
+![Monitor 工作流程：synchronized 字节码中的 monitorenter/monitorexit 执行路径](/diagrams/sync-monitor-flow.svg)
 
 两点值得注意：
 

@@ -12,24 +12,7 @@ User user = new User();
 
 JVM 执行的操作：
 
-```text
-1. 检查 User 类是否已加载
-   └─ 没有？先执行类加载（第一章）
-
-2. 在堆上分配内存
-   ├─ 指针碰撞（Bump the Pointer）：内存规整时，指针向后移动
-   └─ 空闲列表（Free List）：内存不规整时，从列表中找合适的空闲块
-
-3. 初始化零值
-   └─ 所有字段设为默认值（int=0, boolean=false, 引用=null）
-   └─ 这就是为什么不赋初值也能使用字段
-
-4. 设置对象头
-   └─ Mark Word + Klass Pointer
-
-5. 执行 <init> 构造方法
-   └─ 你写的构造函数代码
-```
+![对象内存布局](/diagrams/jvm-object-layout.svg)
 
 步骤 3 保证了 Java 的安全特性——字段在使用前一定有确定的值，不会读到脏数据。
 

@@ -262,31 +262,7 @@ Native Method Stack
 User user = new User("Tom");
 ```
 
-```text
-1. 类加载检查
-   └─ User 类是否已加载？没有？先执行类加载（见第一章）
-
-2. 分配内存
-   ├─ 堆内存是否规整？
-   │  ├─ 是 → 指针碰撞（Bump the Pointer）：移动分配指针
-   │  └─ 否 → 空闲列表（Free List）：找到合适的空闲块
-   │
-   └─ 线程安全？
-      ├─ TLAB（Thread Local Allocation Buffer）：每个线程在 Eden 有私有缓冲区
-      │  └─ TLAB 内分配只需移动指针，无需 CAS，极快
-      └─ TLAB 用完 → 在 Eden 共享区分配，需要 CAS 同步
-
-3. 初始化零值
-   └─ 所有字段设为默认值（int=0, boolean=false, 引用=null）
-   └─ 这就是为什么不赋初值也能使用字段——JVM 保证了零值初始化
-
-4. 设置对象头
-   └─ Mark Word（hashCode、GC 年龄、锁状态）
-   └─ Klass Pointer（指向方法区中的类元数据）
-
-5. 执行 <init>
-   └─ 你写的构造方法代码
-```
+![对象创建流程](/diagrams/jvm-object-creation.svg)
 
 **TLAB 是关键优化**。没有 TLAB，多线程同时在 Eden 分配对象需要加锁（CAS），TLAB 让每个线程有自己的"私人领地"，分配只需要移动指针。`-XX:+UseTLAB` 默认开启。
 
