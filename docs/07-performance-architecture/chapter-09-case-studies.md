@@ -352,32 +352,7 @@ public Feed getFeedWithHotDetection(String feedId) {
 
 TCC（Try-Confirm-Cancel）是分布式事务的常用方案：
 
-```text
-TCC 流程：
-
-  业务服务           账户服务           库存服务
-      │                 │                 │
-      │──── Try ───────→│                 │
-      │  (冻结 100 元)   │                 │
-      │                 │                 │
-      │──── Try ─────────────────────────→│
-      │                 │  (冻结 1 件库存)  │
-      │                 │                 │
-      │  全部 Try 成功                     │
-      │                 │                 │
-      │──── Confirm ───→│                 │
-      │  (扣减冻结金额)  │                 │
-      │                 │                 │
-      │──── Confirm ─────────────────────→│
-      │                 │  (扣减冻结库存)   │
-      │                 │                 │
-
-  如果任何 Try 失败：
-      │──── Cancel ────→│                 │
-      │  (解冻金额)      │                 │
-      │──── Cancel ──────────────────────→│
-      │                 │  (解冻库存)       │
-```
+![TCC 事务流程](/diagrams/tcc-flow.svg)
 
 ```java
 @Service
