@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="12">
+  <defs>
+    <marker id="arE1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#555"/>
+    </marker>
+    <marker id="arE2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1565C0"/>
+    </marker>
+  </defs>
+
+  <text x="460" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">架构演进全景图</text>
+
+  <!-- Row 1: Monolith → Vertical Split → SOA -->
+  <g transform="translate(30,50)">
+    <!-- Monolith -->
+    <rect x="0" y="0" width="140" height="80" rx="8" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="70" y="32" text-anchor="middle" font-size="15" font-weight="bold" fill="#0D47A1">单体</text>
+    <text x="70" y="52" text-anchor="middle" font-size="11" fill="#1565C0">(All-in)</text>
+    <text x="70" y="70" text-anchor="middle" font-size="10" fill="#666">1-5 人团队</text>
+    <!-- Arrow 1 -->
+    <line x1="148" y1="40" x2="218" y2="40" stroke="#555" stroke-width="1.5" marker-end="url(#arE1)"/>
+    <text x="183" y="30" text-anchor="middle" font-size="10" fill="#666">业务增长</text>
+    <!-- Vertical Split -->
+    <rect x="226" y="0" width="140" height="80" rx="8" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.5"/>
+    <text x="296" y="32" text-anchor="middle" font-size="15" font-weight="bold" fill="#1B5E20">垂直拆分</text>
+    <text x="296" y="52" text-anchor="middle" font-size="11" fill="#2E7D32">(按模块)</text>
+    <text x="296" y="70" text-anchor="middle" font-size="10" fill="#666">5-20 人团队</text>
+    <!-- Arrow 2 -->
+    <line x1="374" y1="40" x2="444" y2="40" stroke="#555" stroke-width="1.5" marker-end="url(#arE1)"/>
+    <text x="409" y="30" text-anchor="middle" font-size="10" fill="#666">团队拆分</text>
+    <!-- SOA -->
+    <rect x="452" y="0" width="140" height="80" rx="8" fill="#FFF3E0" stroke="#E65100" stroke-width="1.5"/>
+    <text x="522" y="32" text-anchor="middle" font-size="15" font-weight="bold" fill="#BF360C">SOA</text>
+    <text x="522" y="52" text-anchor="middle" font-size="11" fill="#E65100">(服务化)</text>
+    <text x="522" y="70" text-anchor="middle" font-size="10" fill="#666">20-100 人</text>
+  </g>
+
+  <!-- Vertical arrow from SOA down -->
+  <line x1="522" y1="138" x2="522" y2="178" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arE2)"/>
+  <text x="545" y="162" font-size="10" fill="#1565C0">复杂度上升</text>
+
+  <!-- Row 2: Microservices -->
+  <g transform="translate(370,186)">
+    <rect x="0" y="0" width="300" height="70" rx="8" fill="#F3E5F5" stroke="#6A1B9A" stroke-width="1.5"/>
+    <text x="150" y="28" text-anchor="middle" font-size="15" font-weight="bold" fill="#4A148C">微服务</text>
+    <text x="150" y="48" text-anchor="middle" font-size="11" fill="#6A1B9A">(独立部署)</text>
+    <text x="150" y="64" text-anchor="middle" font-size="10" fill="#666">100+ 人，快速迭代</text>
+  </g>
+
+  <!-- Vertical arrow from Microservices down -->
+  <line x1="520" y1="264" x2="520" y2="300" stroke="#1565C0" stroke-width="1.5" marker-end="url(#arE2)"/>
+  <text x="545" y="286" font-size="10" fill="#1565C0">云原生趋势</text>
+
+  <!-- Row 3: Cloud Native -->
+  <g transform="translate(370,306)">
+    <rect x="0" y="0" width="300" height="44" rx="8" fill="#FCE4EC" stroke="#C62828" stroke-width="1.5"/>
+    <text x="150" y="18" text-anchor="middle" font-size="15" font-weight="bold" fill="#B71C1C">云原生</text>
+    <text x="150" y="36" text-anchor="middle" font-size="11" fill="#C62828">(K8s / Service Mesh)</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(30,180)">
+    <rect x="0" y="0" width="260" height="100" rx="6" fill="#FAFAFA" stroke="#E0E0E0" stroke-width="1"/>
+    <text x="130" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#333">各阶段特征</text>
+    <text x="12" y="40" font-size="10" fill="#1565C0">●</text><text x="24" y="40" font-size="10" fill="#555">单体：简单，模块耦合，无法独立扩展</text>
+    <text x="12" y="56" font-size="10" fill="#2E7D32">●</text><text x="24" y="56" font-size="10" fill="#555">垂直拆分：按业务隔离，重复代码多</text>
+    <text x="12" y="72" font-size="10" fill="#E65100">●</text><text x="24" y="72" font-size="10" fill="#555">SOA：服务复用，ESB 成为瓶颈</text>
+    <text x="12" y="88" font-size="10" fill="#6A1B9A">●</text><text x="24" y="88" font-size="10" fill="#555">微服务：独立部署，分布式复杂度高</text>
+  </g>
+</svg>

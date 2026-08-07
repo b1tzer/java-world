@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 620" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="12">
+  <defs>
+    <marker id="arC1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#555"/>
+    </marker>
+  </defs>
+
+  <text x="390" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">高并发架构分层图</text>
+
+  <!-- User request -->
+  <g transform="translate(310,44)">
+    <rect x="0" y="0" width="160" height="36" rx="18" fill="#1565C0" stroke="none"/>
+    <text x="80" y="23" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">用户请求</text>
+  </g>
+  <line x1="390" y1="84" x2="390" y2="106" stroke="#555" stroke-width="1.5" marker-end="url(#arC1)"/>
+
+  <!-- CDN Layer -->
+  <g transform="translate(60,110)">
+    <rect x="0" y="0" width="660" height="56" rx="6" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="330" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#0D47A1">CDN（静态资源缓存）</text>
+    <text x="330" y="42" text-anchor="middle" font-size="11" fill="#1565C0">缓存图片、JS、CSS，不回源 — 消除 60-80% 静态请求</text>
+  </g>
+  <line x1="390" y1="170" x2="390" y2="192" stroke="#555" stroke-width="1.5" marker-end="url(#arC1)"/>
+  <text x="404" y="185" font-size="10" fill="#666">动态请求</text>
+
+  <!-- Gateway Layer -->
+  <g transform="translate(60,196)">
+    <rect x="0" y="0" width="660" height="56" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.5"/>
+    <text x="330" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#1B5E20">网关层（Gateway）</text>
+    <text x="330" y="42" text-anchor="middle" font-size="11" fill="#2E7D32">限流、鉴权、路由、协议转换 — 拦截超量请求，保护后端</text>
+  </g>
+  <line x1="390" y1="256" x2="390" y2="278" stroke="#555" stroke-width="1.5" marker-end="url(#arC1)"/>
+
+  <!-- Application Layer -->
+  <g transform="translate(60,282)">
+    <rect x="0" y="0" width="660" height="80" rx="6" fill="#FFF3E0" stroke="#E65100" stroke-width="1.5"/>
+    <text x="330" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#BF360C">应用服务层</text>
+    <rect x="40" y="34" width="170" height="36" rx="4" fill="#FFE0B2" stroke="#E65100" stroke-width="1"/>
+    <text x="125" y="56" text-anchor="middle" font-size="11" fill="#BF360C">订单服务</text>
+    <rect x="245" y="34" width="170" height="36" rx="4" fill="#FFE0B2" stroke="#E65100" stroke-width="1"/>
+    <text x="330" y="56" text-anchor="middle" font-size="11" fill="#BF360C">商品服务</text>
+    <rect x="450" y="34" width="170" height="36" rx="4" fill="#FFE0B2" stroke="#E65100" stroke-width="1"/>
+    <text x="535" y="56" text-anchor="middle" font-size="11" fill="#BF360C">用户服务</text>
+  </g>
+
+  <!-- Three arrows down -->
+  <line x1="125" y1="366" x2="125" y2="396" stroke="#555" stroke-width="1.2" marker-end="url(#arC1)"/>
+  <line x1="390" y1="366" x2="390" y2="396" stroke="#555" stroke-width="1.2" marker-end="url(#arC1)"/>
+  <line x1="535" y1="366" x2="535" y2="396" stroke="#555" stroke-width="1.2" marker-end="url(#arC1)"/>
+
+  <!-- Cache Layer -->
+  <g transform="translate(60,400)">
+    <rect x="0" y="0" width="660" height="56" rx="6" fill="#F3E5F5" stroke="#6A1B9A" stroke-width="1.5"/>
+    <text x="330" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#4A148C">缓存层（Redis / 本地缓存）</text>
+    <text x="330" y="42" text-anchor="middle" font-size="11" fill="#6A1B9A">热点数据缓存，拦截 80%+ 的读请求</text>
+  </g>
+  <line x1="390" y1="460" x2="390" y2="482" stroke="#555" stroke-width="1.5" marker-end="url(#arC1)"/>
+  <text x="404" y="475" font-size="10" fill="#666">缓存未命中</text>
+
+  <!-- Database Layer -->
+  <g transform="translate(60,486)">
+    <rect x="0" y="0" width="660" height="56" rx="6" fill="#FFEBEE" stroke="#C62828" stroke-width="1.5"/>
+    <text x="330" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#B71C1C">数据库层</text>
+    <text x="330" y="42" text-anchor="middle" font-size="11" fill="#C62828">主从分离、分库分表、读写分离 — 最终承受的请求量大幅减少</text>
+  </g>
+
+  <!-- Peak reduction annotation -->
+  <g transform="translate(730,110)">
+    <line x1="0" y1="0" x2="0" y2="430" stroke="#C62828" stroke-width="1" stroke-dasharray="4,3"/>
+    <path d="M-6,0 L6,0 L0,10 Z" fill="#C62828"/>
+    <path d="M-6,430 L6,430 L0,420 Z" fill="#C62828"/>
+    <text x="0" y="220" text-anchor="middle" font-size="11" fill="#C62828" transform="rotate(-90,0,220)" font-weight="bold">逐层消峰 ↑</text>
+  </g>
+</svg>
