@@ -295,22 +295,7 @@ public abstract class BaseExecutor implements Executor {
 
 **二级缓存的工作机制：**
 
-```text
-SqlSession A                    SqlSession B
-    │                               │
-    ├─ query(UserMapper.getById)    │
-    │   ├─ 查一级缓存 → 未命中       │
-    │   ├─ 查二级缓存 → 未命中       │
-    │   ├─ 查数据库 → 返回 User      │
-    │   └─ 写入一级缓存              │
-    ├─ commit()                     │
-    │   └─ 一级缓存数据刷入二级缓存   │
-    │                               │
-    │                    ├─ query(UserMapper.getById)
-    │                    │   ├─ 查一级缓存 → 未命中
-    │                    │   ├─ 查二级缓存 → 命中！
-    │                    │   └─ 直接返回，不查数据库
-```
+<SvgDiagram src="/diagrams/mybatis-cache-flow.svg" />
 
 **关键注意事项：**
 
@@ -407,23 +392,7 @@ public class SlowSqlPlugin implements Interceptor {
 
 ### 3.5.2 四个拦截点
 
-```text
-                    可拦截的四个对象
-    ┌──────────────────────────────────────────┐
-    │                                          │
-    │   Executor  ←── SQL 执行入口              │
-    │       │                                  │
-    │       ▼                                  │
-    │   ParameterHandler  ←── 参数设置          │
-    │       │                                  │
-    │       ▼                                  │
-    │   StatementHandler  ←── Statement 准备    │
-    │       │                                  │
-    │       ▼                                  │
-    │   ResultSetHandler  ←── 结果集处理         │
-    │                                          │
-    └──────────────────────────────────────────┘
-```
+<SvgDiagram src="/diagrams/mybatis-interceptor-chain.svg" />
 
 | 拦截对象 | 典型场景 | 示例 |
 |---------|---------|------|
@@ -577,19 +546,7 @@ MyBatis 的动态 SQL 通过 XML 标签，根据运行时参数动态拼装 SQL 
 
 MyBatis 的动态 SQL 并非简单的字符串拼接。它使用 **OGNL 表达式引擎** 解析 `test` 条件，通过 `SqlNode` 树形结构组织 SQL 片段，最终由 `DynamicSqlSource` 在运行时生成最终的 `BoundSql`。
 
-```text
-XML 解析阶段（启动时）        运行时（每次调用）
-┌──────────────────┐       ┌──────────────────┐
-│  <select>        │       │  MixedSqlNode     │
-│    <where>       │  ───→ │    ├─ TextSqlNode │
-│      <if test=..>│       │    ├─ IfSqlNode   │
-│      </if>       │       │    └─ IfSqlNode   │
-│    </where>      │       │         │         │
-│  </select>       │       │    apply(param)   │
-└──────────────────┘       │         │         │
-                           │    BoundSql(最终SQL)│
-                           └──────────────────┘
-```
+<SvgDiagram src="/diagrams/mybatis-xml-to-runtime.svg" />
 
 每个 XML 标签被解析为对应的 `SqlNode` 实现（`IfSqlNode`、`ForEachSqlNode`、`WhereSqlNode` 等），运行时根据参数值决定是否输出该节点的内容。
 
