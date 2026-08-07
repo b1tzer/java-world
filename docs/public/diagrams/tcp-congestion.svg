@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 400" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif">
+  <defs>
+    <marker id="arrow-axis" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="330" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">TCP 拥塞控制示意图</text>
+
+  <!-- Axes -->
+  <line x1="80" y1="340" x2="620" y2="340" stroke="#475569" stroke-width="2" marker-end="url(#arrow-axis)"/>
+  <line x1="80" y1="340" x2="80" y2="50" stroke="#475569" stroke-width="2" marker-end="url(#arrow-axis)"/>
+
+  <!-- Axis labels -->
+  <text x="350" y="375" text-anchor="middle" font-size="14" fill="#475569">时间</text>
+  <text x="55" y="200" text-anchor="middle" font-size="14" fill="#475569" transform="rotate(-90,55,200)">cwnd</text>
+
+  <!-- ssthresh dashed line -->
+  <line x1="80" y1="150" x2="600" y2="150" stroke="#ef4444" stroke-width="1" stroke-dasharray="8,4"/>
+  <text x="605" y="145" font-size="12" fill="#ef4444">ssthresh</text>
+
+  <!-- Phase 1: Slow Start (exponential) -->
+  <path d="M80,330 Q120,320 140,290 Q160,250 180,200 Q195,165 210,150" fill="none" stroke="#3b82f6" stroke-width="2.5"/>
+  <!-- Phase label -->
+  <text x="150" y="310" text-anchor="middle" font-size="12" fill="#3b82f6" font-weight="bold">慢启动</text>
+  <text x="150" y="325" text-anchor="middle" font-size="11" fill="#60a5fa">指数增长</text>
+
+  <!-- Phase 2: Congestion Avoidance (linear) -->
+  <path d="M210,150 L380,100" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+  <!-- Phase label -->
+  <text x="300" y="120" text-anchor="middle" font-size="12" fill="#16a34a" font-weight="bold">拥塞避免</text>
+  <text x="300" y="135" text-anchor="middle" font-size="11" fill="#4ade80">线性增长</text>
+
+  <!-- Timeout / packet loss point -->
+  <circle cx="380" cy="100" r="5" fill="#ef4444"/>
+  <text x="395" y="95" font-size="11" fill="#ef4444">超时/丢包</text>
+  <line x1="380" y1="105" x2="380" y2="250" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- Phase 3: Fast Recovery -->
+  <path d="M380,250 L420,230 L560,190" fill="none" stroke="#f59e0b" stroke-width="2.5"/>
+  <!-- Phase label -->
+  <text x="470" y="215" text-anchor="middle" font-size="12" fill="#f59e0b" font-weight="bold">快速恢复</text>
+  <text x="470" y="230" text-anchor="middle" font-size="11" fill="#fbbf24">cwnd = ssthresh + 3</text>
+
+  <!-- Arrow annotations -->
+  <!-- Slow start arrow -->
+  <line x1="100" y1="300" x2="130" y2="260" stroke="#3b82f6" stroke-width="1" marker-end="url(#arrow-axis)"/>
+
+  <!-- Congestion avoidance arrow -->
+  <line x1="260" y1="130" x2="310" y2="110" stroke="#16a34a" stroke-width="1" marker-end="url(#arrow-axis)"/>
+
+  <!-- Fast recovery arrow -->
+  <line x1="430" y1="235" x2="470" y2="215" stroke="#f59e0b" stroke-width="1" marker-end="url(#arrow-axis)"/>
+
+  <!-- Legend box -->
+  <rect x="440" y="55" width="180" height="80" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <circle cx="460" cy="75" r="4" fill="#3b82f6"/>
+  <text x="470" y="79" font-size="11" fill="#475569">慢启动（指数增长）</text>
+  <circle cx="460" cy="95" r="4" fill="#16a34a"/>
+  <text x="470" y="99" font-size="11" fill="#475569">拥塞避免（线性增长）</text>
+  <circle cx="460" cy="115" r="4" fill="#f59e0b"/>
+  <text x="470" y="119" font-size="11" fill="#475569">快速恢复</text>
+</svg>

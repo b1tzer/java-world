@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 560" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-size:14px;fill:#333}
+    .title{font-size:16px;font-weight:bold;fill:#1a1a2e}
+    .node{font-size:13px;fill:#1e3a5f}
+    .hint{fill:#6b7280;font-size:12px}
+    .note{fill:#2563eb;font-size:12px;font-style:italic}
+  </style>
+
+  <text x="330" y="30" text-anchor="middle" class="title">线程池已满 → 拒绝任务（CallerRunsPolicy 反压效应）</text>
+
+  <!-- Step 1 -->
+  <rect x="220" y="48" rx="8" width="220" height="36" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="330" y="71" text-anchor="middle" fill="#b91c1c" font-weight="bold">线程池已满 → 拒绝任务</text>
+
+  <line x1="330" y1="84" x2="330" y2="108" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 2 -->
+  <rect x="210" y="108" rx="8" width="240" height="36" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="330" y="131" text-anchor="middle" class="node">走 CallerRunsPolicy</text>
+
+  <line x1="330" y1="144" x2="330" y2="172" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 3 -->
+  <rect x="190" y="172" rx="8" width="280" height="36" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="330" y="195" text-anchor="middle" fill="#15803d">调用者线程亲自执行任务</text>
+
+  <line x1="330" y1="208" x2="330" y2="236" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 4 -->
+  <rect x="190" y="236" rx="8" width="280" height="36" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+  <text x="330" y="259" text-anchor="middle" fill="#854d0e">调用者线程被这个任务占用</text>
+
+  <line x1="330" y1="272" x2="330" y2="300" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 5 -->
+  <rect x="160" y="300" rx="8" width="340" height="36" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+  <text x="330" y="323" text-anchor="middle" fill="#854d0e">上游（如 Tomcat）无法提交新任务</text>
+
+  <line x1="330" y1="336" x2="330" y2="364" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 6 -->
+  <rect x="150" y="364" rx="8" width="360" height="36" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+  <text x="330" y="387" text-anchor="middle" fill="#075985">请求在上游层面排队（而非线程池层面）</text>
+
+  <line x1="330" y1="400" x2="330" y2="428" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 7 -->
+  <rect x="170" y="428" rx="8" width="320" height="36" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="330" y="451" text-anchor="middle" fill="#15803d">系统整体降速，避免继续接超载流量</text>
+
+  <!-- Annotation -->
+  <text x="330" y="500" text-anchor="middle" class="note">代价：调用线程被卡住，若为 Tomcat 线程则无法响应新请求</text>
+  <text x="330" y="520" text-anchor="middle" class="hint">适合"绝不能丢任务、也不允许无界排队"的场景</text>
+</svg>

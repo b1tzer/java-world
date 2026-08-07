@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 350" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif">
+  <!-- Title -->
+  <text x="360" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">TCP 粘包与拆包</text>
+
+  <!-- Section 1: Sticky packet -->
+  <text x="180" y="65" text-anchor="middle" font-size="14" font-weight="bold" fill="#ef4444">粘包</text>
+
+  <!-- Sender side -->
+  <text x="100" y="90" text-anchor="middle" font-size="12" fill="#64748b">发送方发送两次</text>
+  <rect x="30" y="100" width="80" height="50" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="70" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e40af">"Hello"</text>
+  <text x="70" y="138" text-anchor="middle" font-size="11" fill="#60a5fa">5 bytes</text>
+
+  <rect x="120" y="100" width="80" height="50" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="160" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e40af">"World"</text>
+  <text x="160" y="138" text-anchor="middle" font-size="11" fill="#60a5fa">5 bytes</text>
+
+  <!-- Arrow -->
+  <text x="240" y="130" text-anchor="middle" font-size="20" fill="#8b5cf6">→</text>
+
+  <!-- Receiver side -->
+  <text x="340" y="90" text-anchor="middle" font-size="12" fill="#64748b">接收方可能收到</text>
+  <rect x="260" y="100" width="160" height="50" rx="6" fill="#fce7f3" stroke="#ec4899" stroke-width="2"/>
+  <text x="340" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="#9d174d">"HelloWorld"</text>
+  <text x="340" y="138" text-anchor="middle" font-size="11" fill="#f472b6">10 bytes</text>
+
+  <!-- Sticky label -->
+  <rect x="300" y="158" width="80" height="24" rx="12" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="340" y="175" text-anchor="middle" font-size="12" font-weight="bold" fill="#ef4444">粘包！</text>
+
+  <!-- Divider -->
+  <line x1="420" y1="60" x2="420" y2="310" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- Section 2: Packet splitting -->
+  <text x="560" y="65" text-anchor="middle" font-size="14" font-weight="bold" fill="#f59e0b">拆包</text>
+
+  <!-- Sender side -->
+  <text x="500" y="90" text-anchor="middle" font-size="12" fill="#64748b">发送方发送一次</text>
+  <rect x="440" y="100" width="160" height="50" rx="6" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="520" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e40af">"HelloWorld..."</text>
+  <text x="520" y="138" text-anchor="middle" font-size="11" fill="#60a5fa">1000 bytes</text>
+
+  <!-- Arrow -->
+  <text x="630" y="130" text-anchor="middle" font-size="20" fill="#8b5cf6">→</text>
+
+  <!-- Receiver side -->
+  <text x="680" y="90" text-anchor="middle" font-size="12" fill="#64748b">接收方可能收到</text>
+  <rect x="640" y="100" width="65" height="50" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="672" y="120" text-anchor="middle" font-size="11" font-weight="bold" fill="#92400e">"Hello"</text>
+  <text x="672" y="138" text-anchor="middle" font-size="10" fill="#fbbf24">500 B</text>
+
+  <!-- Gap + second part -->
+  <rect x="710" y="100" width="55" height="50" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="737" y="120" text-anchor="middle" font-size="11" font-weight="bold" fill="#92400e">"World"</text>
+  <text x="737" y="138" text-anchor="middle" font-size="10" fill="#fbbf24">500 B</text>
+
+  <!-- Split label -->
+  <rect x="680" y="158" width="80" height="24" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="720" y="175" text-anchor="middle" font-size="12" font-weight="bold" fill="#f59e0b">拆包！</text>
+
+  <!-- Explanation box -->
+  <rect x="80" y="200" width="560" height="130" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+  <text x="360" y="225" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b">为什么 UDP 没有这个问题？</text>
+  <text x="360" y="250" text-anchor="middle" font-size="13" fill="#475569">TCP 是字节流协议，不保证消息边界</text>
+  <text x="360" y="275" text-anchor="middle" font-size="13" fill="#475569">UDP 是数据报协议——每次 sendto() 对应一次 recvfrom()</text>
+  <text x="360" y="300" text-anchor="middle" font-size="13" fill="#16a34a" font-weight="bold">操作系统为 UDP 保留消息边界</text>
+</svg>

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 480" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif">
+  <style>
+    text{font-size:14px;fill:#333}
+    .title{font-size:16px;font-weight:bold;fill:#1a1a2e}
+    .layer-label{font-size:13px;fill:#fff;font-weight:bold}
+    .vt-label{font-size:12px;fill:#1e3a5f}
+    .note{fill:#6b7280;font-size:12px}
+    .accent{fill:#2563eb;font-size:13px;font-weight:bold}
+  </style>
+
+  <text x="350" y="30" text-anchor="middle" class="title">虚拟线程与载体线程映射关系</text>
+
+  <!-- 用户视角 -->
+  <rect x="40" y="50" rx="8" width="620" height="90" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="60" y="72" class="accent">用户视角</text>
+
+  <!-- VT boxes -->
+  <rect x="70" y="82" rx="4" width="60" height="28" fill="#c4b5fd" stroke="#7c3aed"/>
+  <text x="100" y="101" text-anchor="middle" class="vt-label">VT1</text>
+  <rect x="150" y="82" rx="4" width="60" height="28" fill="#c4b5fd" stroke="#7c3aed"/>
+  <text x="180" y="101" text-anchor="middle" class="vt-label">VT2</text>
+  <rect x="230" y="82" rx="4" width="60" height="28" fill="#c4b5fd" stroke="#7c3aed"/>
+  <text x="260" y="101" text-anchor="middle" class="vt-label">VT3</text>
+  <rect x="310" y="82" rx="4" width="60" height="28" fill="#c4b5fd" stroke="#7c3aed"/>
+  <text x="340" y="101" text-anchor="middle" class="vt-label">VT4</text>
+  <rect x="390" y="82" rx="4" width="60" height="28" fill="#c4b5fd" stroke="#7c3aed"/>
+  <text x="420" y="101" text-anchor="middle" class="vt-label">VT5</text>
+  <text x="485" y="101" class="vt-label">…</text>
+  <rect x="520" y="82" rx="4" width="90" height="28" fill="#c4b5fd" stroke="#7c3aed"/>
+  <text x="565" y="101" text-anchor="middle" class="vt-label">VT₁₀₀₀₀₀₀</text>
+
+  <!-- Connecting lines down -->
+  <line x1="100" y1="110" x2="250" y2="165" stroke="#7c3aed" stroke-width="1" opacity="0.5"/>
+  <line x1="180" y1="110" x2="280" y2="165" stroke="#7c3aed" stroke-width="1" opacity="0.5"/>
+  <line x1="260" y1="110" x2="310" y2="165" stroke="#7c3aed" stroke-width="1" opacity="0.5"/>
+  <line x1="340" y1="110" x2="340" y2="165" stroke="#7c3aed" stroke-width="1" opacity="0.5"/>
+  <line x1="420" y1="110" x2="370" y2="165" stroke="#7c3aed" stroke-width="1" opacity="0.5"/>
+  <line x1="565" y1="110" x2="430" y2="165" stroke="#7c3aed" stroke-width="1" opacity="0.5"/>
+
+  <!-- 挂载/卸载 label -->
+  <text x="620" y="155" class="note">挂载 (mount)</text>
+  <text x="620" y="172" class="note">/ 卸载 (unmount)</text>
+
+  <!-- JVM 视角 -->
+  <rect x="130" y="190" rx="8" width="440" height="90" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="150" y="212" class="accent">JVM 视角：Carrier Thread 池</text>
+
+  <!-- Carrier boxes -->
+  <rect x="170" y="228" rx="4" width="90" height="32" fill="#93c5fd" stroke="#2563eb"/>
+  <text x="215" y="249" text-anchor="middle" fill="#1e3a5f" font-size="13px">Carrier1</text>
+  <rect x="290" y="228" rx="4" width="90" height="32" fill="#93c5fd" stroke="#2563eb"/>
+  <text x="335" y="249" text-anchor="middle" fill="#1e3a5f" font-size="13px">Carrier2</text>
+  <text x="420" y="249" fill="#1e3a5f" font-size="14px">…</text>
+  <rect x="440" y="228" rx="4" width="90" height="32" fill="#93c5fd" stroke="#2563eb"/>
+  <text x="485" y="249" text-anchor="middle" fill="#1e3a5f" font-size="13px">CarrierN</text>
+
+  <text x="350" y="295" text-anchor="middle" class="note">个数 ≈ CPU 核数</text>
+
+  <!-- Arrow to OS -->
+  <line x1="350" y1="305" x2="350" y2="330" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- OS 视角 -->
+  <rect x="170" y="330" rx="8" width="360" height="60" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="190" y="352" class="accent">OS 视角</text>
+  <text x="250" y="375" fill="#15803d" font-size="13px">OS Thread 1</text>
+  <text x="390" y="375" fill="#15803d" font-size="13px">OS Thread 2</text>
+  <text x="490" y="375" fill="#15803d" font-size="13px">…</text>
+
+  <!-- Key insight -->
+  <rect x="100" y="420" rx="6" width="500" height="40" fill="#fef9c3" stroke="#ca8a04" stroke-width="1"/>
+  <text x="350" y="437" text-anchor="middle" fill="#854d0e" font-size="13px">VT 阻塞时 → 从 Carrier 卸载 → Carrier 去跑其他 VT</text>
+  <text x="350" y="453" text-anchor="middle" class="note">栈保存在堆上，个数可达百万级</text>
+</svg>
