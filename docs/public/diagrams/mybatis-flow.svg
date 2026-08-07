@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 620" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif">
+  <defs>
+    <linearGradient id="headerG" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4A6FA5"/>
+      <stop offset="100%" style="stop-color:#5B8DEF"/>
+    </linearGradient>
+    <marker id="arr" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#5B8DEF"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <rect x="40" y="15" width="500" height="44" rx="6" fill="url(#headerG)"/>
+  <text x="290" y="44" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">MyBatis 核心架构</text>
+
+  <!-- Step 1: Mapper Interface -->
+  <rect x="80" y="80" width="420" height="50" rx="6" fill="#E3F2FD" stroke="#1976D2" stroke-width="1.5"/>
+  <text x="290" y="110" text-anchor="middle" fill="#0D47A1" font-size="14" font-weight="bold">Mapper Interface → MapperProxy（JDK 动态代理）</text>
+
+  <line x1="290" y1="130" x2="290" y2="155" stroke="#5B8DEF" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 2: SqlSession -->
+  <rect x="80" y="157" width="420" height="50" rx="6" fill="#E8F5E9" stroke="#388E3C" stroke-width="1.5"/>
+  <text x="290" y="187" text-anchor="middle" fill="#1B5E20" font-size="14" font-weight="bold">SqlSession（会话：获取连接、提交/回滚、执行 SQL）</text>
+
+  <line x1="290" y1="207" x2="290" y2="232" stroke="#5B8DEF" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 3: Executor -->
+  <rect x="80" y="234" width="420" height="50" rx="6" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.5"/>
+  <text x="290" y="264" text-anchor="middle" fill="#E65100" font-size="14" font-weight="bold">Executor（执行器：缓存、批处理、事务管理）</text>
+
+  <line x1="290" y1="284" x2="290" y2="309" stroke="#5B8DEF" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 4: StatementHandler -->
+  <rect x="80" y="311" width="420" height="50" rx="6" fill="#F3E5F5" stroke="#7B1FA2" stroke-width="1.5"/>
+  <text x="290" y="341" text-anchor="middle" fill="#4A148C" font-size="14" font-weight="bold">StatementHandler（语句处理器：PrepareStatement 管理）</text>
+
+  <line x1="290" y1="361" x2="290" y2="386" stroke="#5B8DEF" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 5: ParameterHandler -->
+  <rect x="80" y="388" width="200" height="50" rx="6" fill="#ECEFF1" stroke="#546E7A" stroke-width="1.5"/>
+  <text x="180" y="418" text-anchor="middle" fill="#263238" font-size="13" font-weight="bold">ParameterHandler</text>
+  <text x="180" y="433" text-anchor="middle" fill="#666" font-size="11">设置 SQL 参数</text>
+
+  <!-- Step 6: ResultSetHandler -->
+  <rect x="300" y="388" width="200" height="50" rx="6" fill="#ECEFF1" stroke="#546E7A" stroke-width="1.5"/>
+  <text x="400" y="418" text-anchor="middle" fill="#263238" font-size="13" font-weight="bold">ResultSetHandler</text>
+  <text x="400" y="433" text-anchor="middle" fill="#666" font-size="11">ResultSet → Java 对象</text>
+
+  <!-- Merge arrows down -->
+  <line x1="180" y1="438" x2="290" y2="470" stroke="#5B8DEF" stroke-width="1.5"/>
+  <line x1="400" y1="438" x2="290" y2="470" stroke="#5B8DEF" stroke-width="1.5"/>
+  <line x1="290" y1="470" x2="290" y2="490" stroke="#5B8DEF" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 7: Database -->
+  <rect x="80" y="492" width="420" height="50" rx="6" fill="#FFEBEE" stroke="#C62828" stroke-width="1.5"/>
+  <text x="290" y="522" text-anchor="middle" fill="#B71C1C" font-size="14" font-weight="bold">Database（JDBC Driver → 数据库）</text>
+
+  <!-- Side annotations -->
+  <rect x="510" y="157" width="60" height="50" rx="4" fill="#F5F5F5" stroke="#CCC" stroke-width="1"/>
+  <text x="540" y="178" text-anchor="middle" fill="#888" font-size="10">银行</text>
+  <text x="540" y="193" text-anchor="middle" fill="#888" font-size="10">柜台窗口</text>
+
+  <rect x="510" y="234" width="60" height="50" rx="4" fill="#F5F5F5" stroke="#CCC" stroke-width="1"/>
+  <text x="540" y="255" text-anchor="middle" fill="#888" font-size="10">银行后台</text>
+  <text x="540" y="270" text-anchor="middle" fill="#888" font-size="10">审批员</text>
+</svg>

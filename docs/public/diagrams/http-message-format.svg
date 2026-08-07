@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 340" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="12">
+  <text x="390" y="26" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">HTTP 报文格式对比：文本 vs 二进制帧</text>
+
+  <!-- Left: HTTP/1.1 文本 -->
+  <text x="180" y="56" text-anchor="middle" font-size="14" font-weight="bold" fill="#C62828">HTTP/1.1（文本格式）</text>
+  <g transform="translate(30, 68)">
+    <rect x="0" y="0" width="300" height="240" rx="8" fill="#FFEBEE" stroke="#C62828" stroke-width="1.5"/>
+    <text x="150" y="22" text-anchor="middle" font-size="12" fill="#B71C1C" font-weight="bold">纯 ASCII 文本传输</text>
+    <line x1="16" y1="30" x2="284" y2="30" stroke="#EF9A9A" stroke-width="0.5"/>
+    <text x="16" y="50" font-family="monospace" font-size="11" fill="#333">GET /index.html HTTP/1.1</text>
+    <text x="16" y="66" font-family="monospace" font-size="11" fill="#333">Host: example.com</text>
+    <text x="16" y="82" font-family="monospace" font-size="11" fill="#333">Accept: text/html</text>
+    <text x="16" y="98" font-family="monospace" font-size="11" fill="#333">Cookie: session=abc</text>
+    <text x="16" y="114" font-family="monospace" font-size="11" fill="#999">\r\n</text>
+    <line x1="16" y1="122" x2="284" y2="122" stroke="#EF9A9A" stroke-width="0.5"/>
+    <text x="16" y="140" font-size="11" fill="#C62828">❌ 纯文本，无结构化</text>
+    <text x="16" y="158" font-size="11" fill="#C62828">❌ 头部无压缩</text>
+    <text x="16" y="176" font-size="11" fill="#C62828">❌ 无法多路复用</text>
+    <text x="16" y="194" font-size="11" fill="#C62828">❌ 队头阻塞</text>
+    <text x="16" y="216" font-size="11" fill="#777">每行以 \r\n 结尾</text>
+    <text x="16" y="232" font-size="11" fill="#777">人可读，但效率低</text>
+  </g>
+
+  <!-- Right: HTTP/2 二进制帧 -->
+  <text x="570" y="56" text-anchor="middle" font-size="14" font-weight="bold" fill="#1565C0">HTTP/2（二进制帧）</text>
+  <g transform="translate(400, 68)">
+    <rect x="0" y="0" width="350" height="240" rx="8" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.5"/>
+    <text x="175" y="22" text-anchor="middle" font-size="12" fill="#0D47A1" font-weight="bold">二进制帧 (Binary Frame)</text>
+
+    <!-- Frame structure -->
+    <rect x="20" y="34" width="310" height="100" rx="4" fill="#fff" stroke="#90CAF9" stroke-width="1"/>
+    <!-- Length -->
+    <rect x="28" y="42" width="80" height="36" rx="3" fill="#BBDEFB" stroke="#1565C0" stroke-width="1"/>
+    <text x="68" y="58" text-anchor="middle" font-size="10" fill="#0D47A1" font-weight="bold">Length</text>
+    <text x="68" y="72" text-anchor="middle" font-size="9" fill="#1565C0">24 bit</text>
+    <!-- Type -->
+    <rect x="116" y="42" width="60" height="36" rx="3" fill="#C5CAE9" stroke="#3F51B5" stroke-width="1"/>
+    <text x="146" y="58" text-anchor="middle" font-size="10" fill="#1A237E" font-weight="bold">Type</text>
+    <text x="146" y="72" text-anchor="middle" font-size="9" fill="#3F51B5">8 bit</text>
+    <!-- Flags -->
+    <rect x="184" y="42" width="60" height="36" rx="3" fill="#C5CAE9" stroke="#3F51B5" stroke-width="1"/>
+    <text x="214" y="58" text-anchor="middle" font-size="10" fill="#1A237E" font-weight="bold">Flags</text>
+    <text x="214" y="72" text-anchor="middle" font-size="9" fill="#3F51B5">8 bit</text>
+    <!-- Stream ID -->
+    <rect x="28" y="86" width="294" height="36" rx="3" fill="#E8EAF6" stroke="#5C6BC0" stroke-width="1"/>
+    <text x="175" y="102" text-anchor="middle" font-size="10" fill="#283593" font-weight="bold">Stream Identifier</text>
+    <text x="175" y="116" text-anchor="middle" font-size="9" fill="#5C6BC0">31 bit — 标识属于哪个请求流</text>
+
+    <!-- Payload -->
+    <rect x="20" y="142" width="310" height="28" rx="4" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1"/>
+    <text x="175" y="160" text-anchor="middle" font-size="11" fill="#1B5E20">Frame Payload（实际数据）</text>
+
+    <!-- Advantages -->
+    <text x="20" y="190" font-size="11" fill="#1565C0">✅ 结构化二进制格式</text>
+    <text x="20" y="208" font-size="11" fill="#1565C0">✅ HPACK 头部压缩</text>
+    <text x="20" y="226" font-size="11" fill="#1565C0">✅ Stream 级别多路复用</text>
+  </g>
+
+  <!-- Bottom note -->
+  <text x="390" y="326" text-anchor="middle" font-size="11" fill="#777">HTTP/2 将文本协议转为二进制帧，通过 Stream ID 实现单连接上的多请求并行</text>
+</svg>

@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 680" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="12">
+  <defs>
+    <marker id="arD" markerWidth="8" markerHeight="8" refX="4" refY="8" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#555"/>
+    </marker>
+    <marker id="arR" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1565C0"/>
+    </marker>
+  </defs>
+
+  <text x="410" y="26" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">Netty 一次请求的完整处理流程</text>
+
+  <!-- Step boxes -->
+  <g transform="translate(60, 46)">
+    <!-- Step 1 -->
+    <rect x="0" y="0" width="320" height="36" rx="6" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.2"/>
+    <text x="16" y="22" font-weight="bold" fill="#1565C0">1.</text>
+    <text x="34" y="22" fill="#333">客户端发起 TCP 连接</text>
+    <line x1="160" y1="36" x2="160" y2="54" stroke="#555" stroke-width="1.5" marker-end="url(#arD)"/>
+
+    <!-- Step 2 -->
+    <rect x="0" y="56" width="320" height="36" rx="6" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.2"/>
+    <text x="16" y="78" font-weight="bold" fill="#1565C0">2.</text>
+    <text x="34" y="78" fill="#333">OS 内核完成三次握手，连接进入 accept 队列</text>
+    <line x1="160" y1="92" x2="160" y2="110" stroke="#555" stroke-width="1.5" marker-end="url(#arD)"/>
+
+    <!-- Step 3 -->
+    <rect x="0" y="112" width="320" height="36" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.2"/>
+    <text x="16" y="134" font-weight="bold" fill="#2E7D32">3.</text>
+    <text x="34" y="134" fill="#333">Boss NioEventLoop 的 Selector 检测到 ACCEPT 事件</text>
+    <line x1="160" y1="148" x2="160" y2="166" stroke="#555" stroke-width="1.5" marker-end="url(#arD)"/>
+
+    <!-- Step 4 -->
+    <rect x="0" y="168" width="320" height="36" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.2"/>
+    <text x="16" y="190" font-weight="bold" fill="#2E7D32">4.</text>
+    <text x="34" y="190" fill="#333">Boss 调用 accept()，获得 SocketChannel</text>
+    <line x1="160" y1="204" x2="160" y2="222" stroke="#555" stroke-width="1.5" marker-end="url(#arD)"/>
+
+    <!-- Step 5 -->
+    <rect x="0" y="224" width="320" height="36" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.2"/>
+    <text x="16" y="246" font-weight="bold" fill="#2E7D32">5.</text>
+    <text x="34" y="246" fill="#333">Boss 通过 Round-Robin 选择一个 Worker NioEventLoop</text>
+    <line x1="160" y1="260" x2="160" y2="278" stroke="#555" stroke-width="1.5" marker-end="url(#arD)"/>
+
+    <!-- Step 6 -->
+    <rect x="0" y="280" width="320" height="36" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.2"/>
+    <text x="16" y="302" font-weight="bold" fill="#2E7D32">6.</text>
+    <text x="34" y="302" fill="#333">将 SocketChannel 注册到 Worker 的 Selector（关注 READ）</text>
+    <line x1="160" y1="316" x2="160" y2="334" stroke="#555" stroke-width="1.5" marker-end="url(#arD)"/>
+
+    <!-- Step 7 -->
+    <rect x="0" y="336" width="320" height="36" rx="6" fill="#FFF3E0" stroke="#E65100" stroke-width="1.2"/>
+    <text x="16" y="358" font-weight="bold" fill="#E65100">7.</text>
+    <text x="34" y="358" fill="#333">客户端发送数据，OS 将数据拷贝到 Socket 缓冲区</text>
+    <line x1="160" y1="372" x2="160" y2="390" stroke="#555" stroke-width="1.5" marker-end="url(#arD)"/>
+
+    <!-- Step 8 -->
+    <rect x="0" y="392" width="320" height="36" rx="6" fill="#FFF3E0" stroke="#E65100" stroke-width="1.2"/>
+    <text x="16" y="414" font-weight="bold" fill="#E65100">8.</text>
+    <text x="34" y="414" fill="#333">Worker NioEventLoop 的 Selector 检测到 READ 事件</text>
+    <line x1="160" y1="428" x2="160" y2="446" stroke="#555" stroke-width="1.5" marker-end="url(#arD)"/>
+
+    <!-- Step 9 -->
+    <rect x="0" y="448" width="320" height="36" rx="6" fill="#FFF3E0" stroke="#E65100" stroke-width="1.2"/>
+    <text x="16" y="470" font-weight="bold" fill="#E65100">9.</text>
+    <text x="34" y="470" fill="#333">Worker 从 Channel 读取数据到 ByteBuf</text>
+    <line x1="160" y1="484" x2="160" y2="502" stroke="#555" stroke-width="1.5" marker-end="url(#arD)"/>
+  </g>
+
+  <!-- Step 10 - Pipeline -->
+  <rect x="60" y="554" width="320" height="36" rx="6" fill="#F3E5F5" stroke="#7B1FA2" stroke-width="1.2"/>
+  <text x="76" y="576" font-weight="bold" fill="#7B1FA2">10.</text>
+  <text x="94" y="576" fill="#333">数据流经 Pipeline Handler 链：</text>
+
+  <!-- Pipeline diagram -->
+  <g transform="translate(420, 546)">
+    <rect x="0" y="0" width="120" height="36" rx="4" fill="#E8EAF6" stroke="#3F51B5" stroke-width="1"/>
+    <text x="60" y="22" text-anchor="middle" font-size="11" fill="#283593" font-weight="bold">HttpDecoder</text>
+    <text x="60" y="50" text-anchor="middle" font-size="10" fill="#7B1FA2">字节 → HttpRequest</text>
+    <line x1="120" y1="18" x2="140" y2="18" stroke="#555" stroke-width="1" marker-end="url(#arR)"/>
+
+    <rect x="144" y="0" width="130" height="36" rx="4" fill="#E8EAF6" stroke="#3F51B5" stroke-width="1"/>
+    <text x="209" y="22" text-anchor="middle" font-size="11" fill="#283593" font-weight="bold">HttpAggregator</text>
+    <text x="209" y="50" text-anchor="middle" font-size="10" fill="#7B1FA2">分片 → 完整请求</text>
+    <line x1="274" y1="18" x2="294" y2="18" stroke="#555" stroke-width="1" marker-end="url(#arR)"/>
+
+    <rect x="298" y="0" width="130" height="36" rx="4" fill="#E8EAF6" stroke="#3F51B5" stroke-width="1"/>
+    <text x="363" y="22" text-anchor="middle" font-size="11" fill="#283593" font-weight="bold">BusinessHandler</text>
+    <text x="363" y="50" text-anchor="middle" font-size="10" fill="#7B1FA2">业务处理</text>
+  </g>
+
+  <!-- Step 11 -->
+  <rect x="60" y="610" width="320" height="36" rx="6" fill="#F3E5F5" stroke="#7B1FA2" stroke-width="1.2"/>
+  <text x="76" y="632" font-weight="bold" fill="#7B1FA2">11.</text>
+  <text x="94" y="632" fill="#333">BusinessHandler 处理业务，构造 Response</text>
+
+  <!-- Step 12 -->
+  <rect x="420" y="610" width="280" height="36" rx="6" fill="#FCE4EC" stroke="#C62828" stroke-width="1.2"/>
+  <text x="436" y="632" font-weight="bold" fill="#C62828">12.</text>
+  <text x="454" y="632" fill="#333">Response 经 HttpEncoder → 写出 Channel</text>
+
+  <!-- Step 13 -->
+  <rect x="420" y="654" width="280" height="22" rx="4" fill="#EFEBE9" stroke="#795548" stroke-width="1"/>
+  <text x="560" y="669" text-anchor="middle" font-size="11" fill="#795548">13. OS 将数据从 Socket 缓冲区发送到网络</text>
+</svg>

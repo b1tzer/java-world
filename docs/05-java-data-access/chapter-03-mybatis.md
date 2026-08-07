@@ -97,31 +97,7 @@ sequenceDiagram
 
 整个执行链路涉及六个核心组件，各司其职：
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│                     MyBatis 核心架构                      │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  Mapper Interface ──→ MapperProxy (JDK动态代理)          │
-│         │                                               │
-│         ▼                                               │
-│  SqlSession (会话：获取连接、提交/回滚、执行SQL)            │
-│         │                                               │
-│         ▼                                               │
-│  Executor (执行器：缓存、批处理、事务管理)                  │
-│         │                                               │
-│         ▼                                               │
-│  StatementHandler (语句处理器：PrepareStatement管理)       │
-│         │                                               │
-│         ▼                                               │
-│  ParameterHandler (参数处理器：设置SQL参数)                │
-│         │                                               │
-│         ▼                                               │
-│  ResultSetHandler (结果集处理器：ResultSet → Java对象)     │
-│         │                                               │
-│         ▼                                               │
-│  Database (JDBC Driver → 数据库)                         │
-└─────────────────────────────────────────────────────────┘
+![MyBatis 核心架构与六大组件执行流程](/diagrams/mybatis-flow.svg)
 ```
 
 | 组件 | 职责 | 类比 |

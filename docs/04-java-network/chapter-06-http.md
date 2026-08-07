@@ -289,29 +289,7 @@ HTTP 状态码是三位数字，按首位分类：
 
 ### 6.4.3 状态码设计原则
 
-```text
-状态码选择决策树：
-
-请求到达
-  │
-  ├─ 语法/格式错误？ ──→ 400 Bad Request
-  │
-  ├─ 需要认证？ ──→ 401 Unauthorized
-  │
-  ├─ 已认证但无权限？ ──→ 403 Forbidden
-  │
-  ├─ 资源不存在？ ──→ 404 Not Found
-  │
-  ├─ 方法不对？ ──→ 405 Method Not Allowed
-  │
-  ├─ 创建成功？ ──→ 201 Created
-  │
-  ├─ 删除成功（无返回）？ ──→ 204 No Content
-  │
-  ├─ 普通成功？ ──→ 200 OK
-  │
-  └─ 服务器异常？ ──→ 500 Internal Server Error
-```
+![HTTP 状态码选择决策树](/diagrams/http-status-decision.svg)
 
 ## 6.5 HTTP/1.1 → HTTP/2 → HTTP/3
 
@@ -371,47 +349,13 @@ HTTP/2（2015 年，RFC 7540）基于 Google 的 SPDY 协议，引入了根本�
 
 HTTP/2 将通信分解为更小的 **帧（Frame）**，在 **流（Stream）** 上传输：
 
-```text
-HTTP/1.1 (文本):
-  GET /index.html HTTP/1.1\r\n
-  Host: example.com\r\n
-  \r\n
-
-HTTP/2 (二进制帧):
-  ┌─────────────────────────────────────┐
-  │         二进制帧 (Binary Frame)       │
-  │  ┌──────────┬─────────┬───────────┐ │
-  │  │ Length    │ Type    │ Flags     │ │
-  │  │ (24 bit) │ (8 bit) │ (8 bit)   │ │
-  │  ├──────────┴─────────┴───────────┤ │
-  │  │ Stream Identifier (31 bit)     │ │
-  │  ├────────────────────────────────┤ │
-  │  │ Frame Payload                  │ │
-  │  └────────────────────────────────┘ │
-  └─────────────────────────────────────┘
-```
+![HTTP 报文格式对比：文本 vs 二进制帧](/diagrams/http-message-format.svg)
 
 #### 多路复用（Multiplexing）
 
 HTTP/2 最核心的特性：**一个 TCP 连接上可以并行传输多个请求/响应，互不阻塞**。
 
-```text
-HTTP/2 多路复用:
-
-  TCP 连接 (单连接)
-  ┌──────────────────────────────────────────┐
-  │  Stream 1: GET /index.html               │
-  │  Stream 3: GET /style.css                │
-  │  Stream 5: GET /app.js                   │
-  │                                          │
-  │  帧可以交错传输，按 Stream ID 重组        │
-  │  Stream 1 的大文件不会阻塞 Stream 3 的小文件 │
-  └──────────────────────────────────────────┘
-
-对比 HTTP/1.1:
-  HTTP/1.1: 请求1 [====] 响应1 [====] 请求2 [===] 响应2 [===]  (串行)
-  HTTP/2:   请求1 [===] 请求2 [===] 响应1 [===] 响应2 [===]   (交错)
-```
+![HTTP/2 多路复用](/diagrams/http2-multiplex.svg)
 
 #### 头部压缩（HPACK）
 
@@ -462,25 +406,7 @@ HTTP/3（2022 年，RFC 9114）彻底抛弃 TCP，基于 **QUIC（Quick UDP Inte
 
 #### QUIC 的核心特性
 
-```text
-QUIC 协议栈:
-
-  ┌───────────────────────────────────┐
-  │  HTTP/3                           │
-  ├───────────────────────────────────┤
-  │  QPACK (头部压缩)                  │
-  ├───────────────────────────────────┤
-  │  QUIC Transport                   │
-  │  ┌─────────────────────────────┐  │
-  │  │ Stream 复用 (独立可靠)       │  │
-  │  │ 0-RTT 连接建立              │  │
-  │  │ 内置 TLS 1.3               │  │
-  │  │ 连接迁移 (Connection ID)    │  │
-  │  └─────────────────────────────┘  │
-  ├───────────────────────────────────┤
-  │  UDP                              │
-  └───────────────────────────────────┘
-```
+![QUIC 协议栈](/diagrams/http-quic-stack.svg)
 
 | 特性 | 说明 |
 |------|------|
@@ -491,29 +417,7 @@ QUIC 协议栈:
 
 #### 0-RTT 建立过程
 
-```text
-TCP + TLS 1.2 (HTTP/1.1 / HTTP/2):
-  客户端 → SYN                    →  1 RTT
-  客户端 ← SYN-ACK
-  客户端 → ACK + ClientHello      →  1 RTT (TLS 握手)
-  客户端 ← ServerHello + Cert
-  客户端 → Finished               →  1 RTT (密钥确认)
-  客户端 → HTTP Request           →  1 RTT (数据)
-  客户端 ← HTTP Response
-  总计: 3-RTT 才能拿到第一个字节
-
-QUIC 首次连接:
-  客户端 → Initial (含 ClientHello) →  1 RTT
-  客户端 ← Handshake (ServerHello)
-  客户端 → HTTP Request
-  客户端 ← HTTP Response
-  总计: 1-RTT
-
-QUIC 后续连接 (0-RTT):
-  客户端 → Initial + 0-RTT Data (含 HTTP Request) →  0 RTT!
-  客户端 ← HTTP Response
-  总计: 请求和握手同时发出
-```
+![HTTP 版本演进：连接建立对比](/diagrams/http-evolution.svg)
 
 #### 三个版本的演进对比
 

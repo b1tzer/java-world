@@ -48,38 +48,7 @@ Spring 并没有"消灭"事务管理，而是把它搬到了方法的外面—�
 
 整个过程可以用以下流程来描述：
 
-```text
-客户端调用 createOrder()
-        │
-        ▼
-┌─────────────────────┐
-│   AOP Proxy 拦截     │  ← Spring 生成的代理对象
-│   (JDK/CGLIB)       │
-└─────────┬───────────┘
-          │
-          ▼
-┌─────────────────────┐
-│ TransactionInterceptor.intercept()
-│   1. 获取事务属性     │  ← 读取 @Transactional 注解参数
-│   2. 获取事务管理器   │  ← PlatformTransactionManager
-│   3. 创建/加入事务    │  ← txManager.getTransaction()
-└─────────┬───────────┘
-          │
-          ▼
-┌─────────────────────┐
-│ 执行真实业务方法      │  ← orderDao.insert() / inventoryDao.decrease()
-└─────────┬───────────┘
-          │
-     ┌────┴────┐
-     │ 成功？   │
-     └────┬────┘
-    Yes   │   No (RuntimeException)
-     ▼         ▼
- commit()   rollback()
-     │         │
-     ▼         ▼
-  释放连接   释放连接
-```
+![事务传播流程：从客户端调用到 commit/rollback 的完整链路](/diagrams/tx-propagation.svg)
 
 **关键点：** `@Transactional` 生效的前提是方法调用必须经过代理对象。理解这一点，后面 6.3 节的"失效场景"就全部有迹可循了。
 

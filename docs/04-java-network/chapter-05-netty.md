@@ -153,23 +153,7 @@ EventLoop-3 (Thread-3)
 
 ### 5.3.2 EventLoop 生命周期
 
-```text
-┌───────────┐
-│  启动      │
-└─────┬─────┘
-      ▼
-┌─────────────────────────────────────┐
-│  for (;;) {                         │
-│    1. select() — 等待就绪事件        │
-│    2. processSelectedKeys() — 处理IO │
-│    3. runAllTasks() — 执行队列任务   │
-│  }                                  │
-└─────┬───────────────────────────────┘
-      ▼
-┌───────────┐
-│  关闭      │
-└───────────┘
-```
+![EventLoop 生命周期](/diagrams/netty-eventloop.svg)
 
 每个 EventLoop 内部维护三个任务队列：
 
@@ -462,38 +446,7 @@ Reactor 模式是高性能网络服务器的经典架构，核心思想是 **一
 
 三种典型的 Reactor 变体：
 
-```text
-单 Reactor 单线程:
-  ┌──────────────────┐
-  │  Reactor Thread   │
-  │  ┌──────────────┐ │
-  │  │ accept()     │ │
-  │  │ read/write() │ │
-  │  │ decode/encode│ │
-  │  │ business()   │ │
-  │  └──────────────┘ │
-  └──────────────────┘
-  问题: 任何阻塞都会影响所有连接
-
-单 Reactor 多线程:
-  ┌──────────────────┐
-  │  Reactor Thread   │ ──→ Worker Pool (N threads)
-  │  accept()         │
-  │  read/write()     │
-  └──────────────────┘
-  问题: Reactor 单线程仍是瓶颈
-
-主从 Reactor (Netty 采用):
-  ┌──────────────┐
-  │  Boss Group   │ ──→ accept 新连接
-  │  (1 thread)   │     分配给 Worker
-  └──────┬───────┘
-         ▼
-  ┌──────────────┐
-  │ Worker Group  │ ──→ read/write I/O
-  │ (N threads)   │     执行 Handler
-  └──────────────┘
-```
+![三种 Reactor 模式变体](/diagrams/netty-reactor.svg)
 
 ### 5.7.2 Netty 的主从 Reactor 实现
 
@@ -527,35 +480,7 @@ Netty 默认采用 **主从 Reactor** 模型：
 
 以客户端发送一个 HTTP 请求为例，完整的数据流经过程：
 
-```text
-1. 客户端发起 TCP 连接
-   ↓
-2. OS 内核完成三次握手，连接进入 accept 队列
-   ↓
-3. Boss NioEventLoop 的 Selector 检测到 ACCEPT 事件
-   ↓
-4. Boss 调用 accept()，获得 SocketChannel
-   ↓
-5. Boss 通过 Round-Robin 选择一个 Worker NioEventLoop
-   ↓
-6. 将 SocketChannel 注册到 Worker 的 Selector（关注 READ 事件）
-   ↓
-7. 客户端发送数据，OS 将数据拷贝到 Socket 缓冲区
-   ↓
-8. Worker NioEventLoop 的 Selector 检测到 READ 事件
-   ↓
-9. Worker 从 Channel 读取数据到 ByteBuf
-   ↓
-10. 数据流经 Pipeline 中的 Handler 链：
-    HttpDecoder → HttpAggregator → BusinessHandler
-    ↓
-11. BusinessHandler 处理业务逻辑，构造 Response
-    ↓
-12. Response 流经 Outbound Handler 链：
-    HttpEncoder → 写出到 Channel
-    ↓
-13. OS 将数据从 Socket 缓冲区发送到网络
-```
+![Netty Pipeline 处理流程](/diagrams/netty-pipeline.svg)
 
 ### 5.7.4 TaskQueue 的作用
 
