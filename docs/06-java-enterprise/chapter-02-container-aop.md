@@ -209,7 +209,7 @@ Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
 
 以 ServiceA 和 ServiceB 的循环依赖为例：
 
-![Spring 循环依赖与三级缓存流程图](/diagrams/spring-aop-proxy.svg)
+<SvgDiagram src="/diagrams/spring-aop-proxy.svg" />
 
 ### 2.3.4 为什么需要三级缓存而不是两级
 

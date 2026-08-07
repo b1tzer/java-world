@@ -153,7 +153,7 @@ EventLoop-3 (Thread-3)
 
 ### 5.3.2 EventLoop 生命周期
 
-![EventLoop 生命周期](/diagrams/netty-eventloop.svg)
+<SvgDiagram src="/diagrams/netty-eventloop.svg" />
 
 每个 EventLoop 内部维护三个任务队列：
 
@@ -446,7 +446,7 @@ Reactor 模式是高性能网络服务器的经典架构，核心思想是 **一
 
 三种典型的 Reactor 变体：
 
-![三种 Reactor 模式变体](/diagrams/netty-reactor.svg)
+<SvgDiagram src="/diagrams/netty-reactor.svg" />
 
 ### 5.7.2 Netty 的主从 Reactor 实现
 
@@ -480,7 +480,7 @@ Netty 默认采用 **主从 Reactor** 模型：
 
 以客户端发送一个 HTTP 请求为例，完整的数据流经过程：
 
-![Netty Pipeline 处理流程](/diagrams/netty-pipeline.svg)
+<SvgDiagram src="/diagrams/netty-pipeline.svg" />
 
 ### 5.7.4 TaskQueue 的作用
 

@@ -97,7 +97,7 @@ sequenceDiagram
 
 整个执行链路涉及六个核心组件，各司其职：
 
-![MyBatis 核心架构与六大组件执行流程](/diagrams/mybatis-flow.svg)
+<SvgDiagram src="/diagrams/mybatis-flow.svg" />
 ```
 
 | 组件 | 职责 | 类比 |

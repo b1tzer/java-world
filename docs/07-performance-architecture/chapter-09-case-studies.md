@@ -17,7 +17,7 @@
 
 ### 9.1.2 整体架构
 
-![秒杀系统架构：CDN → 网关限流 → 秒杀集群 → Redis 预减 → MQ 异步下单](/diagrams/seckill-arch.svg)
+<SvgDiagram src="/diagrams/seckill-arch.svg" />
 
 ### 9.1.3 四层流量削减
 
@@ -322,7 +322,7 @@ public Feed getFeedWithHotDetection(String feedId) {
 
 TCC（Try-Confirm-Cancel）是分布式事务的常用方案：
 
-![TCC 事务流程](/diagrams/tcc-flow.svg)
+<SvgDiagram src="/diagrams/tcc-flow.svg" />
 
 ```java
 @Service

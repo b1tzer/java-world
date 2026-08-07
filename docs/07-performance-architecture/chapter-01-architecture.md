@@ -38,7 +38,7 @@ Map<String, List<Order>> ordersByRegion = orders.stream()
 
 架构不是一成不变的，它随着业务规模和团队规模共同演进。以下是常见的演进路径：
 
-![架构演进全景图](/diagrams/arch-evolution.svg)
+<SvgDiagram src="/diagrams/arch-evolution.svg" />
 
 ### 各阶段特征
 
@@ -205,7 +205,7 @@ public class JpaOrderRepository implements OrderRepository {
 
 六边形架构（Hexagonal Architecture），又称 Ports & Adapters，由 Alistair Cockburn 在 2005 年提出。其核心思想是：**业务核心在中心，外部世界通过端口和适配器与业务交互**。
 
-![六边形架构：业务核心在中心，外部通过端口和适配器交互](/diagrams/hexagonal-arch.svg)
+<SvgDiagram src="/diagrams/hexagonal-arch.svg" />
 
 ### 代码落地
 

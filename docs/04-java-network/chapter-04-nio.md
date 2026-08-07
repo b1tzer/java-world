@@ -329,7 +329,7 @@ allocateDirect()： 直接内存 → 内核缓冲区 → 网卡
 
 **Selector（选择器）** 是 NIO 实现高并发的核心。它的作用是：**让一个线程同时监听多个 Channel 的 I/O 事件。**
 
-![Selector 多路复用器](/diagrams/nio-selector.svg)
+<SvgDiagram src="/diagrams/nio-selector.svg" />
 
 ### 4.5.2 事件类型
 
@@ -413,7 +413,7 @@ ClientState state = (ClientState) key.attachment();
 
 ### 4.6.2 单线程 Reactor
 
-![单线程 Reactor 模式](/diagrams/reactor-single.svg)
+<SvgDiagram src="/diagrams/reactor-single.svg" />
 
 ```java
 public class NioEchoServer {
@@ -472,13 +472,13 @@ public class NioEchoServer {
 
 解决方案：将 Handler 的执行交给 Worker 线程池。
 
-![多线程 Reactor 模式](/diagrams/reactor-multi.svg)
+<SvgDiagram src="/diagrams/reactor-multi.svg" />
 
 ### 4.6.4 主从多 Reactor 模式
 
 大型框架（如 Netty）采用的模式：
 
-![主从多 Reactor 模式](/diagrams/reactor-master-slave.svg)
+<SvgDiagram src="/diagrams/reactor-master-slave.svg" />
 
 | 角色 | 职责 | 线程数 |
 | :--- | :--- | :--- |

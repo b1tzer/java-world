@@ -95,7 +95,7 @@ public void syncBlock() {
 
 用 `javap -c` 反编译得到（简化）：
 
-![Monitor 工作流程：synchronized 字节码中的 monitorenter/monitorexit 执行路径](/diagrams/sync-monitor-flow.svg)
+<SvgDiagram src="/diagrams/sync-monitor-flow.svg" />
 
 两点值得注意：
 

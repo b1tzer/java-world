@@ -139,7 +139,7 @@ HTTP Request
 
 一次登录认证的完整流程涉及多个组件的协作：
 
-![Spring Security 认证流程图](/diagrams/security-auth-flow.svg)
+<SvgDiagram src="/diagrams/security-auth-flow.svg" />
 
 ### 8.2.3 核心代码示例
 

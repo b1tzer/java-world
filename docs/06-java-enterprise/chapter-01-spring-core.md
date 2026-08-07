@@ -279,7 +279,7 @@ public class UserService {
 
 Bean 从定义到销毁，经历以下阶段：
 
-![Bean 生命周期流程图](/diagrams/spring-bean-lifecycle.svg)
+<SvgDiagram src="/diagrams/spring-bean-lifecycle.svg" />
 
 ### 1.4.3 各阶段代码示例
 

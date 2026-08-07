@@ -148,7 +148,7 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 
 ### 3.2.2 流程图解
 
-![Spring MVC 请求处理流程图](/diagrams/spring-mvc-flow.svg)
+<SvgDiagram src="/diagrams/spring-mvc-flow.svg" />
 
 ### 3.2.3 HandlerMapping 的职责
 

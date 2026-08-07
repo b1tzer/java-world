@@ -518,7 +518,7 @@ service:
 
 以"接口响应变慢"为例，详细展示排查过程：
 
-![可观测性排障流程图](/diagrams/observability-troubleshoot.svg)
+<SvgDiagram src="/diagrams/observability-troubleshoot.svg" />
 
 ### 9.4.4 排查工具速查表
 

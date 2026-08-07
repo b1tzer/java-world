@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 700" width="780" height="700" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="13">
 <style>
   text { text-anchor: middle; dominant-baseline: central; }
-  .title { font-size: 15px; font-weight: bold; fill: #1a1a2e; }
-  .label { font-size: 12px; fill: #2d3436; }
-  .note { font-size: 11px; fill: #636e72; }
-  .arrow { stroke: #6c5ce7; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+  .title { font-size: 15px; font-weight: bold; fill: var(--diagram-text-1); }
+  .label { font-size: 12px; fill: var(--diagram-text-1); }
+  .note { font-size: 11px; fill: var(--diagram-text-2); }
+  .arrow { stroke: var(--diagram-accent-3); stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
   .box { rx: 8; ry: 8; }
-  .phase { fill: #dfe6e9; stroke: #636e72; stroke-width: 1.5; }
-  .highlight { fill: #ffeaa7; stroke: #fdcb6e; stroke-width: 1.5; }
-  .action { fill: #81ecec; stroke: #00b894; stroke-width: 1.5; }
-  .important { fill: #fab1a0; stroke: #e17055; stroke-width: 1.5; }
-  .step { fill: #a29bfe; stroke: #6c5ce7; stroke-width: 1.5; }
-  .note-box { fill: #f8f9fa; stroke: #b2bec3; stroke-width: 1; }
-  .cache { fill: #fdcb6e; stroke: #f39c12; stroke-width: 1.5; }
+  .phase { fill: var(--diagram-surface-3); stroke: var(--diagram-text-2); stroke-width: 1.5; }
+  .highlight { fill: var(--diagram-accent-bg-4); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
+  .action { fill: var(--diagram-accent-bg-2); stroke: var(--diagram-accent-2); stroke-width: 1.5; }
+  .important { fill: var(--diagram-accent-bg-5); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
+  .step { fill: var(--diagram-accent-bg-3b); stroke: var(--diagram-accent-3); stroke-width: 1.5; }
+  .note-box { fill: var(--diagram-surface-2); stroke: var(--diagram-stroke-1); stroke-width: 1; }
+  .cache { fill: var(--diagram-accent-4); stroke: var(--diagram-accent-4); stroke-width: 1.5; }
 </style>
 <defs>
   <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">

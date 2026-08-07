@@ -19,7 +19,7 @@
 
 ### 一个请求的资源消耗链路
 
-![高并发架构分层](/diagrams/concurrency-layered-arch.svg)
+<SvgDiagram src="/diagrams/concurrency-layered-arch.svg" />
 
 每一次请求都在消耗多种资源。高并发下，任何一种资源成为瓶颈，都会导致系统整体变慢甚至崩溃。
 
@@ -228,7 +228,7 @@ public class OrderController {
 
 ### 全链路架构
 
-![高并发架构分层图：CDN → 网关 → 应用服务 → 缓存 → 数据库，逐层消峰](/diagrams/concurrency-layered-arch.svg)
+<SvgDiagram src="/diagrams/concurrency-layered-arch.svg" />
 
 ### 各层职责与消峰效果
 

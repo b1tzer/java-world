@@ -198,7 +198,7 @@ public class OrderItem {
 | "商品"含义 | 一个营销展示单元 | 一个可存储的实物 | 一次交易的行项 |
 | 操作 | 上架、编辑、下架 | 入库、出库、盘点 | 加入购物车、下单 |
 
-![DDD 战略设计流程](/diagrams/ddd战略设计.svg)
+<SvgDiagram src="/diagrams/ddd战略设计.svg" />
 
 每个上下文内部有自己的领域模型，上下文之间通过 **ID 引用** 或 **事件通信**，绝不共享领域对象。
 
@@ -286,7 +286,7 @@ public class ProductAntiCorruptionLayer {
 
 像藤蔓缠绕大树一样，用新代码逐渐包裹旧代码，最终替换：
 
-![DDD 战略设计：绞杀者模式渐进改造 — 从一个子域开始，逐步扩大 DDD 范围](/diagrams/ddd%E6%88%98%E7%95%A5%E8%AE%BE%E8%AE%A1.svg)
+<SvgDiagram src="/diagrams/ddd%E6%88%98%E7%95%A5%E8%AE%BE%E8%AE%A1.svg" />
 
 ### 防腐层（ACL）隔离新旧代码
 

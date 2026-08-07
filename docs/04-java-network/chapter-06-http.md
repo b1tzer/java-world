@@ -289,7 +289,7 @@ HTTP 状态码是三位数字，按首位分类：
 
 ### 6.4.3 状态码设计原则
 
-![HTTP 状态码选择决策树](/diagrams/http-status-decision.svg)
+<SvgDiagram src="/diagrams/http-status-decision.svg" />
 
 ## 6.5 HTTP/1.1 → HTTP/2 → HTTP/3
 
@@ -349,13 +349,13 @@ HTTP/2（2015 年，RFC 7540）基于 Google 的 SPDY 协议，引入了根本�
 
 HTTP/2 将通信分解为更小的 **帧（Frame）**，在 **流（Stream）** 上传输：
 
-![HTTP 报文格式对比：文本 vs 二进制帧](/diagrams/http-message-format.svg)
+<SvgDiagram src="/diagrams/http-message-format.svg" />
 
 #### 多路复用（Multiplexing）
 
 HTTP/2 最核心的特性：**一个 TCP 连接上可以并行传输多个请求/响应，互不阻塞**。
 
-![HTTP/2 多路复用](/diagrams/http2-multiplex.svg)
+<SvgDiagram src="/diagrams/http2-multiplex.svg" />
 
 #### 头部压缩（HPACK）
 
@@ -406,7 +406,7 @@ HTTP/3（2022 年，RFC 9114）彻底抛弃 TCP，基于 **QUIC（Quick UDP Inte
 
 #### QUIC 的核心特性
 
-![QUIC 协议栈](/diagrams/http-quic-stack.svg)
+<SvgDiagram src="/diagrams/http-quic-stack.svg" />
 
 | 特性 | 说明 |
 |------|------|
@@ -417,7 +417,7 @@ HTTP/3（2022 年，RFC 9114）彻底抛弃 TCP，基于 **QUIC（Quick UDP Inte
 
 #### 0-RTT 建立过程
 
-![HTTP 版本演进：连接建立对比](/diagrams/http-evolution.svg)
+<SvgDiagram src="/diagrams/http-evolution.svg" />
 
 #### 三个版本的演进对比
 

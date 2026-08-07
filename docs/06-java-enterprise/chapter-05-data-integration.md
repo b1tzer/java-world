@@ -174,7 +174,7 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport
 
 **时序图**：
 
-![Spring-MyBatis 整合流程图](/diagrams/spring-mybatis-integration.svg)
+<SvgDiagram src="/diagrams/spring-mybatis-integration.svg" />
 
 ### 5.2.4 MapperProxy 的本质
 

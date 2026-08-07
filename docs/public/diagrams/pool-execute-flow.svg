@@ -1,75 +1,75 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 620" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif">
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+      <polygon points="0 0, 10 3.5, 0 7" fill="var(--diagram-arrow)"/>
     </marker>
   </defs>
   <style>
-    text{font-size:14px;fill:#333}
-    .title{font-size:16px;font-weight:bold;fill:#1a1a2e}
-    .label-yes{fill:#16a34a;font-size:13px;font-weight:bold}
-    .label-no{fill:#dc2626;font-size:13px;font-weight:bold}
-    .hint{fill:#6b7280;font-size:12px}
-    .note{fill:#2563eb;font-size:13px;font-style:italic}
+    text{font-size:14px;fill:var(--diagram-text-1)}
+    .title{font-size:16px;font-weight:bold;fill:var(--diagram-text-1)}
+    .label-yes{fill:var(--diagram-accent-2);font-size:13px;font-weight:bold}
+    .label-no{fill:var(--diagram-accent-5);font-size:13px;font-weight:bold}
+    .hint{fill:var(--diagram-text-3);font-size:12px}
+    .note{fill:var(--diagram-accent-1);font-size:13px;font-style:italic}
   </style>
 
   <!-- Title -->
   <text x="360" y="30" text-anchor="middle" class="title">提交一个任务 —— ThreadPoolExecutor 执行流程</text>
 
   <!-- Start -->
-  <ellipse cx="360" cy="60" rx="70" ry="22" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
-  <text x="360" y="65" text-anchor="middle" fill="#075985">提交一个任务</text>
+  <ellipse cx="360" cy="60" rx="70" ry="22" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+  <text x="360" y="65" text-anchor="middle" fill="var(--diagram-accent-text-1)">提交一个任务</text>
 
   <!-- Arrow down -->
-  <line x1="360" y1="82" x2="360" y2="105" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="360" y1="82" x2="360" y2="105" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
 
   <!-- Decision 1 -->
-  <polygon points="360,105 530,150 360,195 190,150" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+  <polygon points="360,105 530,150 360,195 190,150" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.5"/>
   <text x="360" y="146" text-anchor="middle" class="title">活跃线程 &lt; corePoolSize？</text>
 
   <!-- Yes branch -->
-  <line x1="190" y1="150" x2="100" y2="150" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="190" y1="150" x2="100" y2="150" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
   <text x="150" y="142" class="label-yes">是</text>
-  <rect x="20" y="130" rx="6" width="120" height="40" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-  <text x="80" y="147" text-anchor="middle" fill="#15803d">创建核心线程</text>
-  <text x="80" y="163" text-anchor="middle" fill="#15803d">直接执行</text>
+  <rect x="20" y="130" rx="6" width="120" height="40" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+  <text x="80" y="147" text-anchor="middle" fill="var(--diagram-accent-text-2)">创建核心线程</text>
+  <text x="80" y="163" text-anchor="middle" fill="var(--diagram-accent-text-2)">直接执行</text>
 
   <!-- No branch down -->
-  <line x1="360" y1="195" x2="360" y2="230" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="360" y1="195" x2="360" y2="230" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
   <text x="370" y="218" class="label-no">否</text>
 
   <!-- Decision 2 -->
-  <polygon points="360,230 530,275 360,320 190,275" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+  <polygon points="360,230 530,275 360,320 190,275" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.5"/>
   <text x="360" y="271" text-anchor="middle" class="title">workQueue 能容纳？</text>
 
   <!-- Yes branch -->
-  <line x1="190" y1="275" x2="100" y2="275" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="190" y1="275" x2="100" y2="275" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
   <text x="150" y="267" class="label-yes">是</text>
-  <rect x="20" y="255" rx="6" width="120" height="40" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-  <text x="80" y="279" text-anchor="middle" fill="#15803d">入队等待</text>
+  <rect x="20" y="255" rx="6" width="120" height="40" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+  <text x="80" y="279" text-anchor="middle" fill="var(--diagram-accent-text-2)">入队等待</text>
 
   <!-- No branch down -->
-  <line x1="360" y1="320" x2="360" y2="355" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="360" y1="320" x2="360" y2="355" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
   <text x="370" y="343" class="label-no">否</text>
 
   <!-- Decision 3 -->
-  <polygon points="360,355 560,405 360,455 160,405" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+  <polygon points="360,355 560,405 360,455 160,405" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.5"/>
   <text x="360" y="400" text-anchor="middle" class="title">活跃线程 &lt; maximumPoolSize？</text>
 
   <!-- Yes branch -->
-  <line x1="160" y1="405" x2="100" y2="405" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="160" y1="405" x2="100" y2="405" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
   <text x="140" y="397" class="label-yes">是</text>
-  <rect x="10" y="385" rx="6" width="130" height="40" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-  <text x="75" y="402" text-anchor="middle" fill="#15803d">创建非核心线程</text>
-  <text x="75" y="418" text-anchor="middle" fill="#15803d">直接执行</text>
+  <rect x="10" y="385" rx="6" width="130" height="40" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+  <text x="75" y="402" text-anchor="middle" fill="var(--diagram-accent-text-2)">创建非核心线程</text>
+  <text x="75" y="418" text-anchor="middle" fill="var(--diagram-accent-text-2)">直接执行</text>
 
   <!-- No branch down -->
-  <line x1="360" y1="455" x2="360" y2="490" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="360" y1="455" x2="360" y2="490" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
   <text x="370" y="478" class="label-no">否</text>
 
   <!-- Reject -->
-  <rect x="270" y="490" rx="6" width="180" height="40" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
-  <text x="360" y="514" text-anchor="middle" fill="#b91c1c" font-weight="bold">走 handler 拒绝</text>
+  <rect x="270" y="490" rx="6" width="180" height="40" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1.5"/>
+  <text x="360" y="514" text-anchor="middle" fill="var(--diagram-accent-text-5)" font-weight="bold">走 handler 拒绝</text>
 
   <!-- Annotation -->
   <text x="360" y="570" text-anchor="middle" class="note">只有队列先"装不下"，才可能创建非核心线程</text>
