@@ -81,27 +81,7 @@ public ThreadPoolExecutor(
 
 ### 10.2.2 四项主开关的耦合关系
 
-```text
-                提交一个任务
-                     │
-                     ▼
-       ┌─────────────────────────────┐
-       │ 当前活跃线程 < corePoolSize? │
-       └──────┬──────────────┬───────┘
-             是              否
-              ▼               ▼
-        创建核心线程    ┌─────────────────────┐
-        直接执行        │ workQueue 能容纳？    │
-                       └────┬─────────┬──────┘
-                            是         否
-                             ▼          ▼
-                          入队      ┌─────────────────────────┐
-                                    │ 活跃线程 < maximumPoolSize? │
-                                    └──────┬───────────┬──────┘
-                                          是            否
-                                           ▼             ▼
-                                    创建非核心线程   走 handler 拒绝
-```
+![ThreadPoolExecutor 执行流程图](/diagrams/pool-execute-flow.svg)
 
 **这个流程决定了一件反直觉的事：只有队列先"装不下"，才可能创建非核心线程**。也就是说，把 `workQueue` 换成无界队列，等于让 `maximumPoolSize` 形同虚设——见 §10.5.2。
 
@@ -145,25 +125,7 @@ public void execute(Runnable command) {
 
 `Worker` 就是"承担任务执行"的那条线程。它的循环骨架是：
 
-```text
-新建 Worker
-   │
-   ▼
-执行 firstTask（构造时传入的任务）
-   │
-   ▼
-从 workQueue 取下一个任务  ◀─────┐
-   │                              │
-   ▼                              │
-取到任务？────是──── 执行任务 ──┘
-   │否
-   ▼
-是否核心线程？
-   │
-   ├── 是 → 继续 poll（默认不超时）
-   │
-   └── 否 → poll(keepAliveTime) 超时后 Worker 退出
-```
+![Worker 创建流程图](/diagrams/pool-worker-create.svg)
 
 `allowCoreThreadTimeOut(true)` 会让核心线程也走带超时的 `poll`——适合"深夜没流量"的应用，代价是流量突增时需要重新预热线程。
 
@@ -217,24 +179,7 @@ public void rejectedExecution(Runnable r, ThreadPoolExecutor e) {
 
 `CallerRunsPolicy` 是这四种里最有意思的一种——它把过载压力**反推给上游**：
 
-```text
-线程池已满 → 拒绝任务 → 走 CallerRunsPolicy
-                         │
-                         ▼
-                   调用者线程亲自执行任务
-                         │
-                         ▼
-                   调用者线程被这个任务占用
-                         │
-                         ▼
-                   上游（如 Tomcat）无法提交新任务
-                         │
-                         ▼
-                   请求在上游层面排队而非线程池层面
-                         │
-                         ▼
-                   系统整体降速，避免继续接超载流量
-```
+![CallerRunsPolicy 反压效应流程图](/diagrams/pool-reject-flow.svg)
 
 这在"绝不能丢任务、也不允许无界排队"的场景里非常有用。代价是调用线程会被临界任务卡住一段时间——如果调用线程本身是 Tomcat 的请求处理线程，这段时间它无法响应新请求。
 
