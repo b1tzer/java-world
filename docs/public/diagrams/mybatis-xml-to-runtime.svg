@@ -1,37 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 280" font-family="'Noto Sans SC','PingFang SC','Myanmar',sans-serif" font-size="13">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 280" font-family="'Noto Sans SC','PingFang SC','Myanmar',sans-serif" font-size="11">
   <defs>
     <marker id="ar3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-accent-4)"/></marker>
   </defs>
-  <text x="280" y="28" text-anchor="middle" font-size="15" font-weight="bold" fill="var(--diagram-text-1)">XML 解析 → 运行时动态 SQL</text>
+  <text x="280" y="28" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-text-1)">XML 解析 → 运行时动态 SQL</text>
 
   <!-- XML side -->
   <rect x="30" y="50" width="200" height="180" rx="10" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
-  <text x="130" y="76" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold" font-size="14">XML 解析阶段（启动时）</text>
+  <text x="130" y="76" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold" font-size="12">XML 解析阶段（启动时）</text>
 
   <rect x="50" y="96" width="160" height="110" rx="4" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
-  <text x="60" y="118" fill="var(--diagram-text-1)" font-size="12">&lt;select&gt;</text>
-  <text x="72" y="138" fill="var(--diagram-text-2)" font-size="12">&lt;where&gt;</text>
-  <text x="84" y="158" fill="var(--diagram-accent-4)" font-size="12">&lt;if test=..&gt;</text>
-  <text x="84" y="178" fill="var(--diagram-text-2)" font-size="12">&lt;/if&gt;</text>
-  <text x="72" y="198" fill="var(--diagram-text-2)" font-size="12">&lt;/where&gt;</text>
+  <text x="60" y="118" fill="var(--diagram-text-1)" font-size="10">&lt;select&gt;</text>
+  <text x="72" y="138" fill="var(--diagram-text-2)" font-size="10">&lt;where&gt;</text>
+  <text x="84" y="158" fill="var(--diagram-accent-4)" font-size="10">&lt;if test=..&gt;</text>
+  <text x="84" y="178" fill="var(--diagram-text-2)" font-size="10">&lt;/if&gt;</text>
+  <text x="72" y="198" fill="var(--diagram-text-2)" font-size="10">&lt;/where&gt;</text>
 
   <!-- Arrow -->
   <line x1="230" y1="140" x2="298" y2="140" stroke="var(--diagram-accent-4)" stroke-width="2" marker-end="url(#ar3)"/>
-  <text x="264" y="130" text-anchor="middle" fill="var(--diagram-accent-4)" font-size="11">解析为</text>
+  <text x="264" y="130" text-anchor="middle" fill="var(--diagram-accent-4)" font-size="9">解析为</text>
 
   <!-- Runtime side -->
   <rect x="300" y="50" width="230" height="180" rx="10" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
-  <text x="415" y="76" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold" font-size="14">运行时（每次调用）</text>
+  <text x="415" y="76" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold" font-size="12">运行时（每次调用）</text>
 
   <rect x="320" y="96" width="190" height="60" rx="4" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
-  <text x="330" y="118" fill="var(--diagram-accent-3)" font-weight="bold" font-size="12">MixedSqlNode</text>
-  <text x="342" y="138" fill="var(--diagram-text-2)" font-size="12">├─ TextSqlNode</text>
-  <text x="342" y="152" fill="var(--diagram-text-2)" font-size="12">├─ IfSqlNode</text>
+  <text x="330" y="118" fill="var(--diagram-accent-3)" font-weight="bold" font-size="10">MixedSqlNode</text>
+  <text x="342" y="138" fill="var(--diagram-text-2)" font-size="10">├─ TextSqlNode</text>
+  <text x="342" y="152" fill="var(--diagram-text-2)" font-size="10">├─ IfSqlNode</text>
 
   <rect x="320" y="168" width="190" height="44" rx="4" fill="var(--diagram-accent-bg-3)" stroke="var(--diagram-accent-3)" stroke-width="1"/>
-  <text x="415" y="190" text-anchor="middle" fill="var(--diagram-accent-text-3)" font-weight="bold" font-size="12">apply(param) → BoundSql</text>
-  <text x="415" y="206" text-anchor="middle" fill="var(--diagram-text-2)" font-size="11">（最终可执行 SQL）</text>
+  <text x="415" y="190" text-anchor="middle" fill="var(--diagram-accent-text-3)" font-weight="bold" font-size="10">apply(param) → BoundSql</text>
+  <text x="415" y="206" text-anchor="middle" fill="var(--diagram-text-2)" font-size="9">（最终可执行 SQL）</text>
 
   <!-- Footer -->
-  <text x="280" y="260" text-anchor="middle" fill="var(--diagram-text-3)" font-size="12">启动时解析 XML 为 SqlNode 树，运行时根据参数动态拼接 SQL</text>
+  <text x="280" y="260" text-anchor="middle" fill="var(--diagram-text-3)" font-size="10">启动时解析 XML 为 SqlNode 树，运行时根据参数动态拼接 SQL</text>
 </svg>

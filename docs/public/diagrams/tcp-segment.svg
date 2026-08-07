@@ -9,71 +9,71 @@
   </defs>
 
   <!-- Title -->
-  <text x="360" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="var(--diagram-text-1)">TCP 状态机</text>
+  <text x="360" y="30" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-text-1)">TCP 状态机</text>
 
   <!-- CLOSED -->
   <rect x="295" y="45" width="130" height="40" rx="8" fill="var(--diagram-surface-3)" stroke="var(--diagram-text-2)" stroke-width="2"/>
-  <text x="360" y="70" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-text-1)">CLOSED</text>
+  <text x="360" y="70" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-text-1)">CLOSED</text>
 
   <!-- Arrow: CLOSED → SYN_SENT -->
   <line x1="360" y1="85" x2="360" y2="115" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="375" y="105" font-size="11" fill="var(--diagram-accent-1)">connect()</text>
+  <text x="375" y="105" font-size="9" fill="var(--diagram-accent-1)">connect()</text>
 
   <!-- SYN_SENT -->
   <rect x="295" y="120" width="130" height="40" rx="8" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="2"/>
-  <text x="360" y="145" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-accent-text-1)">SYN_SENT</text>
+  <text x="360" y="145" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-text-1)">SYN_SENT</text>
 
   <!-- Arrow: SYN_SENT → ESTABLISHED (center) -->
   <line x1="360" y1="160" x2="360" y2="190" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="375" y="180" font-size="11" fill="var(--diagram-accent-2)">SYN+ACK</text>
+  <text x="375" y="180" font-size="9" fill="var(--diagram-accent-2)">SYN+ACK</text>
 
   <!-- Arrow: SYN_SENT → CLOSED (left) -->
   <path d="M295,140 L180,140 L180,65 L295,65" fill="none" stroke="var(--diagram-accent-5)" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="175" y="130" text-anchor="end" font-size="11" fill="var(--diagram-accent-5)">超时重试</text>
+  <text x="175" y="130" text-anchor="end" font-size="9" fill="var(--diagram-accent-5)">超时重试</text>
 
   <!-- Arrow: SYN_SENT → CLOSED (right) -->
   <path d="M425,140 L540,140 L540,65 L425,65" fill="none" stroke="var(--diagram-accent-5)" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="545" y="130" font-size="11" fill="var(--diagram-accent-5)">RST</text>
+  <text x="545" y="130" font-size="9" fill="var(--diagram-accent-5)">RST</text>
 
   <!-- ESTABLISHED -->
   <rect x="285" y="195" width="150" height="40" rx="8" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="2"/>
-  <text x="360" y="220" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-accent-text-2)">ESTABLISHED</text>
+  <text x="360" y="220" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-text-2)">ESTABLISHED</text>
 
   <!-- Arrow: ESTABLISHED → FIN_WAIT_1 -->
   <line x1="360" y1="235" x2="360" y2="265" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="375" y="255" font-size="11" fill="var(--diagram-accent-1)">close()</text>
+  <text x="375" y="255" font-size="9" fill="var(--diagram-accent-1)">close()</text>
 
   <!-- FIN_WAIT_1 -->
   <rect x="295" y="270" width="130" height="40" rx="8" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="2"/>
-  <text x="360" y="295" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-accent-text-4)">FIN_WAIT_1</text>
+  <text x="360" y="295" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-text-4)">FIN_WAIT_1</text>
 
   <!-- Arrow: FIN_WAIT_1 → FIN_WAIT_2 -->
   <line x1="360" y1="310" x2="360" y2="340" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="375" y="330" font-size="11" fill="var(--diagram-accent-2)">ACK</text>
+  <text x="375" y="330" font-size="9" fill="var(--diagram-accent-2)">ACK</text>
 
   <!-- FIN_WAIT_2 -->
   <rect x="295" y="345" width="130" height="40" rx="8" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="2"/>
-  <text x="360" y="370" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-accent-text-4)">FIN_WAIT_2</text>
+  <text x="360" y="370" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-text-4)">FIN_WAIT_2</text>
 
   <!-- Arrow: FIN_WAIT_2 → TIME_WAIT -->
   <line x1="360" y1="385" x2="360" y2="415" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="375" y="405" font-size="11" fill="var(--diagram-accent-text-3)">FIN</text>
+  <text x="375" y="405" font-size="9" fill="var(--diagram-accent-text-3)">FIN</text>
 
   <!-- TIME_WAIT -->
   <rect x="295" y="420" width="130" height="40" rx="8" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="2"/>
-  <text x="360" y="445" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-accent-text-5)">TIME_WAIT</text>
+  <text x="360" y="445" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-text-5)">TIME_WAIT</text>
 
   <!-- Arrow: TIME_WAIT → CLOSED -->
   <line x1="360" y1="460" x2="360" y2="490" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="375" y="480" font-size="11" fill="var(--diagram-accent-5)">2MSL</text>
+  <text x="375" y="480" font-size="9" fill="var(--diagram-accent-5)">2MSL</text>
 
   <!-- Final CLOSED -->
   <rect x="295" y="490" width="130" height="30" rx="8" fill="var(--diagram-surface-3)" stroke="var(--diagram-text-2)" stroke-width="2"/>
-  <text x="360" y="510" text-anchor="middle" font-size="12" fill="var(--diagram-text-1)">CLOSED</text>
+  <text x="360" y="510" text-anchor="middle" font-size="10" fill="var(--diagram-text-1)">CLOSED</text>
 
   <!-- Server side (right) annotations -->
-  <text x="580" y="220" font-size="12" fill="var(--diagram-text-2)">服务端正常路径：</text>
-  <text x="580" y="240" font-size="12" fill="var(--diagram-text-2)">SYN_RCVD → ESTABLISHED</text>
-  <text x="580" y="260" font-size="12" fill="var(--diagram-text-2)">→ CLOSE_WAIT → LAST_ACK</text>
-  <text x="580" y="280" font-size="12" fill="var(--diagram-text-2)">→ CLOSED</text>
+  <text x="580" y="220" font-size="10" fill="var(--diagram-text-2)">服务端正常路径：</text>
+  <text x="580" y="240" font-size="10" fill="var(--diagram-text-2)">SYN_RCVD → ESTABLISHED</text>
+  <text x="580" y="260" font-size="10" fill="var(--diagram-text-2)">→ CLOSE_WAIT → LAST_ACK</text>
+  <text x="580" y="280" font-size="10" fill="var(--diagram-text-2)">→ CLOSED</text>
 </svg>

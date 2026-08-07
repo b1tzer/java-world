@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 680" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 680" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="10">
   <defs>
     <marker id="arD" markerWidth="8" markerHeight="8" refX="4" refY="8" orient="auto">
       <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-arrow)"/>
@@ -8,7 +8,7 @@
     </marker>
   </defs>
 
-  <text x="410" y="26" text-anchor="middle" font-size="16" font-weight="bold" fill="var(--diagram-text-1)">Netty 一次请求的完整处理流程</text>
+  <text x="410" y="26" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-text-1)">Netty 一次请求的完整处理流程</text>
 
   <!-- Step boxes -->
   <g transform="translate(60, 46)">
@@ -75,18 +75,18 @@
   <!-- Pipeline diagram -->
   <g transform="translate(420, 546)">
     <rect x="0" y="0" width="120" height="36" rx="4" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1"/>
-    <text x="60" y="22" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-1)" font-weight="bold">HttpDecoder</text>
-    <text x="60" y="50" text-anchor="middle" font-size="10" fill="var(--diagram-accent-3)">字节 → HttpRequest</text>
+    <text x="60" y="22" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-1)" font-weight="bold">HttpDecoder</text>
+    <text x="60" y="50" text-anchor="middle" font-size="8" fill="var(--diagram-accent-3)">字节 → HttpRequest</text>
     <line x1="120" y1="18" x2="140" y2="18" stroke="var(--diagram-arrow)" stroke-width="1" marker-end="url(#arR)"/>
 
     <rect x="144" y="0" width="130" height="36" rx="4" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1"/>
-    <text x="209" y="22" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-1)" font-weight="bold">HttpAggregator</text>
-    <text x="209" y="50" text-anchor="middle" font-size="10" fill="var(--diagram-accent-3)">分片 → 完整请求</text>
+    <text x="209" y="22" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-1)" font-weight="bold">HttpAggregator</text>
+    <text x="209" y="50" text-anchor="middle" font-size="8" fill="var(--diagram-accent-3)">分片 → 完整请求</text>
     <line x1="274" y1="18" x2="294" y2="18" stroke="var(--diagram-arrow)" stroke-width="1" marker-end="url(#arR)"/>
 
     <rect x="298" y="0" width="130" height="36" rx="4" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1"/>
-    <text x="363" y="22" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-1)" font-weight="bold">BusinessHandler</text>
-    <text x="363" y="50" text-anchor="middle" font-size="10" fill="var(--diagram-accent-3)">业务处理</text>
+    <text x="363" y="22" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-1)" font-weight="bold">BusinessHandler</text>
+    <text x="363" y="50" text-anchor="middle" font-size="8" fill="var(--diagram-accent-3)">业务处理</text>
   </g>
 
   <!-- Step 11 -->
@@ -101,5 +101,5 @@
 
   <!-- Step 13 -->
   <rect x="420" y="654" width="280" height="22" rx="4" fill="var(--diagram-surface-3)" stroke="var(--diagram-text-3)" stroke-width="1"/>
-  <text x="560" y="669" text-anchor="middle" font-size="11" fill="var(--diagram-text-3)">13. OS 将数据从 Socket 缓冲区发送到网络</text>
+  <text x="560" y="669" text-anchor="middle" font-size="9" fill="var(--diagram-text-3)">13. OS 将数据从 Socket 缓冲区发送到网络</text>
 </svg>

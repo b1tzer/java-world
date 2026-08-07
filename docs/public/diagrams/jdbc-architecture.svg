@@ -10,43 +10,43 @@
 
   <!-- Layer 1: Business Code -->
   <rect x="100" y="40" width="320" height="52" rx="6" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
-  <text x="260" y="72" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-size="14" font-weight="bold">业务代码（你的 Java 代码）</text>
+  <text x="260" y="72" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-size="12" font-weight="bold">业务代码（你的 Java 代码）</text>
 
   <!-- Arrow -->
   <line x1="260" y1="92" x2="260" y2="110" stroke="var(--diagram-text-2)" stroke-width="1.5" marker-end="url(#arrow)"/>
 
   <!-- Layer 2: ORM -->
   <rect x="100" y="112" width="320" height="52" rx="6" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
-  <text x="260" y="144" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-size="14" font-weight="bold">ORM 框架（MyBatis / Hibernate）</text>
-  <text x="420" y="144" fill="var(--diagram-text-3)" font-size="11">← 第3、4章讲的</text>
+  <text x="260" y="144" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-size="12" font-weight="bold">ORM 框架（MyBatis / Hibernate）</text>
+  <text x="420" y="144" fill="var(--diagram-text-3)" font-size="9">← 第3、4章讲的</text>
 
   <!-- Arrow -->
   <line x1="260" y1="164" x2="260" y2="182" stroke="var(--diagram-text-2)" stroke-width="1.5" marker-end="url(#arrow)"/>
 
   <!-- Layer 3: JDBC -->
   <rect x="100" y="184" width="320" height="52" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="2"/>
-  <text x="260" y="216" text-anchor="middle" fill="var(--diagram-accent-4)" font-size="14" font-weight="bold">JDBC（java.sql.*）</text>
-  <text x="420" y="216" fill="var(--diagram-text-3)" font-size="11">← 本章讲的</text>
+  <text x="260" y="216" text-anchor="middle" fill="var(--diagram-accent-4)" font-size="12" font-weight="bold">JDBC（java.sql.*）</text>
+  <text x="420" y="216" fill="var(--diagram-text-3)" font-size="9">← 本章讲的</text>
 
   <!-- Arrow -->
   <line x1="260" y1="236" x2="260" y2="254" stroke="var(--diagram-text-2)" stroke-width="1.5" marker-end="url(#arrow)"/>
 
   <!-- Layer 4: JDBC Driver -->
   <rect x="100" y="256" width="320" height="52" rx="6" fill="var(--diagram-accent-bg-3)" stroke="var(--diagram-accent-3)" stroke-width="1.5"/>
-  <text x="260" y="288" text-anchor="middle" fill="var(--diagram-accent-text-3)" font-size="14" font-weight="bold">JDBC 驱动（mysql-connector-java 等）</text>
+  <text x="260" y="288" text-anchor="middle" fill="var(--diagram-accent-text-3)" font-size="12" font-weight="bold">JDBC 驱动（mysql-connector-java 等）</text>
 
   <!-- Arrow -->
   <line x1="260" y1="308" x2="260" y2="326" stroke="var(--diagram-text-2)" stroke-width="1.5" marker-end="url(#arrow)"/>
 
   <!-- Layer 5: Protocol -->
   <rect x="100" y="328" width="320" height="52" rx="6" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1.5"/>
-  <text x="260" y="360" text-anchor="middle" fill="var(--diagram-text-1)" font-size="14" font-weight="bold">数据库通信协议（TCP/IP）</text>
-  <text x="420" y="360" fill="var(--diagram-text-3)" font-size="11">← 第四卷讲的</text>
+  <text x="260" y="360" text-anchor="middle" fill="var(--diagram-text-1)" font-size="12" font-weight="bold">数据库通信协议（TCP/IP）</text>
+  <text x="420" y="360" fill="var(--diagram-text-3)" font-size="9">← 第四卷讲的</text>
 
   <!-- Arrow -->
   <line x1="260" y1="380" x2="260" y2="398" stroke="var(--diagram-text-2)" stroke-width="1.5" marker-end="url(#arrow)"/>
 
   <!-- Layer 6: Database -->
   <rect x="100" y="400" width="320" height="52" rx="6" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1.5"/>
-  <text x="260" y="432" text-anchor="middle" fill="var(--diagram-accent-text-5)" font-size="14" font-weight="bold">数据库服务器（MySQL / Oracle / PG）</text>
+  <text x="260" y="432" text-anchor="middle" fill="var(--diagram-accent-text-5)" font-size="12" font-weight="bold">数据库服务器（MySQL / Oracle / PG）</text>
 </svg>

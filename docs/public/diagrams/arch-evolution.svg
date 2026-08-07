@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="10">
   <defs>
     <marker id="arE1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
       <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-arrow)"/>
@@ -8,63 +8,63 @@
     </marker>
   </defs>
 
-  <text x="460" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="var(--diagram-text-1)">架构演进全景图</text>
+  <text x="460" y="28" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-text-1)">架构演进全景图</text>
 
   <!-- Row 1: Monolith → Vertical Split → SOA -->
   <g transform="translate(30,50)">
     <!-- Monolith -->
     <rect x="0" y="0" width="140" height="80" rx="8" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
-    <text x="70" y="32" text-anchor="middle" font-size="15" font-weight="bold" fill="var(--diagram-accent-text-1)">单体</text>
-    <text x="70" y="52" text-anchor="middle" font-size="11" fill="var(--diagram-accent-1)">(All-in)</text>
-    <text x="70" y="70" text-anchor="middle" font-size="10" fill="var(--diagram-text-2)">1-5 人团队</text>
+    <text x="70" y="32" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-1)">单体</text>
+    <text x="70" y="52" text-anchor="middle" font-size="9" fill="var(--diagram-accent-1)">(All-in)</text>
+    <text x="70" y="70" text-anchor="middle" font-size="8" fill="var(--diagram-text-2)">1-5 人团队</text>
     <!-- Arrow 1 -->
     <line x1="148" y1="40" x2="218" y2="40" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arE1)"/>
-    <text x="183" y="30" text-anchor="middle" font-size="10" fill="var(--diagram-text-2)">业务增长</text>
+    <text x="183" y="30" text-anchor="middle" font-size="8" fill="var(--diagram-text-2)">业务增长</text>
     <!-- Vertical Split -->
     <rect x="226" y="0" width="140" height="80" rx="8" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
-    <text x="296" y="32" text-anchor="middle" font-size="15" font-weight="bold" fill="var(--diagram-accent-text-2)">垂直拆分</text>
-    <text x="296" y="52" text-anchor="middle" font-size="11" fill="var(--diagram-accent-2)">(按模块)</text>
-    <text x="296" y="70" text-anchor="middle" font-size="10" fill="var(--diagram-text-2)">5-20 人团队</text>
+    <text x="296" y="32" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-2)">垂直拆分</text>
+    <text x="296" y="52" text-anchor="middle" font-size="9" fill="var(--diagram-accent-2)">(按模块)</text>
+    <text x="296" y="70" text-anchor="middle" font-size="8" fill="var(--diagram-text-2)">5-20 人团队</text>
     <!-- Arrow 2 -->
     <line x1="374" y1="40" x2="444" y2="40" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arE1)"/>
-    <text x="409" y="30" text-anchor="middle" font-size="10" fill="var(--diagram-text-2)">团队拆分</text>
+    <text x="409" y="30" text-anchor="middle" font-size="8" fill="var(--diagram-text-2)">团队拆分</text>
     <!-- SOA -->
     <rect x="452" y="0" width="140" height="80" rx="8" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.5"/>
-    <text x="522" y="32" text-anchor="middle" font-size="15" font-weight="bold" fill="var(--diagram-accent-text-4)">SOA</text>
-    <text x="522" y="52" text-anchor="middle" font-size="11" fill="var(--diagram-accent-4)">(服务化)</text>
-    <text x="522" y="70" text-anchor="middle" font-size="10" fill="var(--diagram-text-2)">20-100 人</text>
+    <text x="522" y="32" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-4)">SOA</text>
+    <text x="522" y="52" text-anchor="middle" font-size="9" fill="var(--diagram-accent-4)">(服务化)</text>
+    <text x="522" y="70" text-anchor="middle" font-size="8" fill="var(--diagram-text-2)">20-100 人</text>
   </g>
 
   <!-- Vertical arrow from SOA down -->
   <line x1="522" y1="138" x2="522" y2="178" stroke="var(--diagram-accent-1)" stroke-width="1.5" marker-end="url(#arE2)"/>
-  <text x="545" y="162" font-size="10" fill="var(--diagram-accent-1)">复杂度上升</text>
+  <text x="545" y="162" font-size="8" fill="var(--diagram-accent-1)">复杂度上升</text>
 
   <!-- Row 2: Microservices -->
   <g transform="translate(370,186)">
     <rect x="0" y="0" width="300" height="70" rx="8" fill="var(--diagram-accent-bg-3)" stroke="var(--diagram-accent-3)" stroke-width="1.5"/>
-    <text x="150" y="28" text-anchor="middle" font-size="15" font-weight="bold" fill="var(--diagram-accent-text-3)">微服务</text>
-    <text x="150" y="48" text-anchor="middle" font-size="11" fill="var(--diagram-accent-3)">(独立部署)</text>
-    <text x="150" y="64" text-anchor="middle" font-size="10" fill="var(--diagram-text-2)">100+ 人，快速迭代</text>
+    <text x="150" y="28" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-3)">微服务</text>
+    <text x="150" y="48" text-anchor="middle" font-size="9" fill="var(--diagram-accent-3)">(独立部署)</text>
+    <text x="150" y="64" text-anchor="middle" font-size="8" fill="var(--diagram-text-2)">100+ 人，快速迭代</text>
   </g>
 
   <!-- Vertical arrow from Microservices down -->
   <line x1="520" y1="264" x2="520" y2="300" stroke="var(--diagram-accent-1)" stroke-width="1.5" marker-end="url(#arE2)"/>
-  <text x="545" y="286" font-size="10" fill="var(--diagram-accent-1)">云原生趋势</text>
+  <text x="545" y="286" font-size="8" fill="var(--diagram-accent-1)">云原生趋势</text>
 
   <!-- Row 3: Cloud Native -->
   <g transform="translate(370,306)">
     <rect x="0" y="0" width="300" height="44" rx="8" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1.5"/>
-    <text x="150" y="18" text-anchor="middle" font-size="15" font-weight="bold" fill="var(--diagram-accent-text-5)">云原生</text>
-    <text x="150" y="36" text-anchor="middle" font-size="11" fill="var(--diagram-accent-5)">(K8s / Service Mesh)</text>
+    <text x="150" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-5)">云原生</text>
+    <text x="150" y="36" text-anchor="middle" font-size="9" fill="var(--diagram-accent-5)">(K8s / Service Mesh)</text>
   </g>
 
   <!-- Legend -->
   <g transform="translate(30,180)">
     <rect x="0" y="0" width="260" height="100" rx="6" fill="var(--diagram-surface-2)" stroke="var(--diagram-stroke-2)" stroke-width="1"/>
-    <text x="130" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-text-1)">各阶段特征</text>
-    <text x="12" y="40" font-size="10" fill="var(--diagram-accent-1)">●</text><text x="24" y="40" font-size="10" fill="var(--diagram-arrow)">单体：简单，模块耦合，无法独立扩展</text>
-    <text x="12" y="56" font-size="10" fill="var(--diagram-accent-2)">●</text><text x="24" y="56" font-size="10" fill="var(--diagram-arrow)">垂直拆分：按业务隔离，重复代码多</text>
-    <text x="12" y="72" font-size="10" fill="var(--diagram-accent-4)">●</text><text x="24" y="72" font-size="10" fill="var(--diagram-arrow)">SOA：服务复用，ESB 成为瓶颈</text>
-    <text x="12" y="88" font-size="10" fill="var(--diagram-accent-3)">●</text><text x="24" y="88" font-size="10" fill="var(--diagram-arrow)">微服务：独立部署，分布式复杂度高</text>
+    <text x="130" y="20" text-anchor="middle" font-size="10" font-weight="bold" fill="var(--diagram-text-1)">各阶段特征</text>
+    <text x="12" y="40" font-size="8" fill="var(--diagram-accent-1)">●</text><text x="24" y="40" font-size="8" fill="var(--diagram-arrow)">单体：简单，模块耦合，无法独立扩展</text>
+    <text x="12" y="56" font-size="8" fill="var(--diagram-accent-2)">●</text><text x="24" y="56" font-size="8" fill="var(--diagram-arrow)">垂直拆分：按业务隔离，重复代码多</text>
+    <text x="12" y="72" font-size="8" fill="var(--diagram-accent-4)">●</text><text x="24" y="72" font-size="8" fill="var(--diagram-arrow)">SOA：服务复用，ESB 成为瓶颈</text>
+    <text x="12" y="88" font-size="8" fill="var(--diagram-accent-3)">●</text><text x="24" y="88" font-size="8" fill="var(--diagram-arrow)">微服务：独立部署，分布式复杂度高</text>
   </g>
 </svg>

@@ -1,50 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 520" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 520" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif" font-size="10">
   <defs>
     <marker id="arD1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
       <path d="M0,0 L8,4 L0,8 Z" fill="var(--diagram-text-2)"/>
     </marker>
   </defs>
 
-  <text x="350" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="var(--diagram-text-1)">DDD 战略设计：绞杀者模式渐进改造</text>
+  <text x="350" y="28" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-text-1)">DDD 战略设计：绞杀者模式渐进改造</text>
 
   <!-- Phase 1 -->
-  <text x="350" y="60" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-accent-1)">阶段 1：选择一个子域开始</text>
+  <text x="350" y="60" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-1)">阶段 1：选择一个子域开始</text>
   <g transform="translate(100,72)">
     <rect x="0" y="0" width="500" height="180" rx="8" fill="var(--diagram-surface-2)" stroke="var(--diagram-stroke-1)" stroke-width="1.5"/>
-    <text x="250" y="22" text-anchor="middle" font-size="13" fill="var(--diagram-text-2)">单体 CRUD 系统</text>
+    <text x="250" y="22" text-anchor="middle" font-size="11" fill="var(--diagram-text-2)">单体 CRUD 系统</text>
     <!-- DDD zone -->
     <rect x="20" y="36" width="460" height="80" rx="6" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.5" stroke-dasharray="6,3"/>
-    <text x="250" y="54" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-text-2)">订单子域（用 DDD 重写）</text>
+    <text x="250" y="54" text-anchor="middle" font-size="10" font-weight="bold" fill="var(--diagram-accent-text-2)">订单子域（用 DDD 重写）</text>
     <rect x="40" y="64" width="140" height="36" rx="4" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
-    <text x="110" y="86" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-2)">新领域模型</text>
+    <text x="110" y="86" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-2)">新领域模型</text>
     <rect x="220" y="64" width="140" height="36" rx="4" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
-    <text x="290" y="86" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-2)">防腐层 (ACL)</text>
+    <text x="290" y="86" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-2)">防腐层 (ACL)</text>
     <!-- Arrows down -->
     <line x1="110" y1="104" x2="110" y2="126" stroke="var(--diagram-text-2)" stroke-width="1.2" marker-end="url(#arD1)"/>
     <line x1="290" y1="104" x2="290" y2="126" stroke="var(--diagram-text-2)" stroke-width="1.2" marker-end="url(#arD1)"/>
     <!-- Other subdomains -->
     <rect x="40" y="130" width="420" height="36" rx="4" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
-    <text x="250" y="152" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-4)">其他子域（仍然是 CRUD）</text>
+    <text x="250" y="152" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-4)">其他子域（仍然是 CRUD）</text>
   </g>
 
   <!-- Phase 2 -->
-  <text x="350" y="288" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-accent-2)">阶段 2：逐步扩大 DDD 范围</text>
+  <text x="350" y="288" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-2)">阶段 2：逐步扩大 DDD 范围</text>
   <g transform="translate(100,300)">
     <rect x="0" y="0" width="500" height="80" rx="8" fill="var(--diagram-surface-2)" stroke="var(--diagram-stroke-1)" stroke-width="1.5"/>
     <rect x="20" y="12" width="220" height="56" rx="6" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
-    <text x="130" y="36" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-text-2)">DDD 区域扩大</text>
-    <text x="130" y="54" text-anchor="middle" font-size="10" fill="var(--diagram-accent-2)">订单 + 支付 + 库存</text>
+    <text x="130" y="36" text-anchor="middle" font-size="10" font-weight="bold" fill="var(--diagram-accent-text-2)">DDD 区域扩大</text>
+    <text x="130" y="54" text-anchor="middle" font-size="8" fill="var(--diagram-accent-2)">订单 + 支付 + 库存</text>
     <rect x="260" y="12" width="220" height="56" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1"/>
-    <text x="370" y="36" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-4)">剩余 CRUD 子域</text>
-    <text x="370" y="54" text-anchor="middle" font-size="10" fill="var(--diagram-accent-4)">逐步迁移中</text>
+    <text x="370" y="36" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-4)">剩余 CRUD 子域</text>
+    <text x="370" y="54" text-anchor="middle" font-size="8" fill="var(--diagram-accent-4)">逐步迁移中</text>
   </g>
 
   <!-- Phase 3 -->
-  <text x="350" y="416" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-accent-5)">阶段 3：最终替换整个单体</text>
+  <text x="350" y="416" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-5)">阶段 3：最终替换整个单体</text>
   <g transform="translate(100,428)">
     <rect x="0" y="0" width="500" height="60" rx="8" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="2"/>
-    <text x="250" y="28" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-accent-text-2)">全新 DDD 架构</text>
-    <text x="250" y="48" text-anchor="middle" font-size="11" fill="var(--diagram-accent-2)">所有子域均已领域建模，单体完全替换</text>
+    <text x="250" y="28" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-text-2)">全新 DDD 架构</text>
+    <text x="250" y="48" text-anchor="middle" font-size="9" fill="var(--diagram-accent-2)">所有子域均已领域建模，单体完全替换</text>
   </g>
 
   <!-- Down arrows between phases -->
@@ -54,9 +54,9 @@
   <!-- Side note -->
   <g transform="translate(30,300)">
     <rect x="0" y="0" width="60" height="80" rx="4" fill="var(--diagram-accent-bg-3)" stroke="var(--diagram-accent-3)" stroke-width="1"/>
-    <text x="30" y="28" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-3)">关键</text>
-    <text x="30" y="44" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-3)">原则：</text>
-    <text x="30" y="60" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-3)">ACL</text>
-    <text x="30" y="74" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-3)">隔离</text>
+    <text x="30" y="28" text-anchor="middle" font-size="8" fill="var(--diagram-accent-text-3)">关键</text>
+    <text x="30" y="44" text-anchor="middle" font-size="8" fill="var(--diagram-accent-text-3)">原则：</text>
+    <text x="30" y="60" text-anchor="middle" font-size="8" fill="var(--diagram-accent-text-3)">ACL</text>
+    <text x="30" y="74" text-anchor="middle" font-size="8" fill="var(--diagram-accent-text-3)">隔离</text>
   </g>
 </svg>

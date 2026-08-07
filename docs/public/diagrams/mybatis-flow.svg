@@ -11,41 +11,41 @@
 
   <!-- Title -->
   <rect x="40" y="15" width="500" height="44" rx="6" fill="url(#headerG)"/>
-  <text x="290" y="44" text-anchor="middle" fill="var(--diagram-surface-1)" font-size="16" font-weight="bold">MyBatis 核心架构</text>
+  <text x="290" y="44" text-anchor="middle" fill="var(--diagram-surface-1)" font-size="12" font-weight="bold">MyBatis 核心架构</text>
 
   <!-- Step 1: Mapper Interface -->
   <rect x="80" y="80" width="420" height="50" rx="6" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
-  <text x="290" y="110" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-size="14" font-weight="bold">Mapper Interface → MapperProxy（JDK 动态代理）</text>
+  <text x="290" y="110" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-size="12" font-weight="bold">Mapper Interface → MapperProxy（JDK 动态代理）</text>
 
   <line x1="290" y1="130" x2="290" y2="155" stroke="var(--diagram-accent-1)" stroke-width="2" marker-end="url(#arr)"/>
 
   <!-- Step 2: SqlSession -->
   <rect x="80" y="157" width="420" height="50" rx="6" fill="var(--diagram-accent-bg-2)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
-  <text x="290" y="187" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-size="14" font-weight="bold">SqlSession（会话：获取连接、提交/回滚、执行 SQL）</text>
+  <text x="290" y="187" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-size="12" font-weight="bold">SqlSession（会话：获取连接、提交/回滚、执行 SQL）</text>
 
   <line x1="290" y1="207" x2="290" y2="232" stroke="var(--diagram-accent-1)" stroke-width="2" marker-end="url(#arr)"/>
 
   <!-- Step 3: Executor -->
   <rect x="80" y="234" width="420" height="50" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.5"/>
-  <text x="290" y="264" text-anchor="middle" fill="var(--diagram-accent-4)" font-size="14" font-weight="bold">Executor（执行器：缓存、批处理、事务管理）</text>
+  <text x="290" y="264" text-anchor="middle" fill="var(--diagram-accent-4)" font-size="12" font-weight="bold">Executor（执行器：缓存、批处理、事务管理）</text>
 
   <line x1="290" y1="284" x2="290" y2="309" stroke="var(--diagram-accent-1)" stroke-width="2" marker-end="url(#arr)"/>
 
   <!-- Step 4: StatementHandler -->
   <rect x="80" y="311" width="420" height="50" rx="6" fill="var(--diagram-accent-bg-3)" stroke="var(--diagram-accent-3)" stroke-width="1.5"/>
-  <text x="290" y="341" text-anchor="middle" fill="var(--diagram-accent-text-3)" font-size="14" font-weight="bold">StatementHandler（语句处理器：PrepareStatement 管理）</text>
+  <text x="290" y="341" text-anchor="middle" fill="var(--diagram-accent-text-3)" font-size="12" font-weight="bold">StatementHandler（语句处理器：PrepareStatement 管理）</text>
 
   <line x1="290" y1="361" x2="290" y2="386" stroke="var(--diagram-accent-1)" stroke-width="2" marker-end="url(#arr)"/>
 
   <!-- Step 5: ParameterHandler -->
   <rect x="80" y="388" width="200" height="50" rx="6" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1.5"/>
-  <text x="180" y="418" text-anchor="middle" fill="var(--diagram-text-1)" font-size="13" font-weight="bold">ParameterHandler</text>
-  <text x="180" y="433" text-anchor="middle" fill="var(--diagram-text-2)" font-size="11">设置 SQL 参数</text>
+  <text x="180" y="418" text-anchor="middle" fill="var(--diagram-text-1)" font-size="11" font-weight="bold">ParameterHandler</text>
+  <text x="180" y="433" text-anchor="middle" fill="var(--diagram-text-2)" font-size="9">设置 SQL 参数</text>
 
   <!-- Step 6: ResultSetHandler -->
   <rect x="300" y="388" width="200" height="50" rx="6" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1.5"/>
-  <text x="400" y="418" text-anchor="middle" fill="var(--diagram-text-1)" font-size="13" font-weight="bold">ResultSetHandler</text>
-  <text x="400" y="433" text-anchor="middle" fill="var(--diagram-text-2)" font-size="11">ResultSet → Java 对象</text>
+  <text x="400" y="418" text-anchor="middle" fill="var(--diagram-text-1)" font-size="11" font-weight="bold">ResultSetHandler</text>
+  <text x="400" y="433" text-anchor="middle" fill="var(--diagram-text-2)" font-size="9">ResultSet → Java 对象</text>
 
   <!-- Merge arrows down -->
   <line x1="180" y1="438" x2="290" y2="470" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
@@ -54,14 +54,14 @@
 
   <!-- Step 7: Database -->
   <rect x="80" y="492" width="420" height="50" rx="6" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1.5"/>
-  <text x="290" y="522" text-anchor="middle" fill="var(--diagram-accent-text-5)" font-size="14" font-weight="bold">Database（JDBC Driver → 数据库）</text>
+  <text x="290" y="522" text-anchor="middle" fill="var(--diagram-accent-text-5)" font-size="12" font-weight="bold">Database（JDBC Driver → 数据库）</text>
 
   <!-- Side annotations -->
   <rect x="510" y="157" width="60" height="50" rx="4" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-2)" stroke-width="1"/>
-  <text x="540" y="178" text-anchor="middle" fill="var(--diagram-text-3)" font-size="10">银行</text>
-  <text x="540" y="193" text-anchor="middle" fill="var(--diagram-text-3)" font-size="10">柜台窗口</text>
+  <text x="540" y="178" text-anchor="middle" fill="var(--diagram-text-3)" font-size="8">银行</text>
+  <text x="540" y="193" text-anchor="middle" fill="var(--diagram-text-3)" font-size="8">柜台窗口</text>
 
   <rect x="510" y="234" width="60" height="50" rx="4" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-2)" stroke-width="1"/>
-  <text x="540" y="255" text-anchor="middle" fill="var(--diagram-text-3)" font-size="10">银行后台</text>
-  <text x="540" y="270" text-anchor="middle" fill="var(--diagram-text-3)" font-size="10">审批员</text>
+  <text x="540" y="255" text-anchor="middle" fill="var(--diagram-text-3)" font-size="8">银行后台</text>
+  <text x="540" y="270" text-anchor="middle" fill="var(--diagram-text-3)" font-size="8">审批员</text>
 </svg>

@@ -1,67 +1,67 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 350" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif">
   <!-- Title -->
-  <text x="360" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="var(--diagram-text-1)">TCP 粘包与拆包</text>
+  <text x="360" y="30" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-text-1)">TCP 粘包与拆包</text>
 
   <!-- Section 1: Sticky packet -->
-  <text x="180" y="65" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-accent-5)">粘包</text>
+  <text x="180" y="65" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-5)">粘包</text>
 
   <!-- Sender side -->
-  <text x="100" y="90" text-anchor="middle" font-size="12" fill="var(--diagram-text-2)">发送方发送两次</text>
+  <text x="100" y="90" text-anchor="middle" font-size="10" fill="var(--diagram-text-2)">发送方发送两次</text>
   <rect x="30" y="100" width="80" height="50" rx="6" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
-  <text x="70" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="var(--diagram-accent-text-1)">"Hello"</text>
-  <text x="70" y="138" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-1)">5 bytes</text>
+  <text x="70" y="120" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-1)">"Hello"</text>
+  <text x="70" y="138" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-1)">5 bytes</text>
 
   <rect x="120" y="100" width="80" height="50" rx="6" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
-  <text x="160" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="var(--diagram-accent-text-1)">"World"</text>
-  <text x="160" y="138" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-1)">5 bytes</text>
+  <text x="160" y="120" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-1)">"World"</text>
+  <text x="160" y="138" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-1)">5 bytes</text>
 
   <!-- Arrow -->
-  <text x="240" y="130" text-anchor="middle" font-size="20" fill="var(--diagram-accent-text-3)">→</text>
+  <text x="240" y="130" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-3)">→</text>
 
   <!-- Receiver side -->
-  <text x="340" y="90" text-anchor="middle" font-size="12" fill="var(--diagram-text-2)">接收方可能收到</text>
+  <text x="340" y="90" text-anchor="middle" font-size="10" fill="var(--diagram-text-2)">接收方可能收到</text>
   <rect x="260" y="100" width="160" height="50" rx="6" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="2"/>
-  <text x="340" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="var(--diagram-accent-text-5)">"HelloWorld"</text>
-  <text x="340" y="138" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-5)">10 bytes</text>
+  <text x="340" y="120" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-5)">"HelloWorld"</text>
+  <text x="340" y="138" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-5)">10 bytes</text>
 
   <!-- Sticky label -->
   <rect x="300" y="158" width="80" height="24" rx="12" fill="var(--diagram-accent-bg-5)" stroke="var(--diagram-accent-5)" stroke-width="1.5"/>
-  <text x="340" y="175" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-5)">粘包！</text>
+  <text x="340" y="175" text-anchor="middle" font-size="10" font-weight="bold" fill="var(--diagram-accent-5)">粘包！</text>
 
   <!-- Divider -->
   <line x1="420" y1="60" x2="420" y2="310" stroke="var(--diagram-stroke-2)" stroke-width="1" stroke-dasharray="4,3"/>
 
   <!-- Section 2: Packet splitting -->
-  <text x="560" y="65" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-accent-4)">拆包</text>
+  <text x="560" y="65" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-4)">拆包</text>
 
   <!-- Sender side -->
-  <text x="500" y="90" text-anchor="middle" font-size="12" fill="var(--diagram-text-2)">发送方发送一次</text>
+  <text x="500" y="90" text-anchor="middle" font-size="10" fill="var(--diagram-text-2)">发送方发送一次</text>
   <rect x="440" y="100" width="160" height="50" rx="6" fill="var(--diagram-accent-bg-1)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
-  <text x="520" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="var(--diagram-accent-text-1)">"HelloWorld..."</text>
-  <text x="520" y="138" text-anchor="middle" font-size="11" fill="var(--diagram-accent-text-1)">1000 bytes</text>
+  <text x="520" y="120" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-1)">"HelloWorld..."</text>
+  <text x="520" y="138" text-anchor="middle" font-size="9" fill="var(--diagram-accent-text-1)">1000 bytes</text>
 
   <!-- Arrow -->
-  <text x="630" y="130" text-anchor="middle" font-size="20" fill="var(--diagram-accent-text-3)">→</text>
+  <text x="630" y="130" text-anchor="middle" font-size="12" fill="var(--diagram-accent-text-3)">→</text>
 
   <!-- Receiver side -->
-  <text x="680" y="90" text-anchor="middle" font-size="12" fill="var(--diagram-text-2)">接收方可能收到</text>
+  <text x="680" y="90" text-anchor="middle" font-size="10" fill="var(--diagram-text-2)">接收方可能收到</text>
   <rect x="640" y="100" width="65" height="50" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.5"/>
-  <text x="672" y="120" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-4)">"Hello"</text>
-  <text x="672" y="138" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-4)">500 B</text>
+  <text x="672" y="120" text-anchor="middle" font-size="9" font-weight="bold" fill="var(--diagram-accent-text-4)">"Hello"</text>
+  <text x="672" y="138" text-anchor="middle" font-size="8" fill="var(--diagram-accent-text-4)">500 B</text>
 
   <!-- Gap + second part -->
   <rect x="710" y="100" width="55" height="50" rx="6" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.5"/>
-  <text x="737" y="120" text-anchor="middle" font-size="11" font-weight="bold" fill="var(--diagram-accent-text-4)">"World"</text>
-  <text x="737" y="138" text-anchor="middle" font-size="10" fill="var(--diagram-accent-text-4)">500 B</text>
+  <text x="737" y="120" text-anchor="middle" font-size="9" font-weight="bold" fill="var(--diagram-accent-text-4)">"World"</text>
+  <text x="737" y="138" text-anchor="middle" font-size="8" fill="var(--diagram-accent-text-4)">500 B</text>
 
   <!-- Split label -->
   <rect x="680" y="158" width="80" height="24" rx="12" fill="var(--diagram-accent-bg-4)" stroke="var(--diagram-accent-4)" stroke-width="1.5"/>
-  <text x="720" y="175" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-accent-4)">拆包！</text>
+  <text x="720" y="175" text-anchor="middle" font-size="10" font-weight="bold" fill="var(--diagram-accent-4)">拆包！</text>
 
   <!-- Explanation box -->
   <rect x="80" y="200" width="560" height="130" rx="8" fill="var(--diagram-surface-2)" stroke="var(--diagram-stroke-2)" stroke-width="1.5"/>
-  <text x="360" y="225" text-anchor="middle" font-size="14" font-weight="bold" fill="var(--diagram-text-1)">为什么 UDP 没有这个问题？</text>
-  <text x="360" y="250" text-anchor="middle" font-size="13" fill="var(--diagram-arrow)">TCP 是字节流协议，不保证消息边界</text>
-  <text x="360" y="275" text-anchor="middle" font-size="13" fill="var(--diagram-arrow)">UDP 是数据报协议——每次 sendto() 对应一次 recvfrom()</text>
-  <text x="360" y="300" text-anchor="middle" font-size="13" fill="var(--diagram-accent-2)" font-weight="bold">操作系统为 UDP 保留消息边界</text>
+  <text x="360" y="225" text-anchor="middle" font-size="12" font-weight="bold" fill="var(--diagram-text-1)">为什么 UDP 没有这个问题？</text>
+  <text x="360" y="250" text-anchor="middle" font-size="11" fill="var(--diagram-arrow)">TCP 是字节流协议，不保证消息边界</text>
+  <text x="360" y="275" text-anchor="middle" font-size="11" fill="var(--diagram-arrow)">UDP 是数据报协议——每次 sendto() 对应一次 recvfrom()</text>
+  <text x="360" y="300" text-anchor="middle" font-size="11" fill="var(--diagram-accent-2)" font-weight="bold">操作系统为 UDP 保留消息边界</text>
 </svg>
