@@ -6,7 +6,7 @@
 
 - [网络通信基础](/04-java-network/chapter-01-network-basics) — 分层模型、数据封装旅程
 - [TCP/IP](/04-java-network/chapter-02-tcp-ip) — 三次握手/四次挥手、粘包拆包、性能参数
-- [Socket 编程](/04-java-network/chapter-03-socket) — BIO 模型、一连接一线程的瓶颈
+- [Socket 编程](/04-java-network/chapter-03-socket) — fd 与五元组、系统调用链、内核队列、Socket 选项
 - [Java NIO](/04-java-network/chapter-04-nio) — Channel/Buffer/Selector、Reactor 模式
 - [Netty](/04-java-network/chapter-05-netty) — EventLoop、Pipeline、ByteBuf、编解码
 - [HTTP 协议](/04-java-network/chapter-06-http) — 方法语义、状态码、HTTP/1.1→2→3 演进
