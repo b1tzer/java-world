@@ -15,11 +15,11 @@
 
   <!-- cells -->
   <g transform="translate(40, 74)">
-    <rect x="0" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+    <rect x="0" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
     <text x="28" y="26" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold">A</text>
-    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
     <text x="84" y="26" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold">B</text>
-    <rect x="112" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+    <rect x="112" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
     <text x="140" y="26" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold">C</text>
     <rect x="168" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
     <rect x="224" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
@@ -36,7 +36,7 @@
   <polygon points="488,130 496,130 492,138" fill="var(--diagram-accent-5)"/>
   <text x="492" y="150" text-anchor="middle" fill="var(--diagram-accent-5)" font-size="12" font-weight="bold">limit=8</text>
   <!-- capacity label -->
-  <text x="468" y="168" fill="var(--diagram-text-1-muted)" font-size="11">capacity=8</text>
+  <text x="468" y="168" fill="var(--diagram-text-3)" font-size="11">capacity=8</text>
 
   <!-- ===== Step 2: flip() ===== -->
   <line x1="250" y1="178" x2="250" y2="206" stroke="var(--diagram-arrow)" stroke-width="1.5" marker-end="url(#arDown)"/>
@@ -45,11 +45,11 @@
   <text x="40" y="226" font-size="14" font-weight="bold" fill="var(--diagram-accent-1)">② flip() 后（准备读）</text>
 
   <g transform="translate(40, 238)">
-    <rect x="0" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+    <rect x="0" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1b)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
     <text x="28" y="26" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold">A</text>
-    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1b)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
     <text x="84" y="26" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold">B</text>
-    <rect x="112" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+    <rect x="112" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1b)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
     <text x="140" y="26" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold">C</text>
     <rect x="168" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
     <rect x="224" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
@@ -77,10 +77,10 @@
 
   <g transform="translate(40, 410)">
     <rect x="0" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
-    <text x="28" y="26" text-anchor="middle" fill="var(--diagram-text-2-light)">A</text>
-    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+    <text x="28" y="26" text-anchor="middle" fill="var(--diagram-text-3)">A</text>
+    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1b)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
     <text x="84" y="26" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold">B</text>
-    <rect x="112" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
+    <rect x="112" y="0" width="56" height="40" fill="var(--diagram-accent-bg-1b)" stroke="var(--diagram-accent-1)" stroke-width="1.5"/>
     <text x="140" y="26" text-anchor="middle" fill="var(--diagram-accent-text-1)" font-weight="bold">C</text>
     <rect x="168" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
     <rect x="224" y="0" width="56" height="40" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
@@ -104,9 +104,9 @@
   <text x="40" y="544" font-size="14" font-weight="bold" fill="var(--diagram-accent-1)">④ compact() 后（保留未读，准备继续写）</text>
 
   <g transform="translate(40, 556)">
-    <rect x="0" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+    <rect x="0" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
     <text x="28" y="26" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold">B</text>
-    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
+    <rect x="56" y="0" width="56" height="40" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1.5"/>
     <text x="84" y="26" text-anchor="middle" fill="var(--diagram-accent-text-2)" font-weight="bold">C</text>
     <rect x="112" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
     <rect x="168" y="0" width="56" height="40" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
@@ -126,9 +126,9 @@
 
   <!-- 图例 -->
   <rect x="40" y="660" width="620" height="44" rx="6" fill="var(--diagram-surface-1)" stroke="var(--diagram-stroke-2)" stroke-width="1"/>
-  <rect x="56" y="672" width="16" height="16" fill="var(--diagram-accent-bg-2-light)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
+  <rect x="56" y="672" width="16" height="16" fill="var(--diagram-accent-bg-2b)" stroke="var(--diagram-accent-2)" stroke-width="1"/>
   <text x="78" y="685" fill="var(--diagram-text-1)" font-size="12">已写入 / 可写</text>
-  <rect x="170" y="672" width="16" height="16" fill="var(--diagram-accent-bg-1-light)" stroke="var(--diagram-accent-1)" stroke-width="1"/>
+  <rect x="170" y="672" width="16" height="16" fill="var(--diagram-accent-bg-1b)" stroke="var(--diagram-accent-1)" stroke-width="1"/>
   <text x="192" y="685" fill="var(--diagram-text-1)" font-size="12">可读数据</text>
   <rect x="274" y="672" width="16" height="16" fill="var(--diagram-surface-3)" stroke="var(--diagram-stroke-1)" stroke-width="1"/>
   <text x="296" y="685" fill="var(--diagram-text-1)" font-size="12">已读 / 不可访问</text>
