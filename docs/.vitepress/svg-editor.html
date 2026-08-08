@@ -4,441 +4,702 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SVG 图表编辑器</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Noto Sans SC', sans-serif; background: #1a1a1a; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+:root {
+  --bg: #1e1e1e; --bg2: #252526; --bg3: #2d2d2d;
+  --border: #3e3e3e; --text: #cccccc; --text2: #969696;
+  --accent: #0078d4; --accent-hover: #1a8cff;
+  --success: #4ec9b0; --warning: #dcdcaa; --danger: #f44747;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); height:100vh; overflow:hidden; display:flex; flex-direction:column; font-size:12px; }
 
-/* 顶部工具栏 */
-.toolbar {
-  display: flex; align-items: center; gap: 12px;
-  padding: 8px 16px; background: #222; border-bottom: 1px solid #333;
-  flex-shrink: 0;
-}
-.toolbar h1 { font-size: 14px; font-weight: 600; color: #aaa; margin-right: 12px; }
-.toolbar button, .toolbar select {
-  padding: 6px 12px; border: 1px solid #444; border-radius: 4px;
-  background: #333; color: #e0e0e0; font-size: 12px; cursor: pointer;
-}
-.toolbar button:hover { background: #444; }
-.toolbar button.primary { background: #1565C0; border-color: #1565C0; }
-.toolbar button.primary:hover { background: #1976D2; }
-.toolbar .sep { width: 1px; height: 24px; background: #444; }
-.toolbar .file-info { font-size: 11px; color: #888; }
+/* ── 工具栏 ──────────────────────────────────── */
+.toolbar { display:flex; align-items:center; gap:2px; padding:4px 8px; background:var(--bg2); border-bottom:1px solid var(--border); flex-shrink:0; height:36px; }
+.toolbar .sep { width:1px; height:20px; background:var(--border); margin:0 4px; }
+.toolbar button { display:flex; align-items:center; justify-content:center; width:28px; height:28px; border:none; border-radius:4px; background:transparent; color:var(--text); cursor:pointer; font-size:14px; }
+.toolbar button:hover { background:var(--bg3); }
+.toolbar button.active { background:var(--accent); color:#fff; }
+.toolbar button[disabled] { opacity:0.3; cursor:default; }
+.toolbar .group { display:flex; gap:1px; }
+.toolbar select { height:26px; background:var(--bg3); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:0 6px; font-size:11px; }
+.toolbar .title { font-size:12px; font-weight:600; color:var(--text); margin-right:12px; white-space:nowrap; }
+.toolbar .spacer { flex:1; }
+.toolbar .info { font-size:11px; color:var(--text2); white-space:nowrap; }
 
-/* 主区域 */
-.main { display: flex; flex: 1; overflow: hidden; }
+/* ── 主布局 ──────────────────────────────────── */
+.main { display:flex; flex:1; overflow:hidden; }
 
-/* 左侧文件列表 */
-.sidebar {
-  width: 240px; background: #222; border-right: 1px solid #333;
-  overflow-y: auto; flex-shrink: 0;
-}
-.sidebar h2 { font-size: 11px; color: #666; padding: 10px 12px 6px; text-transform: uppercase; letter-spacing: 1px; }
-.sidebar .file-list { list-style: none; }
-.sidebar .file-list li {
-  padding: 6px 12px; font-size: 12px; cursor: pointer;
-  border-left: 3px solid transparent; color: #bbb;
-}
-.sidebar .file-list li:hover { background: #2a2a2a; }
-.sidebar .file-list li.active { background: #1a3a5c; border-left-color: #1565C0; color: #fff; }
-.sidebar .file-list li .badge {
-  display: inline-block; padding: 1px 5px; border-radius: 3px;
-  font-size: 9px; margin-left: 6px;
-}
-.sidebar .badge.ok { background: #1b4332; color: #66BB6A; }
-.sidebar .badge.warn { background: #3d2d15; color: #FFB74D; }
-.sidebar .badge.err { background: #3d1520; color: #EF9A9A; }
+/* 左侧面板 */
+.panel-left { width:220px; background:var(--bg2); border-right:1px solid var(--border); overflow-y:auto; flex-shrink:0; }
+.panel-section { border-bottom:1px solid var(--border); }
+.panel-header { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; cursor:pointer; }
+.panel-header:hover { background:var(--bg3); }
+.panel-content { padding:6px 10px; }
+.file-item { padding:5px 8px; border-radius:3px; cursor:pointer; font-size:11px; display:flex; align-items:center; gap:6px; }
+.file-item:hover { background:var(--bg3); }
+.file-item.active { background:rgba(0,120,212,0.2); color:var(--accent); }
+.file-item .dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
 
-/* 编辑区 */
-.editor-area {
-  flex: 1; display: flex; flex-direction: column; overflow: hidden;
-}
-.editor-tabs {
-  display: flex; background: #222; border-bottom: 1px solid #333; flex-shrink: 0;
-}
-.editor-tabs .tab {
-  padding: 8px 16px; font-size: 12px; cursor: pointer;
-  border-bottom: 2px solid transparent; color: #888;
-}
-.editor-tabs .tab.active { color: #fff; border-bottom-color: #1565C0; }
-.editor-tabs .tab:hover { color: #ccc; }
-
-/* SVG 预览 */
-.preview-container {
-  flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center;
-  background: #fff; /* 跟随主题切换 */
-  position: relative;
-}
-.preview-container.dark { background: #1a1a1a; }
-.preview-container svg { max-width: 100%; max-height: 100%; }
-
-/* 代码编辑器 */
-.code-editor {
-  flex: 1; display: none; overflow: hidden;
-}
-.code-editor.active { display: flex; }
-.code-editor textarea {
-  flex: 1; background: #1e1e1e; color: #d4d4d4; border: none;
-  padding: 16px; font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 13px; line-height: 1.6; resize: none; outline: none;
-  tab-size: 2;
-}
+/* 画布区域 */
+.canvas-wrap { flex:1; position:relative; overflow:hidden; background:var(--bg); }
+.canvas-wrap canvas { position:absolute; top:0; left:0; }
 
 /* 右侧属性面板 */
-.props-panel {
-  width: 260px; background: #222; border-left: 1px solid #333;
-  overflow-y: auto; flex-shrink: 0; padding: 12px;
-}
-.props-panel h3 { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-.props-panel .color-map { list-style: none; }
-.props-panel .color-map li {
-  display: flex; align-items: center; gap: 8px;
-  padding: 4px 0; font-size: 11px;
-}
-.props-panel .color-swatch {
-  width: 16px; height: 16px; border-radius: 3px; border: 1px solid #555;
-  flex-shrink: 0;
-}
-.props-panel .color-hex { font-family: monospace; color: #aaa; width: 60px; }
-.props-panel .color-var { font-family: monospace; color: #66BB6A; font-size: 10px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.props-panel .btn-replace {
-  padding: 3px 8px; border: 1px solid #444; border-radius: 3px;
-  background: #333; color: #e0e0e0; font-size: 10px; cursor: pointer;
-}
-.props-panel .btn-replace:hover { background: #444; }
-.props-panel .btn-replace-all {
-  width: 100%; padding: 8px; margin-top: 12px;
-  background: #1565C0; border: none; border-radius: 4px;
-  color: #fff; font-size: 12px; cursor: pointer;
-}
-.props-panel .btn-replace-all:hover { background: #1976D2; }
+.panel-right { width:240px; background:var(--bg2); border-left:1px solid var(--border); overflow-y:auto; flex-shrink:0; }
+.prop-row { display:flex; align-items:center; gap:6px; padding:4px 10px; }
+.prop-label { font-size:10px; color:var(--text2); width:28px; text-align:right; flex-shrink:0; }
+.prop-input { flex:1; height:24px; background:var(--bg); border:1px solid var(--border); border-radius:3px; color:var(--text); padding:0 6px; font-size:11px; }
+.prop-input:focus { border-color:var(--accent); outline:none; }
+.color-swatch { width:24px; height:24px; border-radius:3px; border:1px solid var(--border); cursor:pointer; flex-shrink:0; }
 
-/* 状态栏 */
-.statusbar {
-  display: flex; align-items: center; gap: 16px;
-  padding: 4px 16px; background: #222; border-top: 1px solid #333;
-  font-size: 11px; color: #666; flex-shrink: 0;
-}
+/* 颜色面板 */
+.color-palette { display:grid; grid-template-columns:repeat(6,1fr); gap:4px; padding:6px 10px; }
+.color-btn { width:28px; height:28px; border-radius:4px; border:2px solid transparent; cursor:pointer; position:relative; }
+.color-btn:hover { border-color:var(--text); }
+.color-btn.active { border-color:var(--accent); }
+.color-btn .tooltip { display:none; position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background:#000; color:#fff; padding:2px 6px; border-radius:3px; font-size:9px; white-space:nowrap; z-index:10; }
+.color-btn:hover .tooltip { display:block; }
 
-/* 主题切换预览 */
-.theme-toggle {
-  display: flex; align-items: center; gap: 6px; font-size: 11px; color: #888;
-}
-.theme-toggle input[type="checkbox"] { accent-color: #1565C0; }
+/* 底部状态栏 */
+.statusbar { display:flex; align-items:center; gap:16px; padding:3px 12px; background:var(--bg2); border-top:1px solid var(--border); font-size:11px; color:var(--text2); flex-shrink:0; height:24px; }
+
+/* 对齐按钮组 */
+.align-group { display:flex; gap:1px; }
+.align-btn { width:26px; height:26px; border:none; border-radius:3px; background:var(--bg3); color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; }
+.align-btn:hover { background:var(--accent); color:#fff; }
+
+/* 模态框 */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:20px; min-width:300px; }
+.modal h3 { font-size:14px; margin-bottom:12px; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+.btn { padding:6px 16px; border:1px solid var(--border); border-radius:4px; background:var(--bg3); color:var(--text); cursor:pointer; font-size:12px; }
+.btn:hover { background:var(--border); }
+.btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn-primary:hover { background:var(--accent-hover); }
 </style>
 </head>
 <body>
 
+<!-- 工具栏 -->
 <div class="toolbar">
-  <h1>📐 SVG 编辑器</h1>
-  <button onclick="openFile()">📂 打开</button>
-  <button class="primary" onclick="saveFile()">💾 保存</button>
+  <span class="title">📐 SVG 编辑器</span>
   <div class="sep"></div>
-  <button onclick="replaceColors()">🎨 替换色值→CSS变量</button>
-  <button onclick="restoreColors()">↩️ CSS变量→色值</button>
+  <button onclick="editor.openFile()" title="打开 SVG (Ctrl+O)">📂</button>
+  <button onclick="editor.save()" title="保存 SVG (Ctrl+S)">💾</button>
   <div class="sep"></div>
-  <div class="theme-toggle">
-    <input type="checkbox" id="themeToggle" onchange="togglePreviewTheme()">
-    <label for="themeToggle">暗色预览</label>
+  <button onclick="editor.undo()" title="撤销 (Ctrl+Z)">↩</button>
+  <button onclick="editor.redo()" title="重做 (Ctrl+Y)">↪</button>
+  <div class="sep"></div>
+  <button onclick="editor.copy()" title="复制 (Ctrl+C)">📋</button>
+  <button onclick="editor.paste()" title="粘贴 (Ctrl+V)">📌</button>
+  <button onclick="editor.deleteSelected()" title="删除 (Delete)">🗑</button>
+  <div class="sep"></div>
+  <button onclick="editor.zoomIn()" title="放大">🔍+</button>
+  <button onclick="editor.zoomOut()" title="缩小">🔍-</button>
+  <button onclick="editor.zoomFit()" title="适应画布">⊞</button>
+  <div class="sep"></div>
+  <div class="group">
+    <button onclick="editor.alignLeft()" title="左对齐">⫷</button>
+    <button onclick="editor.alignCenterH()" title="水平居中">⫿</button>
+    <button onclick="editor.alignRight()" title="右对齐">⫸</button>
+    <button onclick="editor.alignTop()" title="顶对齐">⫠</button>
+    <button onclick="editor.alignCenterV()" title="垂直居中">⫟</button>
+    <button onclick="editor.alignBottom()" title="底对齐">⫡</button>
   </div>
   <div class="sep"></div>
-  <span class="file-info" id="fileInfo">未打开文件</span>
-  <input type="file" id="fileInput" accept=".svg" style="display:none" onchange="handleFile(event)">
+  <div class="group">
+    <button onclick="editor.sameWidth()" title="等宽">⇔</button>
+    <button onclick="editor.sameHeight()" title="等高">⇕</button>
+    <button onclick="editor.sameSize()" title="等大小">⬡</button>
+  </div>
+  <div class="sep"></div>
+  <button onclick="editor.distributeH()" title="水平等距">⫴</button>
+  <button onclick="editor.distributeV()" title="垂直等距">⫵</button>
+  <div class="sep"></div>
+  <button onclick="editor.groupSelected()" title="组合 (Ctrl+G)">🔗</button>
+  <button onclick="editor.ungroupSelected()" title="解组 (Ctrl+Shift+G)">🔓</button>
+  <div class="spacer"></div>
+  <span class="info" id="zoomInfo">100%</span>
+  <span class="info" id="selectionInfo">未选中</span>
 </div>
 
 <div class="main">
-  <!-- 左侧文件列表 -->
-  <div class="sidebar">
-    <h2>图表文件</h2>
-    <ul class="file-list" id="fileList"></ul>
-  </div>
-
-  <!-- 编辑区 -->
-  <div class="editor-area">
-    <div class="editor-tabs">
-      <div class="tab active" onclick="switchTab('preview')">预览</div>
-      <div class="tab" onclick="switchTab('code')">代码</div>
+  <!-- 左侧：文件列表 -->
+  <div class="panel-left">
+    <div class="panel-section">
+      <div class="panel-header">📁 SVG 文件</div>
+      <div class="panel-content" id="fileList"></div>
     </div>
-    <div class="preview-container" id="previewContainer"></div>
-    <div class="code-editor" id="codeEditor">
-      <textarea id="codeArea" spellcheck="false" oninput="onCodeChange()"></textarea>
+    <div class="panel-section">
+      <div class="panel-header">🎨 颜色变量</div>
+      <div class="panel-content">
+        <div class="color-palette" id="colorPalette"></div>
+      </div>
     </div>
   </div>
 
-  <!-- 右侧属性面板 -->
-  <div class="props-panel">
-    <h3>色值映射</h3>
-    <p style="font-size:11px;color:#666;margin-bottom:12px;">
-      当前 SVG 中的硬编码色值。<br>
-      点击「替换色值→CSS变量」将色值替换为项目的 CSS 变量。
-    </p>
-    <ul class="color-map" id="colorMap"></ul>
-    <button class="btn-replace-all" onclick="replaceColors()">🎨 全部替换为 CSS 变量</button>
+  <!-- 画布 -->
+  <div class="canvas-wrap" id="canvasWrap">
+    <canvas id="fabricCanvas"></canvas>
+  </div>
 
-    <h3 style="margin-top:20px;">布局校验</h3>
-    <button class="btn-replace-all" style="background:#2E7D32" onclick="checkLayout()">🔍 检查布局问题</button>
-    <div id="layoutResult" style="margin-top:8px;font-size:11px;"></div>
+  <!-- 右侧：属性面板 -->
+  <div class="panel-right">
+    <div class="panel-section">
+      <div class="panel-header">📐 属性</div>
+      <div class="panel-content" id="propsPanel">
+        <div class="prop-row"><span class="prop-label">X</span><input class="prop-input" id="propX" type="number" onchange="editor.setProp('left',this.value)"></div>
+        <div class="prop-row"><span class="prop-label">Y</span><input class="prop-input" id="propY" type="number" onchange="editor.setProp('top',this.value)"></div>
+        <div class="prop-row"><span class="prop-label">W</span><input class="prop-input" id="propW" type="number" onchange="editor.setSize('width',this.value)"></div>
+        <div class="prop-row"><span class="prop-label">H</span><input class="prop-input" id="propH" type="number" onchange="editor.setSize('height',this.value)"></div>
+        <div class="prop-row"><span class="prop-label">旋转</span><input class="prop-input" id="propR" type="number" onchange="editor.setProp('angle',this.value)"></div>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-header">🔤 文字</div>
+      <div class="panel-content">
+        <div class="prop-row"><span class="prop-label">字号</span><input class="prop-input" id="propFontSize" type="number" onchange="editor.setFontSize(this.value)"></div>
+        <div class="prop-row"><span class="prop-label">粗体</span><button class="btn" id="propBold" onclick="editor.toggleBold()" style="width:100%">B</button></div>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-header">🎨 填充色</div>
+      <div class="panel-content">
+        <div class="prop-row">
+          <div class="color-swatch" id="fillSwatch" onclick="editor.pickFill()"></div>
+          <input class="prop-input" id="propFill" type="text" onchange="editor.setFill(this.value)">
+        </div>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-header">🖊 边框色</div>
+      <div class="panel-content">
+        <div class="prop-row">
+          <div class="color-swatch" id="strokeSwatch" onclick="editor.pickStroke()"></div>
+          <input class="prop-input" id="propStroke" type="text" onchange="editor.setStroke(this.value)">
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <div class="statusbar">
-  <span id="statusFile">-</span>
+  <span id="statusFile">未打开文件</span>
   <span id="statusSize">-</span>
-  <span id="statusColors">-</span>
-  <span id="statusLayout">-</span>
+  <span id="statusElements">-</span>
+  <span id="statusHint">提示: 按住 Space 拖动画布 | Shift+点击多选 | 双击编辑文字</span>
+</div>
+
+<input type="file" id="fileInput" accept=".svg" style="display:none" onchange="editor.handleFile(event)">
+
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <h3>💾 保存 SVG</h3>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:8px;">将编辑后的 SVG 下载到本地</p>
+    <div class="prop-row"><span class="prop-label">文件名</span><input class="prop-input" id="saveFilename" type="text"></div>
+    <div class="prop-row">
+      <label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="saveWithCssVars" checked> 自动转换为 CSS 变量
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="editor.closeSaveModal()">取消</button>
+      <button class="btn-primary btn" onclick="editor.confirmSave()">保存</button>
+    </div>
+  </div>
 </div>
 
 <script>
-// ── 色值映射表 ──────────────────────────────────────────
-const COLOR_MAP = {
-  '#E3F2FD': '--diagram-accent-bg-1', '#1565C0': '--diagram-accent-1', '#0D47A1': '--diagram-accent-text-1',
-  '#E8F5E9': '--diagram-accent-bg-2', '#2E7D32': '--diagram-accent-2', '#1B5E20': '--diagram-accent-text-2',
-  '#F3E5F5': '--diagram-accent-bg-3', '#7B1FA2': '--diagram-accent-3', '#4A148C': '--diagram-accent-text-3',
-  '#FFF3E0': '--diagram-accent-bg-4', '#E65100': '--diagram-accent-4', '#BF360C': '--diagram-accent-text-4',
-  '#FFCDD2': '--diagram-accent-bg-5', '#C62828': '--diagram-accent-5', '#B71C1C': '--diagram-accent-text-5',
-  '#FFFFFF': '--diagram-surface-1', '#F8F9FA': '--diagram-surface-2', '#ECEFF1': '--diagram-surface-3',
-  '#BDBDBD': '--diagram-stroke-1', '#E0E0E0': '--diagram-stroke-2',
-  '#333333': '--diagram-text-1', '#666666': '--diagram-text-2', '#888888': '--diagram-text-3',
-  '#555555': '--diagram-arrow',
-  '#E3E9FD': '--diagram-accent-bg-1b', '#BBDEFB': '--diagram-accent-bg-1b',
-  '#C8E6C9': '--diagram-accent-bg-2b', '#E1BEE7': '--diagram-accent-bg-3b',
+// ── CSS 变量色彩方案 ──────────────────────────────────────
+const CSS_COLORS = {
+  // 蓝
+  '#E3F2FD': {var:'--diagram-accent-bg-1', label:'蓝-背景'}, '#1565C0': {var:'--diagram-accent-1', label:'蓝-边框'}, '#0D47A1': {var:'--diagram-accent-text-1', label:'蓝-文字'},
+  // 绿
+  '#E8F5E9': {var:'--diagram-accent-bg-2', label:'绿-背景'}, '#2E7D32': {var:'--diagram-accent-2', label:'绿-边框'}, '#1B5E20': {var:'--diagram-accent-text-2', label:'绿-文字'},
+  // 紫
+  '#F3E5F5': {var:'--diagram-accent-bg-3', label:'紫-背景'}, '#7B1FA2': {var:'--diagram-accent-3', label:'紫-边框'}, '#4A148C': {var:'--diagram-accent-text-3', label:'紫-文字'},
+  // 橙
+  '#FFF3E0': {var:'--diagram-accent-bg-4', label:'橙-背景'}, '#E65100': {var:'--diagram-accent-4', label:'橙-边框'}, '#BF360C': {var:'--diagram-accent-text-4', label:'橙-文字'},
+  // 红
+  '#FFCDD2': {var:'--diagram-accent-bg-5', label:'红-背景'}, '#C62828': {var:'--diagram-accent-5', label:'红-边框'}, '#B71C1C': {var:'--diagram-accent-text-5', label:'红-文字'},
+  // 基础
+  '#FFFFFF': {var:'--diagram-surface-1', label:'背景1'}, '#F8F9FA': {var:'--diagram-surface-2', label:'背景2'},
+  '#333333': {var:'--diagram-text-1', label:'主文字'}, '#666666': {var:'--diagram-text-2', label:'次文字'}, '#888888': {var:'--diagram-text-3', label:'辅助'},
+  '#555555': {var:'--diagram-arrow', label:'箭头'},
 };
+const VAR_TO_HEX = {};
+for (const [hex, info] of Object.entries(CSS_COLORS)) VAR_TO_HEX[info.var] = hex;
 
-let currentFile = null;
-let currentContent = '';
-let isDirty = false;
+// ── 编辑器主类 ──────────────────────────────────────────
+const editor = {
+  canvas: null,
+  currentFile: null,
+  clipboard: null,
+  undoStack: [],
+  redoStack: [],
+  isDraggingCanvas: false,
+  lastPosX: 0,
+  lastPosY: 0,
 
-// ── 文件列表 ──────────────────────────────────────────
-async function loadFileList() {
-  // 使用预定义的 SVG 文件列表（从项目扫描）
-  const res = await fetch('/__openclaw__/svg-list.json').catch(() => null);
-  let files = [];
-  if (res && res.ok) {
-    files = await res.json();
-  } else {
-    // 备用：手动列出已知文件
-    files = [
-      'arch-evolution.svg', 'bio-thread-timeline.svg', 'buffer-ops.svg',
-      'concurrency-layered-arch.svg', 'data-journey.svg', 'db-performance-overview.svg',
-      'hexagonal-arch.svg', 'http-evolution.svg', 'java-compile-pipeline.svg',
-      'jmm-memory-model.svg', 'jvm-object-creation.svg', 'netty-pipeline.svg',
-      'orm-mapping.svg', 'spring-bean-lifecycle.svg', 'spring-mvc-flow.svg',
-    ];
-  }
-  const list = document.getElementById('fileList');
-  list.innerHTML = files.map(f => `<li onclick="loadSvg('${f}')">${f}</li>`).join('');
-}
-
-// ── 文件操作 ──────────────────────────────────────────
-function openFile() { document.getElementById('fileInput').click(); }
-
-function handleFile(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    currentFile = file.name;
-    currentContent = ev.target.result;
-    renderSvg();
-    updateFileInfo();
-    detectColors();
-  };
-  reader.readAsText(file);
-}
-
-async function loadSvg(filename) {
-  try {
-    const res = await fetch(`/diagrams/${filename}`);
-    if (!res.ok) throw new Error('加载失败');
-    currentFile = filename;
-    currentContent = await res.text();
-    renderSvg();
-    updateFileInfo();
-    detectColors();
-    // 高亮文件列表
-    document.querySelectorAll('.file-list li').forEach(li => {
-      li.classList.toggle('active', li.textContent.includes(filename));
+  init() {
+    const wrap = document.getElementById('canvasWrap');
+    this.canvas = new fabric.Canvas('fabricCanvas', {
+      width: wrap.clientWidth,
+      height: wrap.clientHeight,
+      backgroundColor: '#ffffff',
+      selection: true,
+      preserveObjectStacking: true,
     });
-  } catch (e) {
-    alert('无法加载文件: ' + e.message);
-  }
-}
 
-function renderSvg() {
-  const container = document.getElementById('previewContainer');
-  container.innerHTML = currentContent;
-  const svg = container.querySelector('svg');
-  if (svg) {
-    svg.removeAttribute('width');
-    svg.removeAttribute('height');
-    svg.style.maxWidth = '100%';
-    svg.style.maxHeight = '100%';
-  }
-  document.getElementById('codeArea').value = currentContent;
-}
+    // 画布事件
+    this.canvas.on('selection:created', () => this.onSelect());
+    this.canvas.on('selection:updated', () => this.onSelect());
+    this.canvas.on('selection:cleared', () => this.onDeselect());
+    this.canvas.on('object:modified', () => this.saveState());
+    this.canvas.on('object:moving', (e) => this.onObjectMoving(e));
 
-function updateFileInfo() {
-  document.getElementById('fileInfo').textContent = currentFile || '未打开文件';
-  document.getElementById('statusFile').textContent = currentFile || '-';
-  document.getElementById('statusSize').textContent = `${(currentContent.length / 1024).toFixed(1)} KB`;
-}
-
-function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  if (tab === 'preview') {
-    document.querySelector('.tab:first-child').classList.add('active');
-    document.getElementById('previewContainer').style.display = 'flex';
-    document.getElementById('codeEditor').classList.remove('active');
-    renderSvg();
-  } else {
-    document.querySelector('.tab:last-child').classList.add('active');
-    document.getElementById('previewContainer').style.display = 'none';
-    document.getElementById('codeEditor').classList.add('active');
-  }
-}
-
-function onCodeChange() {
-  currentContent = document.getElementById('codeArea').value;
-  isDirty = true;
-}
-
-// ── 主题切换 ──────────────────────────────────────────
-function togglePreviewTheme() {
-  const dark = document.getElementById('themeToggle').checked;
-  const container = document.getElementById('previewContainer');
-  container.classList.toggle('dark', dark);
-  // 注入 CSS 变量
-  let style = container.querySelector('style');
-  if (!style) {
-    style = document.createElement('style');
-    container.prepend(style);
-  }
-  if (dark) {
-    style.textContent = `
-      :root {
-        --diagram-surface-1: #1a1a1a; --diagram-surface-2: #222; --diagram-surface-3: #2a2a2a;
-        --diagram-stroke-1: #444; --diagram-stroke-2: #333;
-        --diagram-text-1: #e0e0e0; --diagram-text-2: #b0b0b0; --diagram-text-3: #808080;
-        --diagram-arrow: #b0b0b0; --diagram-ghost: #666;
-        --diagram-accent-1: #5C9CE6; --diagram-accent-bg-1: #0d2137; --diagram-accent-bg-1b: #1a3a5c; --diagram-accent-text-1: #90CAF9;
-        --diagram-accent-2: #66BB6A; --diagram-accent-bg-2: #0d2818; --diagram-accent-bg-2b: #1b4332; --diagram-accent-text-2: #A5D6A7;
-        --diagram-accent-3: #CE93D8; --diagram-accent-bg-3: #2d1b3d; --diagram-accent-bg-3b: #3d2550; --diagram-accent-text-3: #E1BEE7;
-        --diagram-accent-4: #FFB74D; --diagram-accent-bg-4: #3d2d15; --diagram-accent-text-4: #FFCC80;
-        --diagram-accent-5: #EF9A9A; --diagram-accent-bg-5: #3d1520; --diagram-accent-text-5: #FFCDD2;
-      }
-    `;
-  } else {
-    style.textContent = `
-      :root {
-        --diagram-surface-1: #ffffff; --diagram-surface-2: #f8f9fa; --diagram-surface-3: #ECEFF1;
-        --diagram-stroke-1: #BDBDBD; --diagram-stroke-2: #E0E0E0;
-        --diagram-text-1: #333333; --diagram-text-2: #666666; --diagram-text-3: #888888;
-        --diagram-arrow: #555555; --diagram-ghost: #999999;
-        --diagram-accent-1: #1565C0; --diagram-accent-bg-1: #E3F2FD; --diagram-accent-bg-1b: #BBDEFB; --diagram-accent-text-1: #0D47A1;
-        --diagram-accent-2: #2E7D32; --diagram-accent-bg-2: #E8F5E9; --diagram-accent-bg-2b: #C8E6C9; --diagram-accent-text-2: #1B5E20;
-        --diagram-accent-3: #7B1FA2; --diagram-accent-bg-3: #F3E5F5; --diagram-accent-bg-3b: #E1BEE7; --diagram-accent-text-3: #4A148C;
-        --diagram-accent-4: #E65100; --diagram-accent-bg-4: #FFF3E0; --diagram-accent-text-4: #BF360C;
-        --diagram-accent-5: #C62828; --diagram-accent-bg-5: #FFCDD2; --diagram-accent-text-5: #B71C1C;
-      }
-    `;
-  }
-}
-
-// ── 色值检测与替换 ──────────────────────────────────────
-function detectColors() {
-  const hexColors = [...currentContent.matchAll(/#[0-9a-fA-F]{6}/g)].map(m => m[0]);
-  const unique = [...new Set(hexColors.map(c => c.toUpperCase()))];
-  const map = document.getElementById('colorMap');
-  map.innerHTML = unique.map(hex => {
-    const cssVar = COLOR_MAP[hex.toUpperCase()] || COLOR_MAP[hex.toLowerCase()] || null;
-    return `<li>
-      <span class="color-swatch" style="background:${hex}"></span>
-      <span class="color-hex">${hex}</span>
-      ${cssVar ? `<span class="color-var">var(${cssVar})</span>` : '<span style="color:#666;font-size:10px">未映射</span>'}
-    </li>`;
-  }).join('');
-  document.getElementById('statusColors').textContent = `${unique.length} 个色值`;
-}
-
-function replaceColors() {
-  let count = 0;
-  for (const [hex, cssVar] of Object.entries(COLOR_MAP)) {
-    const regex = new RegExp(hex.replace('#', '#'), 'gi');
-    currentContent = currentContent.replace(regex, (match) => {
-      count++;
-      return `var(${cssVar})`;
+    // 鼠标滚轮缩放
+    this.canvas.on('mouse:wheel', (opt) => {
+      const delta = opt.e.deltaY;
+      let zoom = this.canvas.getZoom();
+      zoom *= 0.999 ** delta;
+      zoom = Math.min(Math.max(0.1, zoom), 5);
+      this.canvas.zoomToPoint({x: opt.e.offsetX, y: opt.e.offsetY}, zoom);
+      document.getElementById('zoomInfo').textContent = Math.round(zoom * 100) + '%';
+      opt.e.preventDefault();
+      opt.e.stopPropagation();
     });
-  }
-  renderSvg();
-  detectColors();
-  isDirty = true;
-  document.getElementById('statusLayout').textContent = `已替换 ${count} 处`;
-}
 
-function restoreColors() {
-  let count = 0;
-  for (const [hex, cssVar] of Object.entries(COLOR_MAP)) {
-    const regex = new RegExp(`var\\(${cssVar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`, 'g');
-    currentContent = currentContent.replace(regex, () => { count++; return hex; });
-  }
-  renderSvg();
-  detectColors();
-  isDirty = true;
-  document.getElementById('statusLayout').textContent = `已还原 ${count} 处`;
-}
+    // 空格拖动画布
+    this.canvas.on('mouse:down', (opt) => {
+      if (opt.e.altKey || this._spaceHeld) {
+        this.isDraggingCanvas = true;
+        this.lastPosX = opt.e.clientX;
+        this.lastPosY = opt.e.clientY;
+        this.canvas.selection = false;
+      }
+    });
+    this.canvas.on('mouse:move', (opt) => {
+      if (this.isDraggingCanvas) {
+        const vpt = this.canvas.viewportTransform;
+        vpt[4] += opt.e.clientX - this.lastPosX;
+        vpt[5] += opt.e.clientY - this.lastPosY;
+        this.lastPosX = opt.e.clientX;
+        this.lastPosY = opt.e.clientY;
+        this.canvas.requestRenderAll();
+      }
+    });
+    this.canvas.on('mouse:up', () => {
+      this.isDraggingCanvas = false;
+      this.canvas.selection = true;
+    });
 
-// ── 保存 ──────────────────────────────────────────────
-function saveFile() {
-  if (!currentFile) return;
-  const blob = new Blob([currentContent], { type: 'image/svg+xml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = currentFile;
-  a.click();
-  URL.revokeObjectURL(a.href);
-  isDirty = false;
-}
+    // 键盘快捷键
+    document.addEventListener('keydown', (e) => this.onKey(e));
+    document.addEventListener('keyup', (e) => { if (e.code === 'Space') this._spaceHeld = false; });
 
-// ── 布局校验（简化版）──────────────────────────────────
-function checkLayout() {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(currentContent, 'image/svg+xml');
-  const texts = doc.querySelectorAll('text');
-  const rects = doc.querySelectorAll('rect');
-  const issues = [];
+    // 窗口大小变化
+    window.addEventListener('resize', () => {
+      const wrap = document.getElementById('canvasWrap');
+      this.canvas.setDimensions({width: wrap.clientWidth, height: wrap.clientHeight});
+    });
 
-  // 简单检测重叠
-  const textBBoxes = [];
-  texts.forEach(t => {
-    const x = parseFloat(t.getAttribute('x') || 0);
-    const y = parseFloat(t.getAttribute('y') || 0);
-    const fs = parseFloat(t.getAttribute('font-size') || 11);
-    const w = (t.textContent || '').length * fs * 0.6;
-    textBBoxes.push({ x: x - w/2, y: y - fs, w, h: fs * 1.3, text: t.textContent });
-  });
+    // 初始化颜色面板
+    this.initColorPalette();
+    // 加载文件列表
+    this.loadFileList();
+  },
 
-  for (let i = 0; i < textBBoxes.length; i++) {
-    for (let j = i + 1; j < textBBoxes.length; j++) {
-      const a = textBBoxes[i], b = textBBoxes[j];
-      if (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y) {
-        issues.push(`重叠: "${a.text}" ↔ "${b.text}"`);
+  // ── 文件操作 ──────────────────────────────────────────
+  async loadFileList() {
+    let files = [];
+    try {
+      const res = await fetch('/__openclaw__/svg-list.json');
+      if (res.ok) files = await res.json();
+    } catch(e) {}
+    if (!files.length) {
+      files = ['data-journey.svg','arch-evolution.svg','java-compile-pipeline.svg','spring-bean-lifecycle.svg','netty-pipeline.svg'];
+    }
+    document.getElementById('fileList').innerHTML = files.map(f =>
+      `<div class="file-item" onclick="editor.loadSvg('${f}')">${f}</div>`
+    ).join('');
+  },
+
+  openFile() { document.getElementById('fileInput').click(); },
+
+  handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => this.loadSvgContent(file.name, ev.target.result);
+    reader.readAsText(file);
+  },
+
+  async loadSvg(filename) {
+    try {
+      const res = await fetch(`/diagrams/${filename}`);
+      if (!res.ok) throw new Error('加载失败');
+      const svgText = await res.text();
+      this.loadSvgContent(filename, svgText);
+      document.querySelectorAll('.file-item').forEach(el => {
+        el.classList.toggle('active', el.textContent === filename);
+      });
+    } catch(e) { alert('无法加载: ' + e.message); }
+  },
+
+  loadSvgContent(filename, svgText) {
+    this.currentFile = filename;
+    // 替换 CSS 变量为实际色值（Fabric.js 无法识别 CSS 变量）
+    let renderSvg = svgText;
+    for (const [varName, hex] of Object.entries(VAR_TO_HEX)) {
+      renderSvg = renderSvg.replaceAll(`var(${varName})`, hex);
+    }
+
+    fabric.loadSVGFromString(renderSvg, (objects, options) => {
+      this.canvas.clear();
+      const group = fabric.util.groupSVGElements(objects, options);
+      
+      // 展开为独立对象（不保留分组，方便编辑）
+      if (group.type === 'group') {
+        group.forEachObject(obj => {
+          obj.set({left: obj.left + group.left, top: obj.top + group.top});
+          this.canvas.add(obj);
+        });
+      } else {
+        this.canvas.add(group);
+      }
+
+      this.canvas.setViewportTransform([1,0,0,1,0,0]);
+      this.zoomFit();
+      this.saveState();
+      document.getElementById('statusFile').textContent = filename;
+      document.getElementById('statusElements').textContent = `${this.canvas.getObjects().length} 个元素`;
+    });
+
+    // 保存原始 SVG 文本（用于还原 CSS 变量）
+    this._originalSvg = svgText;
+  },
+
+  save() {
+    if (!this.currentFile) return;
+    document.getElementById('saveFilename').value = this.currentFile;
+    document.getElementById('saveModal').classList.add('show');
+  },
+
+  closeSaveModal() { document.getElementById('saveModal').classList.remove('show'); },
+
+  confirmSave() {
+    const filename = document.getElementById('saveFilename').value;
+    const useCssVars = document.getElementById('saveWithCssVars').checked;
+    
+    // 导出 SVG
+    let svgText = this.canvas.toSVG({
+      viewBox: {x: 0, y: 0, width: this.canvas.width, height: this.canvas.height},
+    });
+
+    // 添加命名空间
+    svgText = svgText.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+
+    // 还原 CSS 变量
+    if (useCssVars) {
+      for (const [hex, info] of Object.entries(CSS_COLORS)) {
+        const regex = new RegExp(hex, 'gi');
+        svgText = svgText.replace(regex, `var(${info.var})`);
       }
     }
-  }
 
-  const result = document.getElementById('layoutResult');
-  if (issues.length === 0) {
-    result.innerHTML = '<span style="color:#66BB6A">✅ 无布局问题</span>';
-  } else {
-    result.innerHTML = issues.slice(0, 5).map(i => `<div style="color:#EF9A9A;margin:2px 0">⚠️ ${i}</div>`).join('');
-    if (issues.length > 5) result.innerHTML += `<div style="color:#888">...还有 ${issues.length - 5} 个</div>`;
-  }
-  document.getElementById('statusLayout').textContent = issues.length ? `${issues.length} 个问题` : '无问题';
-}
+    // 下载
+    const blob = new Blob([svgText], {type: 'image/svg+xml'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    this.closeSaveModal();
+  },
 
-// ── 初始化 ──────────────────────────────────────────────
-loadFileList();
-togglePreviewTheme(); // 初始化亮色主题
+  // ── 缩放 ──────────────────────────────────────────────
+  zoomIn() { this._setZoom(this.canvas.getZoom() * 1.2); },
+  zoomOut() { this._setZoom(this.canvas.getZoom() / 1.2); },
+  zoomFit() {
+    const objects = this.canvas.getObjects();
+    if (!objects.length) return;
+    const bounds = this.canvas.calcViewportBoundaries ? null : this._getBounds(objects);
+    if (!bounds) return;
+    const wrap = document.getElementById('canvasWrap');
+    const scaleX = (wrap.clientWidth - 40) / bounds.width;
+    const scaleY = (wrap.clientHeight - 40) / bounds.height;
+    const zoom = Math.min(scaleX, scaleY, 2);
+    this.canvas.setViewportTransform([zoom,0,0,1,0,0]);
+    // 居中
+    const cx = (wrap.clientWidth - bounds.width * zoom) / 2 - bounds.left * zoom;
+    const cy = (wrap.clientHeight - bounds.height * zoom) / 2 - bounds.top * zoom;
+    this.canvas.viewportTransform[4] = cx;
+    this.canvas.viewportTransform[5] = cy;
+    this.canvas.requestRenderAll();
+    document.getElementById('zoomInfo').textContent = Math.round(zoom * 100) + '%';
+  },
+  _setZoom(z) {
+    z = Math.min(Math.max(0.1, z), 5);
+    this.canvas.setZoom(z);
+    document.getElementById('zoomInfo').textContent = Math.round(z * 100) + '%';
+  },
+  _getBounds(objects) {
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    objects.forEach(o => {
+      const b = o.getBoundingRect();
+      minX = Math.min(minX, b.left);
+      minY = Math.min(minY, b.top);
+      maxX = Math.max(maxX, b.left + b.width);
+      maxY = Math.max(maxY, b.top + b.height);
+    });
+    return {left:minX, top:minY, width:maxX-minX, height:maxY-minY};
+  },
+
+  // ── 选择 ──────────────────────────────────────────────
+  onSelect() {
+    const active = this.canvas.getActiveObject();
+    if (!active) return;
+    const isMulti = active.type === 'activeSelection';
+    document.getElementById('selectionInfo').textContent = isMulti ? `${active._objects.length} 个选中` : active.type;
+    this.updateProps(active);
+  },
+  onDeselect() {
+    document.getElementById('selectionInfo').textContent = '未选中';
+  },
+  updateProps(obj) {
+    if (!obj) return;
+    document.getElementById('propX').value = Math.round(obj.left);
+    document.getElementById('propY').value = Math.round(obj.top);
+    document.getElementById('propW').value = Math.round(obj.width * (obj.scaleX || 1));
+    document.getElementById('propH').value = Math.round(obj.height * (obj.scaleY || 1));
+    document.getElementById('propR').value = Math.round(obj.angle || 0);
+    if (obj.type === 'i-text' || obj.type === 'text') {
+      document.getElementById('propFontSize').value = obj.fontSize || 12;
+    }
+    const fill = obj.fill || '';
+    const stroke = obj.stroke || '';
+    document.getElementById('propFill').value = typeof fill === 'string' ? fill : '';
+    document.getElementById('propStroke').value = typeof stroke === 'string' ? stroke : '';
+    document.getElementById('fillSwatch').style.background = typeof fill === 'string' ? fill : '#000';
+    document.getElementById('strokeSwatch').style.background = typeof stroke === 'string' ? stroke : '#000';
+  },
+
+  setProp(prop, val) {
+    const obj = this.canvas.getActiveObject();
+    if (!obj) return;
+    obj.set(prop, parseFloat(val));
+    this.canvas.renderAll();
+    this.saveState();
+  },
+  setSize(dim, val) {
+    const obj = this.canvas.getActiveObject();
+    if (!obj) return;
+    if (dim === 'width') {
+      obj.set('scaleX', parseFloat(val) / obj.width);
+    } else {
+      obj.set('scaleY', parseFloat(val) / obj.height);
+    }
+    this.canvas.renderAll();
+    this.saveState();
+  },
+
+  // ── 文字 ──────────────────────────────────────────────
+  setFontSize(val) {
+    const obj = this.canvas.getActiveObject();
+    if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+      obj.set('fontSize', parseInt(val));
+      this.canvas.renderAll();
+      this.saveState();
+    }
+  },
+  toggleBold() {
+    const obj = this.canvas.getActiveObject();
+    if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+      obj.set('fontWeight', obj.fontWeight === 'bold' ? 'normal' : 'bold');
+      this.canvas.renderAll();
+      this.saveState();
+    }
+  },
+
+  // ── 颜色 ──────────────────────────────────────────────
+  setFill(val) {
+    const obj = this.canvas.getActiveObject();
+    if (obj) { obj.set('fill', val); this.canvas.renderAll(); this.saveState(); }
+  },
+  setStroke(val) {
+    const obj = this.canvas.getActiveObject();
+    if (obj) { obj.set('stroke', val); this.canvas.renderAll(); this.saveState(); }
+  },
+  pickFill() { this._pickColor('fill'); },
+  pickStroke() { this._pickColor('stroke'); },
+  _pickColor(prop) {
+    const input = document.createElement('input');
+    input.type = 'color';
+    const obj = this.canvas.getActiveObject();
+    if (obj && typeof obj[prop] === 'string') input.value = obj[prop];
+    input.oninput = () => {
+      if (obj) { obj.set(prop, input.value); this.canvas.renderAll(); this.updateProps(obj); }
+    };
+    input.onchange = () => this.saveState();
+    input.click();
+  },
+  applyColor(hex) {
+    const obj = this.canvas.getActiveObject();
+    if (!obj) return;
+    obj.set('fill', hex);
+    this.canvas.renderAll();
+    this.updateProps(obj);
+    this.saveState();
+  },
+  initColorPalette() {
+    const palette = document.getElementById('colorPalette');
+    palette.innerHTML = Object.entries(CSS_COLORS).map(([hex, info]) =>
+      `<div class="color-btn" style="background:${hex}" onclick="editor.applyColor('${hex}')" title="${info.label}: ${info.var}">
+        <span class="tooltip">${info.label}</span>
+      </div>`
+    ).join('');
+  },
+
+  // ── 对齐 ──────────────────────────────────────────────
+  _getSelected() {
+    const active = this.canvas.getActiveObject();
+    if (!active) return [];
+    if (active.type === 'activeSelection') return active._objects;
+    return [active];
+  },
+  alignLeft() { const objs = this._getSelected(); if (objs.length<2) return; const min = Math.min(...objs.map(o=>o.left)); objs.forEach(o=>o.set('left',min)); this.canvas.renderAll(); this.saveState(); },
+  alignRight() { const objs = this._getSelected(); if (objs.length<2) return; const max = Math.max(...objs.map(o=>o.left+o.width*(o.scaleX||1))); objs.forEach(o=>o.set('left',max-o.width*(o.scaleX||1))); this.canvas.renderAll(); this.saveState(); },
+  alignCenterH() { const objs = this._getSelected(); if (objs.length<2) return; const avg = objs.reduce((s,o)=>s+o.left+o.width*(o.scaleX||1)/2,0)/objs.length; objs.forEach(o=>o.set('left',avg-o.width*(o.scaleX||1)/2)); this.canvas.renderAll(); this.saveState(); },
+  alignTop() { const objs = this._getSelected(); if (objs.length<2) return; const min = Math.min(...objs.map(o=>o.top)); objs.forEach(o=>o.set('top',min)); this.canvas.renderAll(); this.saveState(); },
+  alignBottom() { const objs = this._getSelected(); if (objs.length<2) return; const max = Math.max(...objs.map(o=>o.top+o.height*(o.scaleY||1))); objs.forEach(o=>o.set('top',max-o.height*(o.scaleY||1))); this.canvas.renderAll(); this.saveState(); },
+  alignCenterV() { const objs = this._getSelected(); if (objs.length<2) return; const avg = objs.reduce((s,o)=>s+o.top+o.height*(o.scaleY||1)/2,0)/objs.length; objs.forEach(o=>o.set('top',avg-o.height*(o.scaleY||1)/2)); this.canvas.renderAll(); this.saveState(); },
+  sameWidth() { const objs = this._getSelected(); if (objs.length<2) return; const w = objs[0].width*(objs[0].scaleX||1); objs.forEach(o=>{o.set('scaleX',w/o.width);}); this.canvas.renderAll(); this.saveState(); },
+  sameHeight() { const objs = this._getSelected(); if (objs.length<2) return; const h = objs[0].height*(objs[0].scaleY||1); objs.forEach(o=>{o.set('scaleY',h/o.height);}); this.canvas.renderAll(); this.saveState(); },
+  sameSize() { this.sameWidth(); this.sameHeight(); },
+  distributeH() { const objs = this._getSelected(); if (objs.length<3) return; objs.sort((a,b)=>a.left-b.left); const first=objs[0].left, last=objs[objs.length-1].left; const step=(last-first)/(objs.length-1); objs.forEach((o,i)=>o.set('left',first+step*i)); this.canvas.renderAll(); this.saveState(); },
+  distributeV() { const objs = this._getSelected(); if (objs.length<3) return; objs.sort((a,b)=>a.top-b.top); const first=objs[0].top, last=objs[objs.length-1].top; const step=(last-first)/(objs.length-1); objs.forEach((o,i)=>o.set('top',first+step*i)); this.canvas.renderAll(); this.saveState(); },
+
+  // ── 组合 ──────────────────────────────────────────────
+  groupSelected() {
+    const active = this.canvas.getActiveObject();
+    if (!active || active.type !== 'activeSelection') return;
+    active.toGroup();
+    this.canvas.renderAll();
+    this.saveState();
+  },
+  ungroupSelected() {
+    const active = this.canvas.getActiveObject();
+    if (!active || active.type !== 'group') return;
+    active.toActiveSelection();
+    this.canvas.renderAll();
+    this.saveState();
+  },
+
+  // ── 复制粘贴 ─────────────────────────────────────────
+  copy() {
+    const active = this.canvas.getActiveObject();
+    if (!active) return;
+    active.clone((cloned) => { this.clipboard = cloned; });
+  },
+  paste() {
+    if (!this.clipboard) return;
+    this.clipboard.clone((cloned) => {
+      this.canvas.discardActiveObject();
+      cloned.set({left: cloned.left + 20, top: cloned.top + 20, evented: true});
+      if (cloned.type === 'activeSelection') {
+        cloned.canvas = this.canvas;
+        cloned.forEachObject(obj => this.canvas.add(obj));
+        cloned.setCoords();
+      } else {
+        this.canvas.add(cloned);
+      }
+      this.clipboard.top += 20;
+      this.clipboard.left += 20;
+      this.canvas.setActiveObject(cloned);
+      this.canvas.renderAll();
+      this.saveState();
+    });
+  },
+  deleteSelected() {
+    const active = this.canvas.getActiveObject();
+    if (!active) return;
+    if (active.type === 'activeSelection') {
+      active.forEachObject(obj => this.canvas.remove(obj));
+      this.canvas.discardActiveObject();
+    } else {
+      this.canvas.remove(active);
+    }
+    this.canvas.renderAll();
+    this.saveState();
+  },
+
+  // ── 撤销/重做 ──────────────────────────────────────────
+  saveState() {
+    const json = JSON.stringify(this.canvas.toJSON(['selectable','evented']));
+    this.undoStack.push(json);
+    if (this.undoStack.length > 50) this.undoStack.shift();
+    this.redoStack = [];
+    document.getElementById('statusElements').textContent = `${this.canvas.getObjects().length} 个元素`;
+  },
+  undo() {
+    if (this.undoStack.length < 2) return;
+    this.redoStack.push(this.undoStack.pop());
+    const state = this.undoStack[this.undoStack.length - 1];
+    this._loadState(state);
+  },
+  redo() {
+    if (!this.redoStack.length) return;
+    const state = this.redoStack.pop();
+    this.undoStack.push(state);
+    this._loadState(state);
+  },
+  _loadState(json) {
+    this.canvas.loadFromJSON(json, () => {
+      this.canvas.renderAll();
+    });
+  },
+
+  // ── 拖动时更新属性 ──────────────────────────────────────
+  onObjectMoving(e) {
+    const obj = e.target;
+    if (obj) {
+      document.getElementById('propX').value = Math.round(obj.left);
+      document.getElementById('propY').value = Math.round(obj.top);
+    }
+  },
+
+  // ── 键盘 ──────────────────────────────────────────────
+  onKey(e) {
+    // 空格键标记
+    if (e.code === 'Space' && !e.repeat) { this._spaceHeld = true; e.preventDefault(); return; }
+    // 快捷键
+    if (e.ctrlKey || e.metaKey) {
+      switch(e.key) {
+        case 'z': e.preventDefault(); if (e.shiftKey) this.redo(); else this.undo(); break;
+        case 'y': e.preventDefault(); this.redo(); break;
+        case 'c': e.preventDefault(); this.copy(); break;
+        case 'v': e.preventDefault(); this.paste(); break;
+        case 'g': e.preventDefault(); if (e.shiftKey) this.ungroupSelected(); else this.groupSelected(); break;
+        case 's': e.preventDefault(); this.save(); break;
+        case 'o': e.preventDefault(); this.openFile(); break;
+        case '0': e.preventDefault(); this.zoomFit(); break;
+        case '=': case '+': e.preventDefault(); this.zoomIn(); break;
+        case '-': e.preventDefault(); this.zoomOut(); break;
+      }
+    }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (document.activeElement.tagName !== 'INPUT') { e.preventDefault(); this.deleteSelected(); }
+    }
+  },
+};
+
+// 初始化
+editor.init();
 </script>
 </body>
 </html>
