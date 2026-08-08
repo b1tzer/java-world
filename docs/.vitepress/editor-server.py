@@ -22,7 +22,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         # 编辑器页面
-        if self.path == '/__openclaw__/svg-editor.html':
+        if self.path in ('/__openclaw__/svg-editor.html', '/__openclaw__/svg-editor'):
             editor = os.path.join(DIR, '.vitepress', 'svg-editor.html')
             with open(editor, 'r', encoding='utf-8') as f:
                 content = f.read()
