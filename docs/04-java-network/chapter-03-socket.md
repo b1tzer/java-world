@@ -148,7 +148,7 @@ Socket client = serverSocket.accept();  // 阻塞，直到有新连接
 // client 内部持有一个新的 fd
 ```
 
-> **一个常见的困惑**：`accept()` 返回的是一个**新的 Socket**，和原来的 `ServerSocket` 完全独立。`ServerSocket` 只负责监听，不负责数据传输。数据传输由 `accept()` 返回的 `Socket` 完成。
+> `accept()` 返回的是一个**新的 Socket**，和原来的 `ServerSocket` 完全独立。`ServerSocket` 只负责监听，不负责数据传输。数据传输由 `accept()` 返回的 `Socket` 完成。
 
 ### 3.2.4 `connect()`：客户端发起三次握手
 

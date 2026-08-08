@@ -66,23 +66,24 @@ WebSocket 通过 HTTP Upgrade 机制升级连接，从 HTTP 协议切换到 WebS
   │  ── HTTP GET /chat ─────────────────────────────→  │
   │     Upgrade: websocket                             │
   │     Connection: Upgrade                            │
-  │     Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==   │
+  │     Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==    │
   │                                                    │
-  │  ←── 101 Switching Protocols ─────────────────────  │
+  │  ←── 101 Switching Protocols ───────────────────── │
   │      Upgrade: websocket                            │
   │      Connection: Upgrade                           │
-  │      Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzh... │
+  │      Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzh...  │
   │                                                    │
   │  ═══ WebSocket 全双工帧通信 ════════════════════════ │
-  │  ←── Frame (text) ───→                            │
+  │  ←── Frame (text) ───→                             │
   │  ←── Frame (binary) ──→                            │
   │  ←── Frame (ping/pong) →                           │
   │                                                    │
   │  ── Close Frame ────────────────────────────────→  │
-  │  ←── Close Frame ─────────────────────────────────  │
+  │  ←── Close Frame ───────────────────────────────── │
 ```
 
 关键点：
+
 - **101 状态码**表示协议切换成功
 - `Sec-WebSocket-Key` + 魔术字符串经 SHA-1 哈希后回传，防止缓存代理误处理
 - 握手完成后，HTTP 协议退场，后续通信使用 WebSocket 二进制帧
