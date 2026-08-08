@@ -1,12 +1,26 @@
 import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { openInEditor } from 'vitepress-plugin-open-in-editor'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const docsDir = resolve(__dirname, '..')
+const SITE_BASE = '/java-world/'
+
+// 一次实例化，导出三块能力给 VitePress 的不同扩展点使用。
+const editorIntegration = openInEditor({
+  docsDir,
+  base: SITE_BASE,
+  buttonText: '编辑此行',
+})
 
 export default withMermaid(
   defineConfig({
   title: 'Java World',
   description: '从语言到架构的 Java 完整知识体系',
   lang: 'zh-CN',
-  base: '/java-world/',
+  base: SITE_BASE,
   lastUpdated: true,
   sitemap: {
     hostname: 'https://thestack.xpro.wang/java-world/',
@@ -22,6 +36,7 @@ export default withMermaid(
     ['meta', { name: 'twitter:card', content: 'summary' }],
     ['meta', { name: 'theme-color', content: '#2563eb' }],
     ['meta', { name: 'viewport', content: 'width=device-width,initial-scale=1' }],
+    // open-in-editor 的样式与客户端脚本已由 vite 插件通过 transformIndexHtml 自动注入。
   ],
 
   themeConfig: {
@@ -162,6 +177,11 @@ export default withMermaid(
       }
     },
 
+    editLink: {
+      pattern: editorIntegration.editLinkPattern,
+      text: '在编辑器中打开源文件',
+    },
+
     footer: {
       message: '基于 MIT 发布',
       copyright: '© 2026 Java World'
@@ -180,11 +200,18 @@ export default withMermaid(
 
   markdown: {
     lineNumbers: true,
+    config(md) {
+      editorIntegration.markdown(md)
+    },
   },
 
   mermaid: {
     flowchart: {
       padding: 24,
     },
+  },
+
+  vite: {
+    plugins: [editorIntegration.vite()],
   },
 }))
