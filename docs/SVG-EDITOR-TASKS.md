@@ -39,11 +39,11 @@
   - 内容：上移一层、下移一层、置顶、置底
   - Fabric.js API：`canvas.bringForward()`, `canvas.sendBackwards()`, `canvas.bringToFront()`, `canvas.sendToBack()`
 
-- [ ] **T3: 等间距分布**
-  - 状态：待开始
+- [x] **T3: 等间距分布**
+  - 状态：✅ 完成
   - 内容：水平等间距分布、垂直等间距分布
   - 实现：计算选中元素的总宽度/高度，重新分配间距
-  - 参考：vue-fabric-editor `src/components/align.vue`
+  - 需要 3 个以上选中元素才生效
 
 - [ ] **T4: 边框粗细和样式**
   - 状态：待开始

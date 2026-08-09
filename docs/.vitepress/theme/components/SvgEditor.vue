@@ -503,6 +503,37 @@ function layerForward(fc) { const a = fc.getActiveObject(); if (a) { fc.bringFor
 function layerBackward(fc) { const a = fc.getActiveObject(); if (a) { fc.sendBackwards(a); fc.renderAll(); saveState(fc) } }
 function layerToFront(fc) { const a = fc.getActiveObject(); if (a) { fc.bringToFront(a); fc.renderAll(); saveState(fc) } }
 function layerToBack(fc) { const a = fc.getActiveObject(); if (a) { fc.sendToBack(a); fc.renderAll(); saveState(fc) } }
+// 等间距分布
+function distribute(fc, dir) {
+  const objs = fc.getActiveObject()?._objects
+  if (!objs || objs.length < 3) return
+  if (dir === 'horizontal') {
+    objs.sort((a, b) => a.left - b.left)
+    const first = objs[0].left
+    const lastObj = objs[objs.length - 1]
+    const last = lastObj.left + lastObj.width * (lastObj.scaleX || 1)
+    const totalWidth = objs.reduce((s, o) => s + o.width * (o.scaleX || 1), 0)
+    const gap = (last - first - totalWidth) / (objs.length - 1)
+    let x = first
+    for (const o of objs) {
+      o.set('left', x)
+      x += o.width * (o.scaleX || 1) + gap
+    }
+  } else {
+    objs.sort((a, b) => a.top - b.top)
+    const first = objs[0].top
+    const lastObj = objs[objs.length - 1]
+    const last = lastObj.top + lastObj.height * (lastObj.scaleY || 1)
+    const totalHeight = objs.reduce((s, o) => s + o.height * (o.scaleY || 1), 0)
+    const gap = (last - first - totalHeight) / (objs.length - 1)
+    let y = first
+    for (const o of objs) {
+      o.set('top', y)
+      y += o.height * (o.scaleY || 1) + gap
+    }
+  }
+  fc.renderAll(); saveState(fc)
+}
 
 // --- Fabric.js toSVG() 格式清理 ---
 // 将 Fabric.js 输出的 SVG 还原为原始简洁格式
@@ -706,6 +737,11 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <button @click="layerToFront(fabricCanvas)" title="置顶">⏫</button>
           <button @click="layerToBack(fabricCanvas)" title="置底">⏬</button>
         </div>
+        <div class="sep" />
+        <div class="dist-group">
+          <button @click="distribute(fabricCanvas,'horizontal')" title="水平等间距分布">⇔</button>
+          <button @click="distribute(fabricCanvas,'vertical')" title="垂直等间距分布">⇕</button>
+        </div>
         <div class="spacer" />
         <span class="info">{{ selectionInfo }}</span>
         <div class="sep" />
@@ -778,6 +814,7 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 .editor-toolbar .btn-save:disabled { opacity: 0.5; cursor: default; }
 .align-group { display: flex; gap: 1px; }
 .layer-group { display: flex; gap: 1px; }
+.dist-group { display: flex; gap: 1px; }
 .color-row { display: flex; align-items: center; gap: 4px; }
 .color-row .label { font-size: 10px; color: #888; }
 .color-row input[type="color"] { width: 24px; height: 24px; border: 1px solid #555; border-radius: 3px; cursor: pointer; padding: 0; }
