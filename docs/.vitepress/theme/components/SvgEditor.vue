@@ -183,20 +183,18 @@ async function loadAndInit() {
   const markerPolyRe = /<marker\s+id="([^"]+)"[^>]*markerWidth="([^"]+)"[^>]*markerHeight="([^"]+)"[^>]*refX="([^"]+)"[^>]*refY="([^"]+)"[^>]*>\s*<polygon\s+[^>]*points="([^"]+)"[^>]*fill="([^"]+)"[^>]*\/>\s*<\/marker>/g
   let mm
   while ((mm = markerPolyRe.exec(renderSvg)) !== null) {
-    const id = mm[1], refX = parseFloat(mm[4]), pts = mm[6], fill = mm[7]
-    // 找 polygon 的最右点作为 tipX
+    const id = mm[1], mw = parseFloat(mm[2]), mh = parseFloat(mm[3]), refX = parseFloat(mm[4]), pts = mm[6], fill = mm[7]
     const tipX = Math.max(...pts.split(/[\s,]+/).filter((_, i) => i % 2 === 0).map(Number))
-    markers[id] = { fill, tipOffset: tipX - refX }
+    markers[id] = { fill, tipOffset: tipX - refX, markerW: mw, markerH: mh }
   }
   // path 形式的 marker（如 M0,0 L8,4 L0,8 Z）
   const markerPathRe = /<marker\s+id="([^"]+)"[^>]*markerWidth="([^"]+)"[^>]*markerHeight="([^"]+)"[^>]*refX="([^"]+)"[^>]*refY="([^"]+)"[^>]*>\s*<path\s+[^>]*d="([^"]+)"[^>]*fill="([^"]+)"[^>]*\/>\s*<\/marker>/g
   while ((mm = markerPathRe.exec(renderSvg)) !== null) {
-    const id = mm[1], refX = parseFloat(mm[4]), d = mm[6], fill = mm[7]
-    // 提取 path d 中的所有 x 坐标，找最大值作为 tipX
+    const id = mm[1], mw = parseFloat(mm[2]), mh = parseFloat(mm[3]), refX = parseFloat(mm[4]), d = mm[6], fill = mm[7]
     const nums = d.match(/[\d.]+/g)?.map(Number) || []
     const xCoords = nums.filter((_, i) => i % 2 === 0)
     const tipX = Math.max(...xCoords)
-    markers[id] = { fill, tipOffset: tipX - refX }
+    markers[id] = { fill, tipOffset: tipX - refX, markerW: mw, markerH: mh }
   }
 
   // 2. 解析 <style> 中 CSS 类的 marker-end（如 .arrow { marker-end: url(#arrowhead) }）
@@ -242,11 +240,12 @@ async function loadAndInit() {
 
       // 计算箭头朝向
       const angle = Math.atan2(y2 - y1, x2 - x1)
-      // 底边中心在线终点，尖端朝外延伸（tipOffset 来自 marker 定义）
       const marker = markers[markerId]
       const tipOffset = marker.tipOffset || 0
-      const sx = 4 * Math.sin(angle)
-      const sy = -4 * Math.cos(angle)
+      // 箭头半高 = markerHeight / 2（与原始 marker 尺寸一致）
+      const halfH = (marker.markerH || 8) / 2
+      const sx = halfH * Math.sin(angle)
+      const sy = -halfH * Math.cos(angle)
       const tipX = x2 + tipOffset * Math.cos(angle)
       const tipY = y2 + tipOffset * Math.sin(angle)
       const points = `${tipX.toFixed(1)},${tipY.toFixed(1)} ${(x2 + sx).toFixed(1)},${(y2 + sy).toFixed(1)} ${(x2 - sx).toFixed(1)},${(y2 - sy).toFixed(1)}`
@@ -276,8 +275,9 @@ async function loadAndInit() {
       // 底边中心在线终点，尖端朝外延伸（tipOffset 来自 marker 定义）
       const marker = markers[markerId]
       const tipOffset = marker.tipOffset || 0
-      const sx = 4 * Math.sin(angle)
-      const sy = -4 * Math.cos(angle)
+      const halfH = (marker.markerH || 8) / 2
+      const sx = halfH * Math.sin(angle)
+      const sy = -halfH * Math.cos(angle)
       const tipX = x2 + tipOffset * Math.cos(angle)
       const tipY = y2 + tipOffset * Math.sin(angle)
       const points = `${tipX.toFixed(1)},${tipY.toFixed(1)} ${(x2 + sx).toFixed(1)},${(y2 + sy).toFixed(1)} ${(x2 - sx).toFixed(1)},${(y2 - sy).toFixed(1)}`
