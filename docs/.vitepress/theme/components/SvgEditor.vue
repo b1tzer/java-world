@@ -186,7 +186,7 @@ async function loadAndInit() {
       // 移除 marker-end，保留其余属性
       const cleanAttrs = attrs.replace(/\s*marker-end="[^"]*"/, '')
 
-      return `<g><line ${cleanAttrs}/><polygon points="${points}" fill="${markers[markerId]}"/></g>`
+      return `<line ${cleanAttrs}/><polygon points="${points}" fill="${markers[markerId]}"/>`
     }
   )
 
@@ -214,7 +214,7 @@ async function loadAndInit() {
       const sy = -size * Math.cos(angle)
       const points = `${x2},${y2} ${(bx + sx).toFixed(1)},${(by + sy).toFixed(1)} ${(bx - sx).toFixed(1)},${(by - sy).toFixed(1)}`
       const combined = (before + ' ' + after).replace(/\s*marker-end="[^"]*"/, '')
-      return `<g><path ${combined}/><polygon points="${points}" fill="${markers[markerId]}"/></g>`
+      return `<path ${combined}/><polygon points="${points}" fill="${markers[markerId]}"/>`
     }
   )
 
