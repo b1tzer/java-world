@@ -1,6 +1,6 @@
 # 第3章 Java Socket 编程：网络抽象的起点
 
-> **核心问题：** 操作系统如何把网线上的电信号变成程序可读写的字节流？一个 Socket 在内核中到底长什么样？一台机器最多能撑多少连接？本章从 OS 视角出发，理解 Socket 的本质、系统调用链、内核数据结构和关键选项，最后用一个 Echo 示例跑通完整流程。
+> **核心问题：** 你线上报过 `Too many open files`，调过 `ulimit -n 65535`，配过连接池的 `maxConnections`——但你有没有想过，fd 到底是什么？一个 `new Socket()` 在内核里到底分配了什么？`read()` 卡住的时候，线程去哪了？一台机器到底能撑多少连接？本章从 OS 内核视角出发，把 Socket 从"一个 Java 对象"拆回它的本质：一个文件描述符、两块内核缓冲区、两对队列。
 
 ---
 
@@ -204,6 +204,8 @@ close(fd);
 socket.close();  // 内部调用 close(fd)
 ```
 
+> 同一个服务跑到线上，偶尔看 `netstat -ant | grep 8080` 会发现十几个 `CLOSE_WAIT` 状态的连接越积越多。`CLOSE_WAIT` 的意思是"对端发了 FIN，但本端还没调 `close()`"——大概率是你代码里某个异常分支没走到 `socket.close()`，或者连接池回收逻辑有漏，fd 一直被占着。不处理的话，CLOSE_WAIT 会一直积压到 fd 耗尽，新连接再也建不起来。
+
 > **`close()` vs `shutdown()`**：`close()` 同时关闭读和写两个方向。`shutdown()` 可以只关闭一个方向（`shutdownOutput()` 关写，`shutdownInput()` 关读），另一个方向继续使用。典型场景：客户端发完请求后 `shutdownOutput()`，告诉服务端"我发完了"，但仍继续读取响应。
 
 **完整的系统调用链总结：**
@@ -264,6 +266,8 @@ close(connFd)  ◄── 四次挥手 ──── close(fd)
 **接收缓冲区空会怎样？** `read()` 会**阻塞**，直到有数据到达。这就是"读阻塞"——它不是因为没有连接，而是因为对方还没发数据。
 
 ### 3.3.2 全连接队列与半连接队列
+
+> **活动期间，你发现新连接全部超时，但服务端 CPU 和内存都正常。** 同事怀疑是网络设备问题，你用 `ss -tln | grep 8080` 看了一眼—— `Recv-Q` 已经超过了 `Send-Q`。请求不慢，是它们根本没进到应用层。accept queue 满了，内核已经在悄悄丢包了。
 
 `listen()` 之后，内核为这个监听 Socket 维护两个队列：
 
@@ -358,7 +362,9 @@ Socket 选项通过 `setsockopt()` 系统调用设置，Java 中通过 `ServerSo
 
 ### 3.4.1 `SO_REUSEADDR` 与 `SO_REUSEPORT`
 
-**`SO_REUSEADDR`**：允许绑定处于 `TIME_WAIT` 状态的地址。服务重启时，旧连接可能还在 `TIME_WAIT`（等 2MSL），默认情况下新进程 `bind()` 同一个端口会失败。设置 `SO_REUSEADDR` 后可以立即绑定。
+**`SO_REUSEADDR`**：允许绑定处于 `TIME_WAIT` 状态的地址。
+
+> 你重启了服务，结果报了一个 `BindException: Address already in use`。端口还在用？明明上一个进程已经 kill 了。这是因为旧连接还卡在 `TIME_WAIT`（见第 2 章四次挥手），要等 60 秒端口才能释放。`SO_REUSEADDR` 就是让你跳过这个等待。
 
 ```java
 ServerSocket ss = new ServerSocket();

@@ -121,49 +121,47 @@ TCP 可能：一次收到 "helloworld"（粘包）
 
 ## 3 Java Socket 编程：网络抽象的起点
 
-本章目标：理解 Socket 不是框架，而是操作系统提供的网络编程接口。Java 的 `Socket` 和 `ServerSocket` 是对 OS Socket 的面向对象封装。
+本章目标：从 OS 内核视角出发，理解 Socket 的本质（文件描述符 + 协议栈）、系统调用链的 C/Java 映射、内核数据结构（缓冲区/队列/阻塞本质）、生产级 Socket 选项，最后用一个 Echo 示例跑通完整流程并揭示 BIO 的局限。
 
-### 3.1 Socket 是什么
+### 3.1 Socket 的本质：OS 如何抽象网络通信
 
-Socket = 网络通信端点 = IP + Port
+- **从网卡到进程**：数据如何经过传输层进入 Socket 接收缓冲区，应用 `read()` 读到的就是它
+- **Socket = fd + 协议栈**：Unix/Linux 下 Socket 本质是文件描述符，Java 的 `Socket` / `ServerSocket` 内部持有 OS fd
+- **五元组与连接标识**：`{源IP, 源端口, 目标IP, 目标端口, 协议}` 唯一标识一条连接；一个监听端口可以 accept 出成千上万条连接
+- **Stream Socket vs Datagram Socket**：TCP 与 UDP 的编程模型差异
 
-```
-应用进程 ←→ Socket ←→ TCP/UDP ←→ IP ←→ 物理网络
-```
+### 3.2 Socket 系统调用与 Java 映射
 
-它本质是一个"插座"——一端插在应用进程，另一端插在网络协议栈。
+七个系统调用的 C 代码与 Java 代码逐条对照：
 
-### 3.2 BIO 模型
+- `socket()` → `new ServerSocket()` / `new Socket()`
+- `bind()` + `listen()` → `serverSocket.bind()` / `new ServerSocket(port)`
+- `accept()` → `serverSocket.accept()`（返回新 Socket，与 ServerSocket 独立）
+- `connect()` → `new Socket(host, port)`
+- `read()` / `write()` → `getInputStream()` / `getOutputStream()`（操作的是内核缓冲区，不是网络）
+- `close()` → `socket.close()`（对比 `shutdown()` 的差异）
 
-传统阻塞 I/O 模型：
+### 3.3 内核视角：Socket 背后的数据结构
 
-```
-Thread → Socket.read() → Blocking
-```
+- **发送缓冲区与接收缓冲区**：每 Socket 两块，`write()` 满则阻塞，`read()` 空则阻塞
+- **全连接队列与半连接队列**：`listen(backlog)` 控制的队列溢出机制与诊断（`ss -ltn`、`netstat -s`）
+- **阻塞的本质**：线程从 `RUNNING` → `TASK_INTERRUPTIBLE` 被挂到 Socket 等待队列，不占 CPU 但占内存
+- **一台机器能承载多少 Socket**：从 fd 上限、端口范围、内核内存、线程栈六维瓶颈分析，引出 BIO vs NIO 的内存对比
 
-服务端为每个连接分配一个线程：
+### 3.4 Socket 选项：生产中真正要调的参数
 
-```
-Client A → Thread A（阻塞在 read()）
-Client B → Thread B（阻塞在 read()）
-Client C → Thread C（阻塞在 read()）
-```
+- `SO_REUSEADDR`：允许绑定 TIME_WAIT 地址，解决服务重启端口被占
+- `SO_REUSEPORT`（Linux 3.9+）：多进程/线程绑定同一端口，内核负载均衡
+- `TCP_NODELAY`：禁用 Nagle 算法，RPC 框架默认开启
+- `SO_KEEPALIVE`：TCP 层保活（默认 2 小时才开始探测，生产需配合应用层心跳）
+- `SO_RCVBUF` / `SO_SNDBUF`：缓冲区调优指南
+- Java 三层 API 设置方式对照表
 
-### 3.3 BIO 为什么无法支撑高并发
+### 3.5 动手：用 Java Socket 跑通一个 Echo
 
-```
-10000 连接 = 10000 线程
-```
-
-问题三位一体：
-
-| 问题 | 影响 |
-|------|------|
-| **内存** | 每个线程 ~1MB 栈空间，10000 线程 = 10GB |
-| **调度开销** | 大量线程频繁上下文切换，CPU 花在调度而非业务 |
-| **资源浪费** | 大部分线程阻塞等待数据，白白占用资源 |
-
-引出 NIO 的必然性。
+- Echo Server（`FixedThreadPool` 版本）+ Echo Client
+- 代码剖析：为什么 `flush()` 必要、为什么用 `FixedThreadPool` 而非 `CachedThreadPool`
+- **BIO 的局限**：一连接一线程 → 10000 连接 = ~10GB 栈内存 → 不可行 → 引出 NIO
 
 ---
 
@@ -245,151 +243,65 @@ NIO 强大但存在工程问题：
 
 ## 5 Netty：Java 高性能网络框架
 
-本章目标：理解 Netty 如何封装 NIO 的复杂性，提供高性能、易扩展的网络编程框架。这章是后端开发面试和实战的重点。
+本章目标：从生产故障（Dubbo 线程池打满）往回拆解 Netty 的线程模型、内存管理和编解码机制。理解 Netty 不是"NIO 的封装库"，而是 Dubbo、gRPC、Elasticsearch 的底层传输基石。
 
-### 5.1 为什么需要 Netty
+### 5.1 从 NIO 到 Netty：为什么原生 NIO 没人直接用了
 
-Netty 解决了原生 NIO 的三大痛点：
+- **5.1.1 NIO 的三个致命缺陷**：Buffer flip/clear/compact 手动切、epoll 空轮询 Bug、缺少编解码及线程模型
+- **5.1.2 Netty 填了什么**：ByteBuf 读写指针分离、空轮询检测+重建 Selector、内置 HTTP/WebSocket 编解码器和拆包器
 
-- **API 复杂** → 统一抽象，简化编程模型
-- **性能问题** → 消除 epoll 空轮询 Bug，内存池化、零拷贝
-- **扩展需求** → 丰富的协议支持（HTTP、WebSocket、自定义协议）
+### 5.2 EventLoop 线程模型：Dubbo「线程池打满」的根
 
-### 5.2 Netty 核心架构
+- **5.2.1 Boss 和 Worker：连接和数据分开管**：bossGroup 只管 accept → Round-Robin 分给 workerGroup 读数据；Channel 的所有 I/O 事件由同一个 EventLoop 线程处理
+- **5.2.2 Dubbo 的 dispatcher 和 threadpool：IO 线程和业务线程的分工**：dispatcher 决定 Handler 在哪个线程上跑，threadpool 决定业务线程池大小——两层概念不搞混
+- **5.2.3 EventLoop 任务队列：别阻塞 I/O 线程**：耗时操作必须交给独立业务线程池
 
-```
-Bootstrap（启动入口）
-      ↓
-EventLoopGroup（线程池）
-      ↓
-Channel（连接抽象）
-      ↓
-ChannelPipeline（拦截器链）
-      ↓
-ChannelHandler（业务处理）
-```
+### 5.3 ByteBuf：你线上见过但没看懂的 `Direct buffer memory` OOM
 
-### 5.3 EventLoop：Netty 的线程模型
+读写指针分离（readerIndex / writerIndex），不需要 flip。池化堆外内存不受 GC 管理 → `-XX:MaxDirectMemorySize` 默认等于 `-Xmx` → 堆有空间但 OOM 的根因。引用计数（retain/release）+ `SimpleChannelInboundHandler` 自动释放。
 
-连接第三卷并发知识：
+### 5.4 编解码：TCP 粘包/拆包的工业化解决方案
 
-- 一个 `EventLoop` = 一个线程 + 一个 `Selector`
-- 一个 `EventLoop` 负责多个 `Channel`
-- 一个 `Channel` 的所有操作都在同一个 `EventLoop` 中执行 → **线程安全，无需加锁**
+三种帧解码器：`FixedLengthFrameDecoder`、`DelimiterBasedFrameDecoder`、`LengthFieldBasedFrameDecoder`（Dubbo 协议帧用的就是这种）。帧解码之后的数据才是完整消息，少了这一步 → 半包/粘包数据直接进业务 Handler → 报错或丢数据。
 
-### 5.4 ChannelPipeline：责任链模式
+### 5.5 Reactor 模式全景：从单线程到主从
 
-Netty 扩展性的核心：
-
-```
-Inbound:   [Decoder1] → [Decoder2] → [BusinessHandler]
-Outbound:  [BusinessHandler] → [Encoder2] → [Encoder1]
-```
-
-数据在 Pipeline 中按顺序经过各个 Handler，每个 Handler 只处理自己关心的事。
-
-### 5.5 ByteBuf：Netty 的内存模型
-
-为什么比 `ByteBuffer` 好用：
-
-| | ByteBuffer | ByteBuf |
-|---|---|---|
-| 读写模式 | 需要 `flip()` 切换 | 独立读/写指针 |
-| 容量 | 固定 | 自动扩容 |
-| 内存类型 | Heap | Heap + Direct |
-| 引用计数 | 无 | 支持，便于池化和回收 |
-
-### 5.6 编解码机制
-
-解决 TCP 粘包拆包的工程方案：
-
-| 解码器 | 适用场景 |
-|--------|---------|
-| `FixedLengthFrameDecoder` | 固定长度消息 |
-| `DelimiterBasedFrameDecoder` | 以分隔符结尾的消息 |
-| `LengthFieldBasedFrameDecoder` | 消息头包含长度字段 |
-
-### 5.7 Netty 线程模型深入
-
-```
-Boss Group（EventLoop × 1）  →  只处理 accept 事件
-Worker Group（EventLoop × N） →  处理 read/write 事件
-Task Queue                     →  异步任务
-```
-
-这是**主从 Reactor 模式**的经典实现。
+bossGroup → workerGroup → [可选 businessGroup] → Pipeline → FrameDecoder → Codec → BizHandler。和 Tomcat 的 Acceptor/Poller/Worker 是同一种模式的不同实现。
 
 ---
 
 ## 6 HTTP 协议：应用层通信标准
 
-本章目标：理解 HTTP 不是"调用接口的协议"，而是建立在 TCP 之上的应用层消息规范。理解报文结构、方法语义、状态码体系以及从 HTTP/1.1 到 HTTP/3 的演进逻辑。
+本章目标：从生产故障（502/504/超时傻傻分不清、API 偶尔慢找不到瓶颈）往回拆解 HTTP 报文结构、方法语义、状态码排查、版本演进。HTTP 不是你"调用接口的协议"，是你每天在排障时第一个要读的协议。
 
-### 6.1 HTTP 为什么出现
+### 6.1 一次 HTTP 请求到底花了多少时间
 
-TCP 只负责**可靠传输**，不关心传输的是什么。
+- **6.1.1 curl 分阶段计时**：`time_namelookup` / `time_connect` / `time_appconnect` / `time_starttransfer` / `time_total` 六个阶段精确拆解，告诉你瓶颈在 DNS / TCP / TLS / 服务端处理哪一层
+- **6.1.2 HTTP 在 TCP 连接上的完整生命周期**：DNS → TCP 三次握手 → TLS → 发送请求 → 服务端处理（TTFB）→ 接收响应 → Keep-Alive 复用或关闭
 
-HTTP 定义了**业务通信规则**：如何发请求、如何返回响应、状态如何表达。
+### 6.2 HTTP 报文：你每天在写的 REST API，底层长什么样
 
-### 6.2 HTTP 报文结构
+- **6.2.1 请求报文结构**：请求行 → 请求头 → CRLF → 请求体
+- **6.2.2 响应报文结构**：状态行 → 响应头 → CRLF → 响应体
+- **6.2.3 Header 分类速查**：通用头 / 请求头 / 响应头 / 实体头
 
-```
-Request:
-  Method SP URL SP Version CRLF
-  Header: Value CRLF
-  ...
-  CRLF
-  Body
+### 6.3 HTTP 方法：你的 GET 不是真的只读
 
-Response:
-  Version SP Status SP Reason CRLF
-  Header: Value CRLF
-  ...
-  CRLF
-  Body
-```
+- **6.3.1 安全与幂等——这两个属性是你线上数据的防线**：GET 被爬虫扫到 → 写操作凭空触发 → 改用 POST 保数据
+- **6.3.2 GET 与 POST 的常见误解**：长度不是协议限制、安全性依赖 HTTPS 而非方法
 
-### 6.3 HTTP 方法语义
+### 6.4 HTTP 状态码：你线上的每一个 5xx 都在说不同的事
 
-| 方法 | 语义 | 幂等 | 安全 |
-|------|------|------|------|
-| GET | 获取资源 | ✅ | ✅ |
-| POST | 创建资源 | ❌ | ❌ |
-| PUT | 全量更新 | ✅ | ❌ |
-| DELETE | 删除资源 | ✅ | ❌ |
-| PATCH | 部分更新 | ❌ | ❌ |
+- **6.4.1 502 vs 504 vs Connection Timeout——别再搞混了**：502 = 上游进程挂了连不上 → `connect() failed`；504 = 上游还活着但超时 → `upstream timed out`。排查方向和抢救手段完全不同
+- **6.4.2 4xx：问题在你这边**：400/401/403/404/429 的触发场景和排查方向
+- **6.4.3 5xx：问题在服务端或中间层**：500/502/503/504 的根因、排查命令和抢救优先级
+- **6.4.4 快速判断：从 Nginx error.log 定位问题层**：四个关键 error 关键词一行诊断
 
-重点理解**语义**，而不是死记。
+### 6.5 HTTP 版本演进：为什么你的 HTTPS 接口比别人慢一拍
 
-### 6.4 HTTP 状态码
-
-| 类别 | 含义 | 典型状态码 |
-|------|------|-----------|
-| 2xx | 成功 | 200 OK、201 Created、204 No Content |
-| 3xx | 重定向 | 301 永久、302 临时、304 未修改 |
-| 4xx | 客户端错误 | 400 参数错误、401 未认证、403 禁止、404 未找到 |
-| 5xx | 服务端错误 | 500 内部错误、502 网关错误、503 服务不可用 |
-
-### 6.5 HTTP/1.1
-
-- **Keep-Alive**：复用 TCP 连接，减少握手开销
-- **Pipeline**：一个连接上排队发送多个请求
-- **局限性**：队头阻塞（HOL Blocking）——一个慢响应对后续响应有影响
-
-### 6.6 HTTP/2
-
-从文本到二进制帧的革命：
-
-| 改进 | 效果 |
-|------|------|
-| 二进制分帧 | 解析更高效 |
-| 多路复用 | 同一连接并发处理多个请求/响应 |
-| 头部压缩 | 减少重复头部传输 |
-| Server Push | 服务端主动推送资源 |
-
-### 6.7 HTTP/3（简介）
-
-基于 QUIC（UDP），解决 TCP 层面的队头阻塞问题，支持 0-RTT 快速建连。
+- **6.5.1 HTTP/1.0 → HTTP/1.1**：Keep-Alive 省掉每次重连的 TCP 握手
+- **6.5.2 HTTP/1.1 → HTTP/2**：多路复用消除应用层队头阻塞
+- **6.5.3 HTTP/2 → HTTP/3**：QUIC（UDP）消除 TCP 层队头阻塞，0-RTT 建连
 
 ---
 
@@ -454,62 +366,32 @@ HTTP Response
 
 ## 8 RPC 与微服务通信
 
-本章目标：区分 HTTP（面向用户）和 RPC（面向服务）的不同设计哲学，理解 RPC 的核心组成——代理、协议、序列化、传输层。
+本章目标：从生产故障（Dubbo 超时卡在哪一层、GC 导致的静默超时、线程池打满）往回拆解 RPC 的完整调用链路、序列化、服务发现。RPC 不是"看起来像本地调用的远程调用"——它是一组可独立拆解的环节，每环节对应不同排查方向。
 
-### 8.1 为什么需要 RPC
+### 8.1 一次 Dubbo 调用超时，到底卡在哪一层
 
-| | HTTP | RPC |
-|---|---|---|
-| 面向对象 | 面向资源（URL） | 面向方法（函数调用） |
-| 设计哲学 | 通用、可读 | 高效、透明 |
-| 典型场景 | 浏览器 ↔ 服务 | 服务 ↔ 服务 |
-| 代表技术 | REST API | Dubbo、gRPC |
+- **8.1.1 Dubbo Profiler 拆解——6 个环节的耗时**：Consumer Filter → Cluster/Failover → Invoker → 网络 → Provider Filter → Biz Impl，每环的精确定量
+- **8.1.2 GC 导致的「静默超时」——RPC 超时排查最隐蔽的坑**：请求进了 Provider 但 3 秒后才执行，所有监控正常——根因是 G1 mixed GC 的 ref-proc 阶段单线程阻塞，排查方法：GC 日志 ↔ RPC 超时时间点对账
 
-RPC 的目标：让远程调用**像本地调用一样自然**。
+### 8.2 RPC 到底做了什么：一次远程调用的完整旅程
 
-### 8.2 RPC 核心组成
+- **8.2.1 一句话总览**：Proxy 拦截 → 序列化 → 协议封装 → Socket 发送 → 反序列化 → 反射调用 → 写回
+- **8.2.2 各环节在你线上能表现出什么问题**：每环的正常表现与异常表现对照
+- **8.2.3 HTTP vs RPC：你该用哪个**：对外 HTTP REST，对内 RPC
 
-```
-Client Stub（代理，调用方看起来像本地方法）
-      ↓
-序列化（Java 对象 → 二进制）
-      ↓
-协议封装（请求 ID + 方法名 + 参数）
-      ↓
-网络传输（Socket / Netty）
-      ↓
-反序列化（二进制 → Java 对象）
-      ↓
-Server Stub（服务端反射调用）
-```
+### 8.3 RPC 超时排查三板斧
 
-### 8.3 序列化机制
+第一板斧：Consumer 和 Provider 两侧日志对账；第二板斧：GC 日志找 STW > 500ms 的 pause；第三板斧：tcpdump 抓包看重传与丢包
 
-| 序列化方案 | 特点 | 适用场景 |
-|-----------|------|---------|
-| JSON | 可读性好，兼容性强 | REST API、跨语言 |
-| Protobuf | 体积小、速度快 | gRPC、高性能场景 |
-| Hessian | Java 友好 | Dubbo 默认 |
-| Kryo | 高性能 | 大数据场景 |
+### 8.4 序列化：你的对象为什么传得比想象的慢
 
-### 8.4 服务发现
+- **8.4.1 性能对比**：Kryo > Protobuf > Hessian > JSON（体积和速度差异可达 10 倍）
+- **8.4.2 典型踩坑：Protobuf 默认值陷阱**：int32 默认值 0 不序列化 → Java 端反序列化为 null → autoboxing NPE
 
-```
-Service Provider → 注册 → Service Registry（Nacos / Zookeeper）
-                                 ↓
-Service Consumer ← 订阅 ← 获取服务地址列表
-                                 ↓
-                           负载均衡 → 调用
-```
+### 8.5 服务发现：「该调谁」的问题
 
-### 8.5 RPC 与 HTTP 的选择
-
-| 场景 | 推荐方案 |
-|------|---------|
-| 对外开放 API | REST（HTTP + JSON） |
-| 内部服务间高效调用 | gRPC（Protobuf） |
-| Java 生态微服务 | Dubbo |
-| 跨语言 + 高性能 | gRPC |
+- **8.5.1 注册中心的本质**：Provider 注册 → Consumer 订阅 → 本地缓存 → 负载均衡选择 → 调用。注册中心挂了不影响已缓存实例的调用
+- **8.5.2 负载均衡策略**：Random / RoundRobin / LeastActive / ConsistentHash 的适用场景
 
 ---
 
