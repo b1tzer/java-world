@@ -1,75 +1,95 @@
 # 第6章 HTTP 协议：应用层通信标准
 
-> TCP 解决了"字节如何可靠地从 A 传到 B"的问题，但两个应用程序之间要交换什么数据、用什么格式、如何确认对方理解了——这些"业务通信规则"TCP 并不关心。HTTP（HyperText Transfer Protocol）正是为解决这个问题而诞生的应用层协议：它定义了客户端与服务器之间**请求-响应**的完整语义，是当今互联网上最广泛使用的通信标准。
+> 你的 Grafana 监控面板亮了一排红灯：502、504、Connection Timeout。team 群里的运营已经在催「接口挂了」。你打开 Nginx error.log，看到 `upstream timed out` 和 `connection refused` 交替出现——但这两个错误的根因完全不同，一个需要修上游代码，一个需要看上游进程是不是挂了。你怎么在 5 分钟内判断应该把时间花在哪？
 
-## 6.1 HTTP 为什么出现
+> **📖 阅读建议**：如果你正盯着 502/504 告警排障，直接从 §6.4 状态码开始。§6.1-§6.3 是 HTTP 协议基础——每天写 REST API 的人建议全部读完，很多坑都源于「你以为你懂了 GET」。
 
-### 6.1.1 从 TCP 到 HTTP
+---
 
-TCP 是传输层协议，提供可靠的字节流传输。但仅有 TCP 是不够的：
+## 6.1 一次 HTTP 请求到底花了多少时间
 
-```text
-问题：浏览器想要获取 www.example.com 的首页
+先从你线上真正关心的问题开始：**一个 HTTP 请求的耗时，到底是花在网络上了，还是花在服务端处理上了？**
 
-TCP 能做到：建立连接 → 发送字节 → 接收字节 → 关闭连接
+### 6.1.1 curl 分阶段计时
 
-TCP 做不到：
-  - 发什么格式的请求？            → HTTP 定义了请求报文格式
-  - 怎么告诉服务器我要哪个资源？   → HTTP 定义了 URI + 方法
-  - 服务器怎么告诉客户端结果？     → HTTP 定义了响应报文格式
-  - 返回的数据是什么类型？         → HTTP 定义了 Content-Type
-  - 连接要不要保持？               → HTTP 定义了 Connection 头
+你的 API 偶尔从 200ms 飙到 8 秒，没有规律，日志里一切正常。这时候不要猜——用 `curl -w` 把一次请求拆成 6 个阶段的耗时：
+
+```bash
+curl -w "DNS解析: %{time_namelookup}s | TCP连接: %{time_connect}s | TLS握手: %{time_appconnect}s | 首字节(TTFB): %{time_starttransfer}s | 总耗时: %{time_total}s\n" \
+  -o /dev/null -s https://api.example.com/users/1
 ```
 
-### 6.1.2 HTTP 的设计哲学
-
-HTTP 由 Tim Berners-Lee 在 1989 年发明，其设计遵循几个核心原则：
-
-| 原则 | 含义 | 体现 |
-|------|------|------|
-| **简单性** | 协议报文是人类可读的文本 | 请求/响应格式为纯 ASCII 文本 |
-| **无状态** | 服务器不记住客户端的上下文 | 每个请求独立，不依赖之前的请求 |
-| **可扩展** | 通过头部字段扩展能力 | 自定义 Header、Content-Type 等 |
-| **面向资源** | 一切皆资源，用 URI 标识 | `/api/users/123` 表示 ID 为 123 的用户 |
-
-### 6.1.3 协议分层中的位置
+| 阶段 | 含义 | 异常高意味着什么 |
+|------|------|----------------|
+| `time_namelookup` | DNS 解析耗时 | DNS 服务器慢或缓存失效 |
+| `time_connect` | TCP 三次握手耗时 | 网络延迟高，检查 RTT |
+| `time_appconnect` | TLS 握手耗时 | SSL 证书链长或 OCSP 超时 |
+| `time_starttransfer` | 首字节时间（TTFB） | **服务端处理慢**——这是你最该查的阶段 |
+| `time_total` | 总耗时 | 前面所有阶段之和 |
 
 ```text
-┌─────────────────────────────────────────┐
-│  应用层    HTTP / HTTPS / WebSocket     │  ← 本章主角
-├─────────────────────────────────────────┤
-│  传输层    TCP / UDP                    │
-├─────────────────────────────────────────┤
-│  网络层    IP                           │
-├─────────────────────────────────────────┤
-│  链路层    Ethernet / Wi-Fi             │
-└─────────────────────────────────────────┘
+典型结果解读：
+
+正常请求：
+DNS:0.002 | TCP:0.005 | TLS:0.015 | TTFB:0.180 | Total:0.202
+↑ 网络很快，服务端处理 180ms 也正常
+
+慢请求但网络正常：
+DNS:0.001 | TCP:0.003 | TLS:0.012 | TTFB:8.500 | Total:8.516
+↑ TTFB 占了 8.5 秒——瓶颈在服务端处理，不是网络
+
+慢请求且网络也慢：
+DNS:0.520 | TCP:0.320 | TLS:0.850 | TTFB:0.180 | Total:1.870
+↑ DNS+TCP+TLS 占了 1.7 秒——问题在客户端到服务器的链路
 ```
 
-HTTP 工作在 TCP 之上（HTTP/3 之前），默认端口 80（HTTPS 默认 443）。
+**如果 TTFB 高**：问题在你的服务端（慢 SQL、锁等待、线程池满、外部依赖超时）。**如果 `time_connect` 高**：问题在链路（跨机房、防火墙、负载均衡）。工具把你的直觉变成了数字，接下来去哪查、怎么查就知道了。
 
-## 6.2 HTTP 报文结构
+### 6.1.2 HTTP 在 TCP 连接上的完整生命周期
 
-### 6.2.1 请求报文（Request）
-
-HTTP 请求由三部分组成：**请求行**、**请求头**、**请求体**。
+一个 HTTP 请求从发出到收到响应，经历的不是一个原子操作，而是一组可拆解的阶段：
 
 ```text
-┌────────────────────────────────────────────┐
-│ 请求行 (Request Line)                       │
-│   方法  空格  URI  空格  版本  CRLF         │
-├────────────────────────────────────────────┤
-│ 请求头 (Request Headers)                    │
-│   Header-Name: Header-Value  CRLF          │
-│   ...                                      │
-│   CRLF (空行，标识头部结束)                  │
-├────────────────────────────────────────────┤
-│ 请求体 (Request Body)                       │
-│   (可选，POST/PUT/PATCH 时携带数据)         │
-└────────────────────────────────────────────┘
+客户端                                    服务器
+  │                                         │
+  ├─ ① DNS 解析 (time_namelookup)           │
+  │    api.example.com → 10.0.1.100        │
+  │                                         │
+  ├─ ② TCP 三次握手 (time_connect)          │
+  │  SYN → SYN-ACK → ACK                    │
+  │                                         │
+  ├─ ③ TLS 握手 (time_appconnect, HTTPS)    │
+  │  ClientHello → ServerHello → 证书交换    │
+  │                                         │
+  ├─ ④ 发送 HTTP Request                    │
+  │  GET /api/users/1 HTTP/1.1              │
+  │  Host: api.example.com                  │
+  │                                         │
+  │                    ┌─────────────────────┤
+  │                    │ ⑤ 服务端处理(TTFB)    │
+  │                    │   - 路由匹配          │
+  │                    │   - 业务逻辑          │
+  │                    │   - DB 查询           │
+  │                    │   - 序列化            │
+  │                    └─────────────────────┤
+  │                                         │
+  │ ←──⑥ HTTP Response ─────────────────── │
+  │  HTTP/1.1 200 OK                        │
+  │  Content-Type: application/json         │
+  │  {"id":1,"name":"张三"}                  │
+  │                                         │
+  ├─ ⑦ 四次挥手 (或 Keep-Alive 复用)         │
 ```
 
-一个真实的请求示例：
+**每个阶段都是一个可能的故障点**，而且每个阶段的排查工具不同。§6.4 讲的状态码，就是用来告诉你是哪一段出了问题。
+
+---
+
+## 6.2 HTTP 报文：你每天在写的 REST API，底层长什么样
+
+从 curl 分阶段计时你已经知道怎么定位瓶颈了。现在看瓶颈的「承载物」——HTTP 报文本身。
+
+### 6.2.1 请求报文结构
 
 ```http
 POST /api/users HTTP/1.1
@@ -82,378 +102,199 @@ Connection: keep-alive
 {"name":"张三","email":"zhangsan@example.com"}
 ```
 
-各部分解析：
-
-| 部分 | 内容 | 说明 |
-|------|------|------|
-| 请求行 | `POST /api/users HTTP/1.1` | 方法=POST，资源=/api/users，版本=HTTP/1.1 |
-| Host | `www.example.com` | 虚拟主机必需字段 |
-| Content-Type | `application/json` | 请求体的数据格式 |
-| Content-Length | `45` | 请求体的字节长度 |
-| Authorization | `Bearer eyJ...` | 认证凭据 |
-| 请求体 | `{"name":"张三",...}` | 实际提交的数据 |
-
-### 6.2.2 响应报文（Response）
-
 ```text
 ┌────────────────────────────────────────────┐
-│ 状态行 (Status Line)                        │
-│   版本  空格  状态码  空格  原因短语  CRLF   │
+│ 请求行 (Request Line)                       │
+│   方法  空格  URI  空格  版本  CRLF         │
 ├────────────────────────────────────────────┤
-│ 响应头 (Response Headers)                   │
-│   Header-Name: Header-Value  CRLF          │
-│   ...                                      │
-│   CRLF                                     │
+│ 请求头 (Request Headers)                    │
+│   Header: Value CRLF                       │
+│   CRLF (空行，头部结束)                      │
 ├────────────────────────────────────────────┤
-│ 响应体 (Response Body)                      │
-│   (实际的资源内容)                           │
+│ 请求体 (Request Body, 可选)                 │
 └────────────────────────────────────────────┘
 ```
 
-响应示例：
+### 6.2.2 响应报文结构
 
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/json
 Content-Length: 62
 Location: /api/users/42
-Date: Tue, 04 Aug 2026 14:00:00 GMT
 
 {"id":42,"name":"张三","email":"zhangsan@example.com"}
 ```
 
-### 6.2.3 Header 字段分类
+### 6.2.3 Header 分类速查
 
 | 类别 | 示例 | 说明 |
 |------|------|------|
-| **通用头** | `Date`, `Connection`, `Cache-Control` | 请求和响应都可以使用 |
-| **请求头** | `Host`, `Authorization`, `Accept`, `User-Agent` | 客户端发给服务器 |
-| **响应头** | `Server`, `Set-Cookie`, `ETag`, `Location` | 服务器发给客户端 |
-| **实体头** | `Content-Type`, `Content-Length`, `Content-Encoding` | 描述 Body 的元数据 |
+| **通用头** | `Date`, `Connection`, `Cache-Control` | 请求和响应都能用 |
+| **请求头** | `Host`, `Authorization`, `Accept` | 客户端发出 |
+| **响应头** | `Server`, `Set-Cookie`, `Location` | 服务端返回 |
+| **实体头** | `Content-Type`, `Content-Length`, `Content-Encoding` | 描述 Body |
 
-### 6.2.4 请求/响应在 TCP 中的传输
+对 Java 开发者而言，你不需要手拼 HTTP 报文——Spring MVC 和 OkHttp 替你做了。但当你线上排查 `415 Unsupported Media Type` 的时候，如果你不知道错误出在 `Content-Type` 头而不是请求体本身，排查方向就错了。
 
-HTTP 报文通过 TCP 字节流传输，请求和响应是交替进行的：
+---
 
-```text
-客户端                                 服务器
-  │                                     │
-  │ ──── TCP 三次握手 ─────────────→    │
-  │                                     │
-  │ ──── HTTP Request ─────────────→    │
-  │                                     │
-  │ ←──── HTTP Response ───────────    │
-  │                                     │
-  │ ──── HTTP Request ─────────────→    │  (Keep-Alive 复用连接)
-  │                                     │
-  │ ←──── HTTP Response ───────────    │
-  │                                     │
-  │ ──── TCP 四次挥手 ─────────────→    │
+## 6.3 HTTP 方法：你的 GET 不是真的只读
+
+### 6.3.1 安全与幂等——这两个属性是你线上数据的防线
+
+HTTP 定义了 9 个方法。对 Java 后端而言，只需要记住两个核心属性就够用了：
+
+| 方法 | 安全（不修改资源） | 幂等（多次调用结果相同） |
+|------|:--:|:--:|
+| GET | ✅ | ✅ |
+| HEAD | ✅ | ✅ |
+| OPTIONS | ✅ | ✅ |
+| PUT | ❌ | ✅ |
+| DELETE | ❌ | ✅ |
+| POST | ❌ | ❌ |
+| PATCH | ❌ | ❌ |
+
+**安全**决定了爬虫、重试、CDN 预取会不会对你的服务产生副作用。**幂等**决定了网络超时重发会不会产生重复数据。
+
+```java
+// ✅ GET 是安全的——CDN 预取、爬虫大量请求不会改数据
+@GetMapping("/users/{id}")
+public User getUser(@PathVariable Long id) {
+    return userService.findById(id);
+}
+
+// ❌ 线上真实踩坑：GET 里做了写入
+@GetMapping("/users/{id}/login")
+public void recordLogin(@PathVariable Long id) {
+    loginLogService.insert(id, LocalDateTime.now());  // 写入操作！
+    // 爬虫扫了这个 URL → 凭空刷了几万条「登录记录」
+}
+
+// ✅ 改为 POST——明确告诉调用方「这是有副作用的操作」
+@PostMapping("/users/{id}/login")
+public void recordLogin(@PathVariable Long id) { ... }
 ```
 
-## 6.3 HTTP 方法语义
-
-### 6.3.1 标准方法一览
-
-HTTP 定义了一组 **请求方法**，每个方法有明确的语义：
-
-| 方法 | 语义 | 有请求体 | 有响应体 | 安全 | 幂等 |
-|------|------|----------|----------|------|------|
-| **GET** | 获取资源 | 否 | 是 | ✅ | ✅ |
-| **POST** | 提交数据/创建资源 | 是 | 是 | ❌ | ❌ |
-| **PUT** | 全量替换资源 | 是 | 可选 | ❌ | ✅ |
-| **DELETE** | 删除资源 | 否 | 可选 | ❌ | ✅ |
-| **PATCH** | 部分更新资源 | 是 | 可选 | ❌ | ❌ |
-| **HEAD** | 获取资源元数据（无 Body） | 否 | 否 | ✅ | ✅ |
-| **OPTIONS** | 查询服务器支持的方法 | 否 | 是 | ✅ | ✅ |
-
-### 6.3.2 安全与幂等
-
-这两个属性是 HTTP 方法语义的核心：
-
-**安全（Safe）：** 不修改服务器上的资源。GET 和 HEAD 是安全的——它们只是"读"操作，不会产生副作用。
-
-**幂等（Idempotent）：** 同一个请求执行一次和执行多次，效果相同。
-
-```text
-幂等的例子：
-  PUT /users/42 {"name":"李四"}
-  → 执行1次：name = "李四"
-  → 执行10次：name = "李四"  (结果相同)
-
-非幂等的例子：
-  POST /orders {"amount":100}
-  → 执行1次：创建1个订单
-  → 执行10次：创建10个订单  (结果不同！)
-```
-
-### 6.3.3 GET vs POST 的常见误解
+### 6.3.2 GET 与 POST 的常见误解
 
 | 误解 | 事实 |
 |------|------|
-| "GET 参数有长度限制" | 协议本身无限制，是浏览器/服务器的实现限制 |
-| "POST 比 GET 安全" | 都是明文传输，安全性取决于 HTTPS，而非方法 |
-| "GET 不能有 Body" | 协议允许，但大部分服务器/框架会忽略 |
-| "GET 只用于查询" | 语义建议如此，但不是强制（有些 API 用 GET 做搜索） |
+| "GET 参数有长度限制" | 协议本身无限制，限制来自浏览器地址栏和服务器默认 buffer |
+| "POST 比 GET 安全" | 都是明文传输（HTTP），安全性依赖 HTTPS |
+| "GET 不能有 Body" | 协议允许，但大多数框架会忽略 |
 
-### 6.3.4 RESTful 方法映射
+---
 
-REST 架构风格将 HTTP 方法映射到 CRUD 操作：
+## 6.4 HTTP 状态码：你线上的每一个 5xx 都在说不同的事
 
-```text
-CRUD 操作      HTTP 方法       URI 示例            语义
-─────────      ──────────      ──────────          ──────
-Create         POST            /api/users          创建新用户
-Read           GET             /api/users/42       获取用户 42
-Update         PUT             /api/users/42       全量更新用户 42
-Update         PATCH           /api/users/42       部分更新用户 42
-Delete         DELETE          /api/users/42       删除用户 42
-List           GET             /api/users?page=1   获取用户列表
-```
+这是本章最重要的部分。线上告警亮了最多的就是 4xx 和 5xx，但它们背后对应的排查方向完全不同。
 
-## 6.4 HTTP 状态码
+### 6.4.1 502 vs 504 vs Connection Timeout——别再搞混了
 
-### 6.4.1 状态码分类
-
-HTTP 状态码是三位数字，按首位分类：
-
-| 范围 | 类别 | 含义 |
-|------|------|------|
-| 1xx | 信息性 | 请求已接收，继续处理 |
-| 2xx | 成功 | 请求已成功处理 |
-| 3xx | 重定向 | 需要进一步操作 |
-| 4xx | 客户端错误 | 请求有误 |
-| 5xx | 服务器错误 | 服务器处理失败 |
-
-### 6.4.2 常见状态码详解
-
-#### 2xx 成功
-
-| 状态码 | 名称 | 语义 | 典型场景 |
-|--------|------|------|----------|
-| 200 | OK | 请求成功 | GET 返回资源、PUT 更新成功 |
-| 201 | Created | 资源已创建 | POST 创建资源成功，配合 `Location` 头 |
-| 204 | No Content | 成功但无响应体 | DELETE 删除成功 |
-
-#### 3xx 重定向
-
-| 状态码 | 名称 | 语义 | 缓存 |
-|--------|------|------|------|
-| 301 | Moved Permanently | 永久重定向 | 浏览器会缓存 |
-| 302 | Found | 临时重定向 | 不缓存 |
-| 304 | Not Modified | 资源未修改 | 配合 `ETag`/`If-None-Match` |
-
-304 的工作流程：
+你用 Nginx 做反向代理，后面挂着 Java 应用。线上告警亮了：
 
 ```text
-客户端: GET /style.css
-        If-None-Match: "abc123"
-→
-
-← 服务器: 比对 ETag
-          如果匹配 → 304 Not Modified (不传输 Body，节省带宽)
-          如果不匹配 → 200 OK + 新的 style.css
+2026-08-09 15:32:11 error.log: connect() failed (111: Connection refused) while connecting to upstream
+2026-08-09 15:35:47 error.log: upstream timed out (110: Connection timed out) while reading response header from upstream
+2026-08-09 15:40:02 access.log: GET /api/orders 502
+2026-08-09 15:40:08 access.log: GET /api/export 504
 ```
 
-#### 4xx 客户端错误
+这三种错误码，根因完全不一样：
 
-| 状态码 | 名称 | 语义 | 典型场景 |
-|--------|------|------|----------|
-| 400 | Bad Request | 请求格式错误 | JSON 语法错误、参数缺失 |
-| 401 | Unauthorized | 未认证 | 缺少或无效的 Token |
-| 403 | Forbidden | 无权限 | 已认证但权限不足 |
-| 404 | Not Found | 资源不存在 | URI 错误或资源已删除 |
-| 405 | Method Not Allowed | 方法不支持 | 用 POST 访问只支持 GET 的资源 |
-| 429 | Too Many Requests | 请求过多 | 触发限流 |
+| 错误 | Nginx error.log 关键词 | 根因 | 排查方向 |
+|------|----------------------|------|---------|
+| **502** | `connect() failed` / `connection refused` | 上游根本没响应——进程挂了、端口没监听、防火墙拦了 | `netstat -tlnp` 看端口、`systemctl status` 看进程 |
+| **504** | `upstream timed out` | 上游还活着但处理超时——慢 SQL、线程池满、外部依赖卡 | 看 TTFB、`jstack`、数据库慢查询日志 |
+| **Connection Timeout** | error.log 干净但客户端连不上 | TCP 握手阶段失败——SYN 队列满、`somaxconn` 太小、防火墙 DROP | `ss -s` 看 SYN-RECV、`netstat -s` 看丢包 |
 
-**401 vs 403 的区别：**
+**502 和 504 的根本区别**：502 是「叫不到人」（上游已死或不存在），504 是「人来了但不理你」（上游忙着处理别的事）。
+
+### 6.4.2 4xx：问题在你这边
+
+| 状态码 | 什么时候会出现 | 你该查什么 |
+|--------|-------------|----------|
+| **400** | 前端发来的 JSON 少了一个必填字段 | 请求体的 `Content-Type` 和参数校验 |
+| **401** | Token 过期了，前端没做刷新 | `Authorization` 头和 JWT 有效期 |
+| **403** | 用户有 Token 但没这个接口的权限 | RBAC 配置和 `@PreAuthorize` |
+| **404** | URL 写错了或资源真的被删了 | `@RequestMapping` 路径是否匹配 |
+| **429** | 触发了网关的限流规则 | 限流配置和客户端退避策略 |
+
+### 6.4.3 5xx：问题在服务端或中间层
+
+| 状态码 | 什么时候会出现 | 排查命令 |
+|--------|-------------|---------|
+| **500** | 代码没 catch 住的异常（NPE、SQLException） | `grep "ERROR" application.log` |
+| **502** | 上游进程挂了、Nginx 连不上 upstream | `netstat -tlnp | grep 8080` |
+| **503** | 服务过载、所有 Worker 线程都在忙 | `jstack | grep catalina-exec | wc -l` |
+| **504** | 上游处理太慢，超过 Nginx 的 `proxy_read_timeout`（默认 60s） | `grep "upstream timed out" error.log` + 查慢 SQL |
+
+> **生产环境警告**：出现 504 时不要第一反应拉大 `proxy_read_timeout`。如果根因是上游卡在慢 SQL 或锁等待，拉大超时只会让连接占用更久，入口层更容易被拖死。先直连上游看实际响应时间，再决定调配置还是修代码。
+
+### 6.4.4 快速判断：从 Nginx error.log 定位问题层
+
+```bash
+# 一行的快速诊断
+grep -E "connect\(\) failed|upstream timed out|no live upstreams|reset by peer" /var/log/nginx/error.log | tail -20
+```
+
+| 关键词 | 问题层 | 行动 |
+|--------|--------|------|
+| `connect() failed` | 上游未监听 | 重启上游服务 |
+| `upstream timed out` | 上游处理慢 | 查慢 SQL、线程池 |
+| `no live upstreams` | 全部上游不健康 | 查健康检查或全挂了 |
+| `reset by peer` | 上游主动断开 | 查上游 OOM、线程池满 |
+
+---
+
+## 6.5 HTTP 版本演进：为什么你的 HTTPS 接口比别人慢一拍
+
+你写好的 REST API，本地测试正常，上线后前端反馈「首次加载慢」。这不是你的代码问题，是 HTTP 协议版本在起作用。
+
+### 6.5.1 HTTP/1.0 → HTTP/1.1：省掉每次重连的握手
 
 ```text
-401 Unauthorized (未认证):
-  → "你是谁？请先登录。"
-  → 通常配合 WWW-Authenticate 头返回
-
-403 Forbidden (无权限):
-  → "我知道你是谁，但你没权限。"
-  → 登录后访问无权资源
+HTTP/1.0：每请求一次 = 一次 TCP 握手 + 一次数据 + 一次挥手
+HTTP/1.1：一次 TCP 握手 → 多次请求/响应（Keep-Alive）→ 最后才挥手
 ```
 
-#### 5xx 服务器错误
+### 6.5.2 HTTP/1.1 → HTTP/2：一个页面 20 个请求不再排队
 
-| 状态码 | 名称 | 语义 | 典型场景 |
-|--------|------|------|----------|
-| 500 | Internal Server Error | 服务器内部错误 | 未捕获的异常、Bug |
-| 502 | Bad Gateway | 网关错误 | 反向代理后端不可达 |
-| 503 | Service Unavailable | 服务不可用 | 服务器过载或维护 |
-| 504 | Gateway Timeout | 网关超时 | 后端响应超时 |
-
-### 6.4.3 状态码设计原则
-
-<SvgDiagram src="/diagrams/http-status-decision.svg" />
-
-## 6.5 HTTP/1.1 → HTTP/2 → HTTP/3
-
-### 6.5.1 HTTP/1.0 的局限
-
-HTTP/1.0 的默认行为是 **一个请求一个连接**：
+HTTP/1.1 在同一连接上请求必须按序返回（队头阻塞）。HTTP/2 引入的多路复用在一个 TCP 连接上并行传输多个请求/响应：
 
 ```text
-HTTP/1.0:
-  请求1 → 建立TCP → 发送 → 接收 → 关闭TCP
-  请求2 → 建立TCP → 发送 → 接收 → 关闭TCP
-  请求3 → 建立TCP → 发送 → 接收 → 关闭TCP
+HTTP/1.1：
+连接1: 请求CSS → [等待响应] → 请求JS → [等待响应]
+连接2: 请求IMG1 → [等待响应] → ...
 
-问题：每次请求都要 TCP 三次握手 + 四次挥手，延迟巨大
+HTTP/2：
+单连接: 并行传输 CSS + JS + IMG1 + IMG2（互不阻塞）
 ```
 
-### 6.5.2 HTTP/1.1 的改进
+### 6.5.3 HTTP/2 → HTTP/3：TCP 本身也别拖后腿
 
-HTTP/1.1（1997 年，RFC 2068；1999 年修订为 RFC 2616）引入了多项关键改进：
-
-| 特性 | 说明 |
-|------|------|
-| **持久连接** | 默认 `Connection: keep-alive`，复用 TCP 连接 |
-| **管线化（Pipelining）** | 允许连续发送多个请求，不必等前一个响应返回 |
-| **分块传输** | `Transfer-Encoding: chunked`，不必提前知道内容长度 |
-| **Host 头** | 必需字段，支持虚拟主机 |
-| **缓存增强** | `ETag`、`If-None-Match`、`Cache-Control` |
+HTTP/2 解决了应用层队头阻塞，但 TCP 层丢一个包，所有请求都得等重传。HTTP/3 用 QUIC（UDP 之上）彻底消除了这个瓶颈：
 
 ```text
-HTTP/1.1 Keep-Alive + Pipelining:
-  建立TCP → 请求1 → 请求2 → 请求3 → 响应1 → 响应2 → 响应3 → 关闭TCP
-                  ↑
-                  不必等响应1就能发请求2
-
-问题：响应必须按请求顺序返回（队头阻塞）
+TCP (HTTP/1.1 / HTTP/2):   丢 Packet 3 → 所有 Stream 都等
+QUIC (HTTP/3):             丢 Packet 3 → 只影响 Stream 1，其他照常
 ```
-
-**HTTP/1.1 的瓶颈：**
-
-```text
-问题1 — 队头阻塞 (Head-of-Line Blocking):
-  请求1 的响应慢 → 请求2、3 的响应即使已就绪也必须排队等待
-
-问题2 — 连接数限制:
-  浏览器对同一域名限制 6-8 个 TCP 连接
-  需要域名分片 (domain sharding) 来突破限制
-
-问题3 — 头部冗余:
-  每个请求都携带完整的 Header（Cookie 等），大量重复
-```
-
-### 6.5.3 HTTP/2 的革命
-
-HTTP/2（2015 年，RFC 7540）基于 Google 的 SPDY 协议，引入了根本性改变：
-
-#### 二进制分帧层
-
-HTTP/2 将通信分解为更小的 **帧（Frame）**，在 **流（Stream）** 上传输：
-
-<SvgDiagram src="/diagrams/http-message-format.svg" />
-
-#### 多路复用（Multiplexing）
-
-HTTP/2 最核心的特性：**一个 TCP 连接上可以并行传输多个请求/响应，互不阻塞**。
-
-<SvgDiagram src="/diagrams/http2-multiplex.svg" />
-
-#### 头部压缩（HPACK）
-
-HTTP/2 使用 HPACK 算法压缩头部：
-
-```text
-请求1: Cookie: session=abc123; token=xyz789    (100 bytes)
-请求2: Cookie: session=abc123; token=xyz789    (HTTP/1.1 重复100 bytes)
-                                                (HTTP/2: 引用索引，~5 bytes)
-```
-
-#### 服务器推送（Server Push）
-
-服务器可以主动推送客户端可能需要的资源：
-
-```text
-客户端: GET /index.html
-服务器:
-  → 响应 /index.html
-  → 推送 /style.css (客户端可能需要)
-  → 推送 /app.js    (客户端可能需要)
-
-省去了客户端解析 HTML 后再请求 CSS/JS 的往返时间
-```
-
-#### HTTP/2 与 HTTP/1.1 对比
-
-| 特性 | HTTP/1.1 | HTTP/2 |
-|------|----------|--------|
-| 传输格式 | 文本 | 二进制帧 |
-| 多路复用 | ❌ (队头阻塞) | ✅ (Stream 级别并行) |
-| 头部压缩 | ❌ (重复传输) | ✅ (HPACK) |
-| 服务器推送 | ❌ | ✅ |
-| 连接数 | 6-8 个 TCP 连接 | 1 个 TCP 连接 |
-| 队头阻塞 | 应用层存在 | 应用层消除，TCP 层仍存在 |
-
-### 6.5.4 HTTP/3：从 TCP 到 QUIC
-
-HTTP/2 解决了应用层的队头阻塞，但 **TCP 层的队头阻塞仍然存在**：
-
-```text
-TCP 层队头阻塞:
-  Packet 1 (Stream 1) 丢失 → Packet 2 (Stream 2) 即使已到达也必须等待
-                              ↑ TCP 保证有序交付，上层无法绕过
-```
-
-HTTP/3（2022 年，RFC 9114）彻底抛弃 TCP，基于 **QUIC（Quick UDP Internet Connections）** 协议：
-
-#### QUIC 的核心特性
-
-<SvgDiagram src="/diagrams/http-quic-stack.svg" />
-
-| 特性 | 说明 |
-|------|------|
-| **无队头阻塞** | 每个 Stream 独立可靠传输，一个丢包不影响其他 Stream |
-| **0-RTT** | 首次连接 1-RTT，后续连接 0-RTT（比 TCP+TLS 的 3-RTT 快） |
-| **内置加密** | TLS 1.3 内置于 QUIC，无明文传输 |
-| **连接迁移** | 基于 Connection ID 而非 IP:Port，Wi-Fi 切 4G 不断连 |
-
-#### 0-RTT 建立过程
-
-<SvgDiagram src="/diagrams/http-evolution.svg" />
-
-#### 三个版本的演进对比
 
 | 维度 | HTTP/1.1 | HTTP/2 | HTTP/3 |
 |------|----------|--------|--------|
 | 传输层 | TCP | TCP | QUIC (UDP) |
-| 传输格式 | 文本 | 二进制帧 | 二进制帧 |
-| 多路复用 | ❌ | ✅ (应用层) | ✅ (传输层) |
+| 多路复用 | ❌ | ✅ (应用层) | ✅ (传输层，真正无阻塞) |
 | 队头阻塞 | 应用层+TCP | 仅 TCP | 无 |
-| 头部压缩 | ❌ | HPACK | QPACK |
-| 加密 | 可选 (TLS) | 可选 (TLS) | 必须 (TLS 1.3) |
-| 连接建立 | TCP 3次 + TLS 2次 | TCP 3次 + TLS 2次 | 1次 (0-RTT恢复) |
-| 连接迁移 | ❌ | ❌ | ✅ |
-| 浏览器支持 | 全部 | 全部主流 | Chrome/Edge/Firefox |
-
-### 6.5.5 HTTP 版本选择建议
-
-```text
-新项目应该用哪个版本？
-
-  是否需要支持旧设备/旧代理？
-    ├─ 是 → HTTP/1.1 + TLS (兼容性最好)
-    └─ 否
-         是否在内网/服务间通信？
-           ├─ 是 → HTTP/2 (gRPC 默认 HTTP/2，内网无需 UDP)
-           └─ 否 → HTTP/3 (面向用户，最佳性能)
-```
-
-**注意：** HTTP/2 和 HTTP/3 的上层语义（方法、状态码、头部字段）与 HTTP/1.1 完全兼容，应用层代码通常无需改动。版本升级主要影响的是传输层性能。
+| 首连延迟 | TCP 3次 + TLS 2次 | TCP 3次 + TLS 2次 | 1-RTT（重连 0-RTT） |
 
 ---
 
-> **本章小结：** HTTP 协议定义了应用层通信的完整语义——用方法表达操作意图，用状态码传达处理结果，用头部字段协商元数据。从 HTTP/1.1 的 Keep-Alive 到 HTTP/2 的多路复用，再到 HTTP/3 基于 QUIC 的零队头阻塞，每一次演进都在解决前一版本的性能瓶颈，同时保持上层 API 的兼容性。
+> **本章小结：** HTTP 是你每天在用的协议——不是教科书上的 RFC 条目。502 和 504 的区别决定了你下一步是重启进程还是查慢 SQL。`curl -w` 把「这个接口慢」拆成了 6 个可量化的数字。`Content-Type` 配错导致的 415，日志里写的是 `Unsupported Media Type`，根因是 `@RequestBody` 找不到匹配的 `HttpMessageConverter`。
+
+> **纵横联系**
 >
-> **纵横联系：**
-> - 📖 **第五章 Netty**：Netty 内置 `HttpServerCodec`、`HttpObjectAggregator`，是 Java 实现 HTTP 服务的主流框架；HTTP/2 的二进制帧在 Netty 中以 `Http2FrameCodec` 实现
-> - 📖 **第三卷《Java I/O 与文件》**：HTTP 报文本质是通过 TCP Socket 传输的字节流，理解 Socket 编程有助于理解 HTTP 的底层传输
-> - 📖 **第二卷《Java 并发编程》**：HTTP/2 的多路复用与 Netty 的 EventLoop 线程模型配合使用时，需要理解并发安全问题
-> - 📖 **后续微服务卷**：RESTful API 设计、gRPC（基于 HTTP/2）、服务网关（Envoy/Nginx 对 HTTP/3 的支持）均建立在本章知识之上
+> - **第4章 NIO**：HTTP 报文最终通过 TCP Socket 的字节流传输。Tomcat 的 NioEndpoint 收到字节 → ProtocolHandler 解析 HTTP → 封装成 HttpServletRequest。
+> - **第5章 Netty**：Netty 内置 `HttpServerCodec`、`HttpObjectAggregator`，是 Java 实现 HTTP 服务的主流方案。HTTP/2 的二进制帧在 Netty 中以 `Http2FrameCodec` 实现。
+> - **第7章 Servlet**：本章讲 HTTP 协议本身（报文、状态码、版本），第7章讲 Java 端如何解析和生成 HTTP 报文（Connector → Container → DispatcherServlet）。
+> - **第8章 RPC**：RPC 的协议帧（魔数+长度+消息体）和 HTTP 报文（请求行+Header+Body）是同一种设计思路的不同实现——对字节流附加上下文信息。
