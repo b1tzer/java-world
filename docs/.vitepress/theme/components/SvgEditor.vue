@@ -345,6 +345,28 @@ async function loadAndInit() {
   // T8: 对齐辅助线
   setupGuideLines(fc)
 
+  // 确保所有对象可交互 + 悬停高亮
+  fc.on('object:added', (e) => {
+    const obj = e.target
+    if (obj) {
+      obj.set({ selectable: true, evented: true })
+      if (obj._objects) obj._objects.forEach(o => o.set({ selectable: true, evented: true }))
+    }
+  })
+  // 悬停时显示边框
+  fc.on('mouse:over', (e) => {
+    if (e.target && !fc.getActiveObject()) {
+      e.target.set('borderColor', '#0078d4')
+      fc.requestRenderAll()
+    }
+  })
+  fc.on('mouse:out', (e) => {
+    if (e.target && !fc.getActiveObject()) {
+      e.target.set('borderColor', 'transparent')
+      fc.requestRenderAll()
+    }
+  })
+
   // 事件
   fc.on('selection:created', () => updateSelection(fc))
   fc.on('selection:updated', () => updateSelection(fc))
@@ -573,7 +595,7 @@ function setupCanvasEvents(fc) {
 }
 
 // T8: 对齐辅助线
-const SNAP_THRESHOLD = 5
+const SNAP_THRESHOLD = 8
 const guideLineStyle = 'rgba(0, 120, 212, 0.5)'
 const guideLineDash = [4, 4]
 
@@ -600,6 +622,7 @@ function setupGuideLines(fc) {
         if (Math.abs(check.objX - check.otherX) < SNAP_THRESHOLD) {
           lines.push({ type: 'vertical', x: check.otherX })
           obj.set('left', obj.left + (check.otherX - check.objX))
+          obj.setCoords()
         }
       }
 
@@ -615,6 +638,7 @@ function setupGuideLines(fc) {
         if (Math.abs(check.objY - check.otherY) < SNAP_THRESHOLD) {
           lines.push({ type: 'horizontal', y: check.otherY })
           obj.set('top', obj.top + (check.otherY - check.objY))
+          obj.setCoords()
         }
       }
     }
@@ -1027,40 +1051,40 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
       <div class="editor-toolbar">
         <span class="title">✏️ {{ src }}</span>
         <div class="sep" />
-        <button @click="undo(fabricCanvas)" title="撤销">↩</button>
-        <button @click="redo(fabricCanvas)" title="重做">↪</button>
+        <button @click="undo(fabricCanvas)" data-tip="撤销">↩</button>
+        <button @click="redo(fabricCanvas)" data-tip="重做">↪</button>
         <div class="sep" />
-        <button @click="copyObj(fabricCanvas)" title="复制">📋</button>
-        <button @click="pasteObj(fabricCanvas)" title="粘贴">📌</button>
-        <button @click="deleteObj(fabricCanvas)" title="删除">🗑</button>
+        <button @click="copyObj(fabricCanvas)" data-tip="复制">📋</button>
+        <button @click="pasteObj(fabricCanvas)" data-tip="粘贴">📌</button>
+        <button @click="deleteObj(fabricCanvas)" data-tip="删除">🗑</button>
         <div class="sep" />
-        <button @click="zoomFit(fabricCanvas)" title="适应画布">⊞</button>
+        <button @click="zoomFit(fabricCanvas)" data-tip="适应画布">⊞</button>
         <span class="info">{{ zoomLevel }}%</span>
         <div class="sep" />
         <div class="align-group">
-          <button @click="align(fabricCanvas,'left')" title="左对齐">⫷</button>
-          <button @click="align(fabricCanvas,'centerH')" title="水平居中">⫿</button>
-          <button @click="align(fabricCanvas,'right')" title="右对齐">⫸</button>
-          <button @click="align(fabricCanvas,'top')" title="顶对齐">⫠</button>
-          <button @click="align(fabricCanvas,'centerV')" title="垂直居中">⫟</button>
-          <button @click="align(fabricCanvas,'bottom')" title="底对齐">⫡</button>
+          <button @click="align(fabricCanvas,'left')" data-tip="左对齐">⫷</button>
+          <button @click="align(fabricCanvas,'centerH')" data-tip="水平居中">⫿</button>
+          <button @click="align(fabricCanvas,'right')" data-tip="右对齐">⫸</button>
+          <button @click="align(fabricCanvas,'top')" data-tip="顶对齐">⫠</button>
+          <button @click="align(fabricCanvas,'centerV')" data-tip="垂直居中">⫟</button>
+          <button @click="align(fabricCanvas,'bottom')" data-tip="底对齐">⫡</button>
         </div>
         <div class="sep" />
         <div class="layer-group">
-          <button @click="layerForward(fabricCanvas)" title="上移一层">⬆</button>
-          <button @click="layerBackward(fabricCanvas)" title="下移一层">⬇</button>
-          <button @click="layerToFront(fabricCanvas)" title="置顶">⏫</button>
-          <button @click="layerToBack(fabricCanvas)" title="置底">⏬</button>
+          <button @click="layerForward(fabricCanvas)" data-tip="上移一层">⬆</button>
+          <button @click="layerBackward(fabricCanvas)" data-tip="下移一层">⬇</button>
+          <button @click="layerToFront(fabricCanvas)" data-tip="置顶">⏫</button>
+          <button @click="layerToBack(fabricCanvas)" data-tip="置底">⏬</button>
         </div>
         <div class="sep" />
         <div class="dist-group">
-          <button @click="distribute(fabricCanvas,'horizontal')" title="水平等间距分布">⇔</button>
-          <button @click="distribute(fabricCanvas,'vertical')" title="垂直等间距分布">⇕</button>
+          <button @click="distribute(fabricCanvas,'horizontal')" data-tip="水平等间距分布">⇔</button>
+          <button @click="distribute(fabricCanvas,'vertical')" data-tip="垂直等间距分布">⇕</button>
         </div>
         <div class="sep" />
         <div class="group-btn">
-          <button @click="groupSelected(fabricCanvas)" title="组合 (Ctrl+G)">🔲</button>
-          <button @click="ungroupSelected(fabricCanvas)" title="取消组合 (Ctrl+Shift+G)">🔳</button>
+          <button @click="groupSelected(fabricCanvas)" data-tip="组合 (Ctrl+G)">🔲</button>
+          <button @click="ungroupSelected(fabricCanvas)" data-tip="取消组合 (Ctrl+Shift+G)">🔳</button>
         </div>
         <div class="sep" />
         <div class="rotation-group">
@@ -1093,9 +1117,9 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
         <div class="sep" />
         <!-- T11: 阴影 -->
         <div class="shadow-group">
-          <button @click="toggleShadow(fabricCanvas)" title="阴影" :class="{ active: shadowEnabled }">🔲</button>
+          <button @click="toggleShadow(fabricCanvas)" data-tip="阴影" :class="{ active: shadowEnabled }">🔲</button>
           <template v-if="shadowEnabled">
-            <input type="color" :value="shadowColor" @input="shadowColor = $event.target.value; applyShadow(fabricCanvas)" title="阴影颜色" />
+            <input type="color" :value="shadowColor" @input="shadowColor = $event.target.value; applyShadow(fabricCanvas)" data-tip="阴影颜色" />
             <span class="label">模糊</span>
             <input type="number" class="shadow-input" :value="shadowBlur" @change="shadowBlur = +$event.target.value; applyShadow(fabricCanvas)" min="0" max="50" />
             <span class="label">X</span>
@@ -1116,7 +1140,7 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <select class="stroke-width-select" :value="currentStrokeWidth" @change="applyStrokeWidth(fabricCanvas, +$event.target.value)">
             <option v-for="w in [0.5,1,1.5,2,2.5,3,4,5]" :key="w" :value="w">{{ w }}</option>
           </select>
-          <button @click="toggleStrokeDash(fabricCanvas)" title="虚线" :class="{ active: currentStrokeDash }" style="font-size:10px">╌</button>
+          <button @click="toggleStrokeDash(fabricCanvas)" data-tip="虚线" :class="{ active: currentStrokeDash }" style="font-size:10px">╌</button>
         </div>
         <div class="sep" />
         <!-- 文字格式 -->
@@ -1124,18 +1148,18 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <select class="font-size-select" :value="currentFontSize" @change="applyFontSize(fabricCanvas, +$event.target.value)">
             <option v-for="s in [8,9,10,11,12,14,16,18,20,24,28,32,36,48,64,72,96]" :key="s" :value="s">{{ s }}</option>
           </select>
-          <button @click="toggleBold(fabricCanvas)" title="加粗" :class="{ active: currentFontWeight === 'bold' }"><b>B</b></button>
-          <button @click="toggleItalic(fabricCanvas)" title="斜体" :class="{ active: currentFontStyle === 'italic' }"><i>I</i></button>
-          <button @click="toggleUnderline(fabricCanvas)" title="下划线" :class="{ active: currentUnderline }"><u>U</u></button>
-          <input type="color" :value="currentTextFill" @input="applyTextFill(fabricCanvas, $event.target.value)" title="文字颜色" />
+          <button @click="toggleBold(fabricCanvas)" data-tip="加粗" :class="{ active: currentFontWeight === 'bold' }"><b>B</b></button>
+          <button @click="toggleItalic(fabricCanvas)" data-tip="斜体" :class="{ active: currentFontStyle === 'italic' }"><i>I</i></button>
+          <button @click="toggleUnderline(fabricCanvas)" data-tip="下划线" :class="{ active: currentUnderline }"><u>U</u></button>
+          <input type="color" :value="currentTextFill" @input="applyTextFill(fabricCanvas, $event.target.value)" data-tip="文字颜色" />
           <div class="sep" />
-          <button @click="applyTextAlign(fabricCanvas,'left')" title="文字左对齐" :class="{ active: currentTextAlign === 'left' }">≡</button>
-          <button @click="applyTextAlign(fabricCanvas,'center')" title="文字居中" :class="{ active: currentTextAlign === 'center' }">≡</button>
-          <button @click="applyTextAlign(fabricCanvas,'right')" title="文字右对齐" :class="{ active: currentTextAlign === 'right' }">≡</button>
+          <button @click="applyTextAlign(fabricCanvas,'left')" data-tip="文字左对齐" :class="{ active: currentTextAlign === 'left' }">≡</button>
+          <button @click="applyTextAlign(fabricCanvas,'center')" data-tip="文字居中" :class="{ active: currentTextAlign === 'center' }">≡</button>
+          <button @click="applyTextAlign(fabricCanvas,'right')" data-tip="文字右对齐" :class="{ active: currentTextAlign === 'right' }">≡</button>
         </div>
         <div class="sep" />
-        <button class="btn-save" title="保存" @click="save" :disabled="saving">{{ saving ? '保存中...' : '💾 保存' }}</button>
-        <button title="关闭" @click="emit('close')">✕</button>
+        <button class="btn-save" data-tip="保存" @click="save" :disabled="saving">{{ saving ? '保存中...' : '💾 保存' }}</button>
+        <button data-tip="关闭" @click="emit('close')">✕</button>
       </div>
 
       <!-- 画布 -->
@@ -1159,19 +1183,45 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
 .editor-toolbar {
-  display: flex; align-items: center; gap: 4px;
-  padding: 6px 12px; background: #252526; border-bottom: 1px solid #3e3e3e;
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px; background: #2d2d2d; border-bottom: 1px solid #404040;
   flex-shrink: 0; flex-wrap: wrap;
 }
-.editor-toolbar .title { font-size: 12px; color: #ccc; font-weight: 600; white-space: nowrap; }
-.editor-toolbar .sep { width: 1px; height: 20px; background: #3e3e3e; margin: 0 4px; }
+.editor-toolbar .title { font-size: 13px; color: #e0e0e0; font-weight: 600; white-space: nowrap; }
+.editor-toolbar .sep { width: 1px; height: 24px; background: #404040; margin: 0 6px; }
 .editor-toolbar button {
-  width: 28px; height: 28px; border: none; border-radius: 4px;
-  background: transparent; color: #ccc; cursor: pointer; font-size: 14px;
+  min-width: 32px; height: 32px; border: none; border-radius: 6px;
+  background: #383838; color: #e0e0e0; cursor: pointer; font-size: 15px;
   display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s ease;
 }
-.editor-toolbar button:hover { background: #3e3e3e; }
-.editor-toolbar .info { font-size: 11px; color: #888; min-width: 40px; text-align: center; }
+.editor-toolbar button:hover { background: #4a4a4a; transform: scale(1.05); }
+.editor-toolbar button:active { background: #0078d4; }
+.editor-toolbar .info { font-size: 12px; color: #aaa; min-width: 50px; text-align: center; }
+/* 快速 tooltip */
+.editor-toolbar button[data-tip] {
+  position: relative;
+}
+.editor-toolbar button[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 10000;
+  pointer-events: none;
+  animation: tipFadeIn 0.1s ease;
+}
+@keyframes tipFadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
 .editor-toolbar .spacer { flex: 1; }
 .editor-toolbar .btn-save {
   width: auto; padding: 0 12px; background: #0078d4; color: #fff;
