@@ -1334,7 +1334,7 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <button @click="applyTextAlign(fabricCanvas,'right')" data-tip="文字右对齐" :class="{ active: currentTextAlign === 'right' }"><span v-html="ICONS.textRight"></span></button>
         </div>
         <div class="sep" />
-        <button class="btn-save" data-tip="保存" @click="save" :disabled="saving">{{ saving ? '保存中...' : '💾 保存' }}</button>
+        <button class="btn-save" data-tip="保存 (Ctrl+S)" @click="save" :disabled="saving">{{ saving ? '保存中...' : '保存' }}</button>
         <button data-tip="关闭" @click="emit('close')"><span v-html="ICONS.close"></span></button>
       </div>
 
@@ -1350,116 +1350,209 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 <style scoped>
 .editor-overlay {
   position: fixed; inset: 0; z-index: 9999;
-  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  background: rgba(15, 15, 15, 0.75);
+  backdrop-filter: blur(12px) saturate(1.2);
   display: flex; align-items: center; justify-content: center;
+  animation: overlayIn 0.2s ease;
+}
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .editor-panel {
-  width: 90vw; height: 85vh; background: #1e1e1e;
-  border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  width: 92vw; height: 88vh;
+  background: #191919;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px rgba(0,0,0,0.55);
+  animation: panelIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
+@keyframes panelIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+/* ── 工具栏 ──────────────────────────────────── */
 .editor-toolbar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 16px; background: #1e1e1e; border-bottom: 1px solid #333;
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  background: linear-gradient(180deg, #202020 0%, #1a1a1a 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   flex-shrink: 0; flex-wrap: wrap;
 }
-.editor-toolbar .title { font-size: 13px; color: #ccc; font-weight: 600; white-space: nowrap; }
-.editor-toolbar .sep { width: 1px; height: 28px; background: #333; margin: 0 4px; }
-.editor-toolbar button {
-  min-width: 36px; height: 36px; border: 1px solid transparent; border-radius: 6px;
-  background: #2d2d2d; color: #d4d4d4; cursor: pointer; font-size: 16px;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.12s ease; gap: 4px; padding: 0 8px;
+.editor-toolbar .title {
+  font-size: 12px; color: #888; font-weight: 500;
+  white-space: nowrap; max-width: 180px;
+  overflow: hidden; text-overflow: ellipsis;
 }
-.editor-toolbar button:hover { background: #3c3c3c; border-color: #505050; }
-.editor-toolbar button:active { background: #0078d4; border-color: #0078d4; color: #fff; }
-.editor-toolbar button.active { background: #0078d4; border-color: #0078d4; color: #fff; }
-.editor-toolbar button span { display: flex; align-items: center; justify-content: center; }
-.editor-toolbar button span svg { width: 18px; height: 18px; }
-.editor-toolbar .info { font-size: 12px; color: #888; min-width: 50px; text-align: center; }
-.editor-toolbar .canvas-size { background: #2a2a2a; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #aaa; letter-spacing: 0.5px; }
-/* 快速 tooltip */
-.editor-toolbar button[data-tip] {
+.editor-toolbar .sep {
+  width: 1px; height: 22px;
+  background: rgba(255,255,255,0.08);
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+.editor-toolbar button {
+  min-width: 32px; height: 32px;
+  border: none; border-radius: 8px;
+  background: transparent;
+  color: #999;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s ease;
+  padding: 0 6px;
   position: relative;
 }
+.editor-toolbar button:hover {
+  background: rgba(255,255,255,0.08);
+  color: #e0e0e0;
+}
+.editor-toolbar button:active {
+  background: rgba(255,255,255,0.12);
+  transform: scale(0.95);
+}
+.editor-toolbar button.active {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+.editor-toolbar button span { display: flex; align-items: center; justify-content: center; }
+.editor-toolbar button span svg { width: 16px; height: 16px; stroke-width: 1.8; }
+.editor-toolbar .info {
+  font-size: 11px; color: #666;
+  min-width: 40px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.editor-toolbar .canvas-size {
+  background: rgba(255,255,255,0.04);
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #777;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+}
+/* tooltip */
+.editor-toolbar button[data-tip] { position: relative; }
 .editor-toolbar button[data-tip]:hover::after {
   content: attr(data-tip);
   position: absolute;
-  bottom: -36px;
+  bottom: -34px;
   left: 50%;
   transform: translateX(-50%);
-  background: #0078d4;
-  color: #fff;
+  background: #2a2a2a;
+  color: #ddd;
   padding: 5px 10px;
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 11px;
   white-space: nowrap;
   z-index: 10000;
   pointer-events: none;
-  animation: tipFadeIn 0.1s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.08);
+  animation: tipIn 0.15s ease;
 }
-@keyframes tipFadeIn {
+@keyframes tipIn {
   from { opacity: 0; transform: translateX(-50%) translateY(4px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 .editor-toolbar .spacer { flex: 1; }
 .editor-toolbar .btn-save {
-  width: auto; padding: 0 12px; background: #0078d4; color: #fff;
+  width: auto; padding: 0 14px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
   font-size: 12px; font-weight: 600;
+  border: none;
+  box-shadow: 0 1px 3px rgba(59,130,246,0.3);
 }
-.editor-toolbar .btn-save:hover { background: #1a8cff; }
-.editor-toolbar .btn-save:disabled { opacity: 0.5; cursor: default; }
-.align-group, .layer-group, .dist-group, .group-btn { display: flex; gap: 2px; }
+.editor-toolbar .btn-save:hover {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  box-shadow: 0 2px 8px rgba(59,130,246,0.4);
+}
+.editor-toolbar .btn-save:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+/* ── 工具栏分组 ──────────────────────────────── */
+.align-group, .layer-group, .dist-group, .group-btn {
+  display: flex; gap: 2px;
+  background: rgba(255,255,255,0.03);
+  padding: 2px; border-radius: 8px;
+}
 .rotation-group { display: flex; align-items: center; gap: 6px; }
 .rotation-input {
-  width: 52px; height: 28px; background: #2d2d2d; color: #d4d4d4; border: 1px solid #444;
-  border-radius: 4px; font-size: 12px; padding: 0 6px;
+  width: 48px; height: 26px;
+  background: rgba(255,255,255,0.05);
+  color: #ccc; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px; font-size: 11px; padding: 0 6px;
   -moz-appearance: textfield;
+  transition: border-color 0.15s;
 }
-.rotation-input:focus { border-color: #0078d4; outline: none; }
+.rotation-input:focus { border-color: #3b82f6; outline: none; }
 .rotation-input::-webkit-inner-spin-button,
 .rotation-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .opacity-group { display: flex; align-items: center; gap: 6px; }
-.opacity-slider { width: 70px; height: 18px; cursor: pointer; accent-color: #0078d4; }
+.opacity-slider {
+  width: 64px; height: 4px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+  border-radius: 2px;
+}
 .gradient-group { display: flex; align-items: center; gap: 6px; }
 .gradient-select {
-  width: 80px; height: 28px; background: #2d2d2d; color: #d4d4d4; border: 1px solid #444;
-  border-radius: 4px; font-size: 12px; padding: 0 6px;
+  width: 76px; height: 26px;
+  background: rgba(255,255,255,0.05);
+  color: #ccc; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px; font-size: 11px; padding: 0 6px;
+  transition: border-color 0.15s;
 }
-.gradient-select:focus { border-color: #0078d4; outline: none; }
+.gradient-select:focus { border-color: #3b82f6; outline: none; }
 .gradient-group input[type="color"],
 .shadow-group input[type="color"],
 .color-row input[type="color"],
 .text-format-group input[type="color"] {
-  width: 28px; height: 28px; border: 1px solid #444; border-radius: 4px; cursor: pointer; padding: 0;
+  width: 26px; height: 26px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px; cursor: pointer; padding: 0;
+  background: transparent;
 }
 .angle-input, .shadow-input {
-  width: 44px; height: 28px; background: #2d2d2d; color: #d4d4d4; border: 1px solid #444;
-  border-radius: 4px; font-size: 12px; padding: 0 6px;
+  width: 42px; height: 26px;
+  background: rgba(255,255,255,0.05);
+  color: #ccc; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px; font-size: 11px; padding: 0 6px;
   -moz-appearance: textfield;
+  transition: border-color 0.15s;
 }
-.angle-input:focus, .shadow-input:focus { border-color: #0078d4; outline: none; }
+.angle-input:focus, .shadow-input:focus { border-color: #3b82f6; outline: none; }
 .shadow-group { display: flex; align-items: center; gap: 6px; }
 .color-row { display: flex; align-items: center; gap: 6px; }
 .color-row .label, .rotation-group .label, .opacity-group .label, .shadow-group .label {
-  font-size: 11px; color: #888;
+  font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.5px;
 }
 .color-row .stroke-width-select,
 .text-format-group .font-size-select {
-  width: 52px; height: 28px; background: #2d2d2d; color: #d4d4d4; border: 1px solid #444;
-  border-radius: 4px; font-size: 12px; padding: 0 6px;
+  width: 48px; height: 26px;
+  background: rgba(255,255,255,0.05);
+  color: #ccc; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px; font-size: 11px; padding: 0 6px;
+  transition: border-color 0.15s;
 }
 .color-row .stroke-width-select:focus,
-.text-format-group .font-size-select:focus { border-color: #0078d4; outline: none; }
-.text-format-group { display: flex; align-items: center; gap: 4px; }
+.text-format-group .font-size-select:focus { border-color: #3b82f6; outline: none; }
+.text-format-group { display: flex; align-items: center; gap: 3px; }
 .text-format-group button {
-  min-width: 28px; height: 28px; font-size: 13px;
+  min-width: 28px; height: 28px;
 }
-.editor-canvas { flex: 1; position: relative; overflow: hidden; background: #1a1a1a; }
-.editor-canvas canvas { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
+/* ── 画布 ────────────────────────────────────── */
+.editor-canvas {
+  flex: 1; position: relative; overflow: hidden;
+  background: #111;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.editor-canvas canvas {
+  position: absolute; top: 0; left: 0;
+  width: 100% !important; height: 100% !important;
+}
 .loading {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: #1e1e1e; color: #888; font-size: 14px;
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: #111; color: #555; font-size: 13px;
 }
 </style>
