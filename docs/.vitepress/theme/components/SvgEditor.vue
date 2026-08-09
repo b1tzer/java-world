@@ -343,6 +343,11 @@ async function loadAndInit() {
         setInteractive(obj)
         fc.add(obj)
       })
+      // 强制确保所有对象可选择
+      fc.getObjects().forEach(o => {
+        o.set({ selectable: true, evented: true })
+        if (o._objects) o._objects.forEach(child => child.set({ selectable: true, evented: true }))
+      })
       fc.renderAll()
       zoomFit(fc)
       saveState(fc)
@@ -474,7 +479,10 @@ function mergeArrows(objects) {
       if (next.type === 'polygon' && !used.has(i + 1)) {
         const dist = Math.sqrt(((obj.x2 || 0) - ((next.left || 0) + (next.width || 0) / 2)) ** 2 + ((obj.y2 || 0) - ((next.top || 0) + (next.height || 0) / 2)) ** 2)
         if (dist < 30) {
-          result.push(new window.fabric.Group([obj, next], { selectable: true, evented: true }))
+          result.push(new window.fabric.Group([obj, next], {
+            selectable: true, evented: true, perPixelTargetFind: false,
+            subTargetCheck: true,
+          }))
           used.add(i); used.add(i + 1); continue
         }
       }
@@ -613,64 +621,47 @@ function setupCanvasEvents(fc) {
   })
 }
 
-// T8: 对齐辅助线
+// T8: 对齐辅助线 — 移动时只显示参考线，松手时才吸附
 const SNAP_THRESHOLD = 8
 const guideLineStyle = 'rgba(0, 120, 212, 0.5)'
 const guideLineDash = [4, 4]
 
 function setupGuideLines(fc) {
-  // 用单例 debounce 防止同帧多次吸附
-  let _snapLock = false
+  let _pendingSnap = null
 
+  // 移动时：只显示参考线，不吸附
   fc.on('object:moving', (opt) => {
-    if (_snapLock) return
     const obj = opt.target
     if (!obj) return
 
     const lines = []
-    const z = fc.getZoom()
     const objBounds = getObjBounds(obj)
     const objects = fc.getObjects().filter(o => o !== obj && o.visible)
 
-    let snapped = false
     for (const other of objects) {
-      if (snapped) break
       const otherBounds = getObjBounds(other)
 
-      // 垂直参考线：左、中、右
+      // 垂直参考线
       const vChecks = [
-        { objX: objBounds.left, otherX: otherBounds.left },
         { objX: objBounds.centerX, otherX: otherBounds.centerX },
+        { objX: objBounds.left, otherX: otherBounds.left },
         { objX: objBounds.right, otherX: otherBounds.right },
-        { objX: objBounds.left, otherX: otherBounds.right },
-        { objX: objBounds.right, otherX: otherBounds.left },
       ]
       for (const check of vChecks) {
         if (Math.abs(check.objX - check.otherX) < SNAP_THRESHOLD) {
           lines.push({ type: 'vertical', x: check.otherX })
-          // getBoundingRect 是屏幕坐标，差值要除以 zoom 才能加到对象坐标
-          obj.set('left', obj.left + (check.otherX - check.objX) / z)
-          obj.setCoords()
-          snapped = true
-          break
         }
       }
 
-      // 水平参考线：上、中、下
+      // 水平参考线
       const hChecks = [
-        { objY: objBounds.top, otherY: otherBounds.top },
         { objY: objBounds.centerY, otherY: otherBounds.centerY },
+        { objY: objBounds.top, otherY: otherBounds.top },
         { objY: objBounds.bottom, otherY: otherBounds.bottom },
-        { objY: objBounds.top, otherY: otherBounds.bottom },
-        { objY: objBounds.bottom, otherY: otherBounds.top },
       ]
       for (const check of hChecks) {
         if (Math.abs(check.objY - check.otherY) < SNAP_THRESHOLD) {
           lines.push({ type: 'horizontal', y: check.otherY })
-          obj.set('top', obj.top + (check.otherY - check.objY) / z)
-          obj.setCoords()
-          snapped = true
-          break
         }
       }
     }
@@ -679,15 +670,37 @@ function setupGuideLines(fc) {
     fc.requestRenderAll()
   })
 
-  fc.on('object:modified', () => {
+  // 松手时：执行吸附
+  fc.on('object:modified', (opt) => {
+    const obj = opt.target
+    if (obj && guideLines.value.length) {
+      const z = fc.getZoom()
+      const objBounds = getObjBounds(obj)
+
+      for (const line of guideLines.value) {
+        if (line.type === 'vertical') {
+          const diff = line.x - objBounds.centerX
+          if (Math.abs(diff) < SNAP_THRESHOLD) {
+            obj.set('left', obj.left + diff / z)
+          }
+        } else {
+          const diff = line.y - objBounds.centerY
+          if (Math.abs(diff) < SNAP_THRESHOLD) {
+            obj.set('top', obj.top + diff / z)
+          }
+        }
+      }
+      obj.setCoords()
+    }
     guideLines.value = []
-    _snapLock = false
+    fc.requestRenderAll()
   })
+
   fc.on('selection:cleared', () => {
     guideLines.value = []
   })
 
-  // 自定义渲染参考线
+  // 自定义渲染参考线（用屏幕坐标，直接从 viewportTransform 计算）
   fc.on('after:render', () => {
     if (!guideLines.value.length) return
     const ctx = fc.getContext()
