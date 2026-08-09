@@ -12,6 +12,8 @@ const fabricCanvas = ref(null)
 const loading = ref(true)
 const saving = ref(false)
 const zoomLevel = ref(100)
+const svgWidth = ref(0)
+const svgHeight = ref(0)
 const selectionInfo = ref('')
 const currentFill = ref('')
 const currentStroke = ref('')
@@ -34,6 +36,8 @@ const ICONS = {
   paste: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H9a1 1 0 0 0-1 1v2c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V3c0-1.1-.9-1-1-1Z"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/></svg>',
   trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
   save: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
+  zoomIn: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg>',
+  zoomOut: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/></svg>',
   zoomFit: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>',
   alignLeft: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="18" y2="18"/></svg>',
   alignCenter: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="17" x2="7" y1="12" y2="12"/><line x1="19" x2="5" y1="18" y2="18"/></svg>',
@@ -158,7 +162,11 @@ async function loadAndInit() {
 
   // 保存原始 viewBox，供保存时恢复
   const vbMatch = svgText.match(/viewBox="([^"]+)"/)
-  if (vbMatch) originalViewBox.value = vbMatch[1]
+  if (vbMatch) {
+    originalViewBox.value = vbMatch[1]
+    const parts = vbMatch[1].split(/[\s,]+/).map(Number)
+    if (parts.length >= 4) { svgWidth.value = Math.round(parts[2]); svgHeight.value = Math.round(parts[3]) }
+  }
 
   // CSS 变量 → 色值
   let renderSvg = svgText
@@ -477,6 +485,10 @@ async function loadAndInit() {
       if (e.key === 'b') { e.preventDefault(); toggleBold(fc) }
       if (e.key === 'i') { e.preventDefault(); toggleItalic(fc) }
       if (e.key === 'u') { e.preventDefault(); toggleUnderline(fc) }
+      // 缩放
+      if (e.key === '=' || e.key === '+') { e.preventDefault(); zoomIn(fc) }
+      if (e.key === '-') { e.preventDefault(); zoomOut(fc) }
+      if (e.key === '0') { e.preventDefault(); zoomFit(fc) }
       // T6: Ctrl+G 组合
       if (e.key === 'g' && !e.shiftKey) { e.preventDefault(); groupSelected(fc) }
       // T6: Ctrl+Shift+G 取消组合
@@ -525,6 +537,21 @@ function mergeArrows(objects) {
     result.push(obj); used.add(i)
   }
   return result
+}
+
+function zoomIn(fc) {
+  let z = fc.getZoom() * 1.2
+  z = Math.min(z, 5)
+  fc.setZoom(z)
+  zoomLevel.value = Math.round(z * 100)
+  fc.requestRenderAll()
+}
+function zoomOut(fc) {
+  let z = fc.getZoom() / 1.2
+  z = Math.max(z, 0.1)
+  fc.setZoom(z)
+  zoomLevel.value = Math.round(z * 100)
+  fc.requestRenderAll()
 }
 
 function zoomFit(fc) {
@@ -1160,8 +1187,12 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
         <button @click="pasteObj(fabricCanvas)" data-tip="粘贴"><span v-html="ICONS.paste"></span></button>
         <button @click="deleteObj(fabricCanvas)" data-tip="删除"><span v-html="ICONS.trash"></span></button>
         <div class="sep" />
+        <button @click="zoomOut(fabricCanvas)" data-tip="缩小 (-)"><span v-html="ICONS.zoomOut"></span></button>
+        <span class="info" style="min-width:36px;cursor:pointer" @click="zoomFit(fabricCanvas)" data-tip="点击重置">{{ zoomLevel }}%</span>
+        <button @click="zoomIn(fabricCanvas)" data-tip="放大 (+)"><span v-html="ICONS.zoomIn"></span></button>
         <button @click="zoomFit(fabricCanvas)" data-tip="适应画布"><span v-html="ICONS.zoomFit"></span></button>
-        <span class="info">{{ zoomLevel }}%</span>
+        <div class="sep" />
+        <span class="info canvas-size" data-tip="SVG 画布尺寸">{{ svgWidth }} × {{ svgHeight }}px</span>
         <div class="sep" />
         <div class="align-group">
           <button @click="align(fabricCanvas,'left')" data-tip="左对齐"><span v-html="ICONS.alignLeft"></span></button>
@@ -1303,6 +1334,7 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 .editor-toolbar button span { display: flex; align-items: center; justify-content: center; }
 .editor-toolbar button span svg { width: 18px; height: 18px; }
 .editor-toolbar .info { font-size: 12px; color: #888; min-width: 50px; text-align: center; }
+.editor-toolbar .canvas-size { background: #2a2a2a; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: #aaa; letter-spacing: 0.5px; }
 /* 快速 tooltip */
 .editor-toolbar button[data-tip] {
   position: relative;
