@@ -21,6 +21,8 @@ const currentFontStyle = ref('normal')
 const currentUnderline = ref(false)
 const currentTextAlign = ref('left')
 const currentTextFill = ref('')
+const currentStrokeWidth = ref(1)
+const currentStrokeDash = ref(false)
 const keyHandlerFn = ref(null)
 const originalViewBox = ref('')
 
@@ -423,6 +425,9 @@ function updateSelection(fc) {
   selectionInfo.value = isMulti ? `${active._objects.length} 个选中` : active.type
   if (active.fill && typeof active.fill === 'string') currentFill.value = active.fill
   if (active.stroke && typeof active.stroke === 'string') currentStroke.value = active.stroke
+  if (active.strokeWidth) currentStrokeWidth.value = active.strokeWidth
+  if (active.strokeDashArray) currentStrokeDash.value = true
+  else currentStrokeDash.value = false
   // 文字格式
   if (active.fontSize) currentFontSize.value = active.fontSize
   if (active.fontWeight) currentFontWeight.value = active.fontWeight
@@ -459,6 +464,15 @@ function align(fc, type) {
 
 function applyFill(fc, hex) { const a = fc.getActiveObject(); if (a) { a.set('fill', hex); fc.renderAll(); saveState(fc) } }
 function applyStroke(fc, hex) { const a = fc.getActiveObject(); if (a) { a.set('stroke', hex); fc.renderAll(); saveState(fc) } }
+function applyStrokeWidth(fc, w) { const a = fc.getActiveObject(); if (a) { a.set('strokeWidth', w); currentStrokeWidth.value = w; fc.renderAll(); saveState(fc) } }
+function toggleStrokeDash(fc) {
+  const a = fc.getActiveObject()
+  if (!a) return
+  const next = !currentStrokeDash.value
+  a.set('strokeDashArray', next ? [6, 3] : null)
+  currentStrokeDash.value = next
+  fc.renderAll(); saveState(fc)
+}
 function applyFontSize(fc, size) { const a = fc.getActiveObject(); if (a && (a.type === 'textbox' || a.type === 'i-text')) { a.set('fontSize', size); fc.renderAll(); saveState(fc) } }
 function toggleBold(fc) {
   const a = fc.getActiveObject()
@@ -750,6 +764,11 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <input type="color" :value="currentFill" @input="applyFill(fabricCanvas, $event.target.value)" />
           <span class="label">边框</span>
           <input type="color" :value="currentStroke" @input="applyStroke(fabricCanvas, $event.target.value)" />
+          <span class="label">粗细</span>
+          <select class="stroke-width-select" :value="currentStrokeWidth" @change="applyStrokeWidth(fabricCanvas, +$event.target.value)">
+            <option v-for="w in [0.5,1,1.5,2,2.5,3,4,5]" :key="w" :value="w">{{ w }}</option>
+          </select>
+          <button @click="toggleStrokeDash(fabricCanvas)" title="虚线" :class="{ active: currentStrokeDash }" style="font-size:10px">╌</button>
         </div>
         <div class="sep" />
         <!-- 文字格式 -->
@@ -818,6 +837,11 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 .color-row { display: flex; align-items: center; gap: 4px; }
 .color-row .label { font-size: 10px; color: #888; }
 .color-row input[type="color"] { width: 24px; height: 24px; border: 1px solid #555; border-radius: 3px; cursor: pointer; padding: 0; }
+.color-row .stroke-width-select {
+  width: 42px; height: 24px; background: #333; color: #ccc; border: 1px solid #555;
+  border-radius: 3px; font-size: 11px; padding: 0 2px;
+}
+.color-row button.active { background: #0078d4; color: #fff; }
 .text-format-group { display: flex; align-items: center; gap: 2px; }
 .text-format-group .font-size-select {
   width: 52px; height: 24px; background: #333; color: #ccc; border: 1px solid #555;
