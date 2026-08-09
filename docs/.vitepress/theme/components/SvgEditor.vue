@@ -69,6 +69,7 @@ const isPanning = ref(false)
 const spacePressed = ref(false)
 const lastPanPoint = ref({ x: 0, y: 0 })
 const guideLines = ref([])
+let _bgRects = []
 const currentOpacity = ref(100)
 const gradientType = ref('none')
 const gradientAngle = ref(0)
@@ -394,18 +395,6 @@ async function loadAndInit() {
 
       // 添加画布背景白板 + 边框，明确 SVG 实际区域
       if (svgWidth.value > 0 && svgHeight.value > 0) {
-        const bg = new window.fabric.Rect({
-          left: 0, top: 0,
-          width: svgWidth.value,
-          height: svgHeight.value,
-          fill: '#ffffff',
-          stroke: '#cccccc',
-          strokeWidth: 1,
-          selectable: false,
-          evented: false,
-          excludeFromExport: true,
-        })
-        // 阴影边框
         const shadow = new window.fabric.Rect({
           left: -1, top: -1,
           width: svgWidth.value + 2,
@@ -417,6 +406,18 @@ async function loadAndInit() {
           evented: false,
           excludeFromExport: true,
         })
+        const bg = new window.fabric.Rect({
+          left: 0, top: 0,
+          width: svgWidth.value,
+          height: svgHeight.value,
+          fill: '#ffffff',
+          stroke: '#cccccc',
+          strokeWidth: 1,
+          selectable: false,
+          evented: false,
+          excludeFromExport: true,
+        })
+        _bgRects = [shadow, bg]
         fc.add(shadow)
         fc.add(bg)
         shadow.sendToBack()
@@ -924,8 +925,13 @@ function saveState(fc) {
   if (undoStack.length > 30) undoStack.shift()
   redoStack = []
 }
-function undo(fc) { if (undoStack.length < 2) return; redoStack.push(undoStack.pop()); fc.loadFromJSON(undoStack[undoStack.length - 1], () => fc.renderAll()) }
-function redo(fc) { if (!redoStack.length) return; const s = redoStack.pop(); undoStack.push(s); fc.loadFromJSON(s, () => fc.renderAll()) }
+function reAddBg(fc) {
+  if (!_bgRects.length) return
+  _bgRects.forEach(r => { fc.add(r); r.sendToBack() })
+  fc.requestRenderAll()
+}
+function undo(fc) { if (undoStack.length < 2) return; redoStack.push(undoStack.pop()); fc.loadFromJSON(undoStack[undoStack.length - 1], () => { reAddBg(fc); fc.renderAll() }) }
+function redo(fc) { if (!redoStack.length) return; const s = redoStack.pop(); undoStack.push(s); fc.loadFromJSON(s, () => { reAddBg(fc); fc.renderAll() }) }
 function copyObj(fc) { const a = fc.getActiveObject(); if (a) a.clone(c => { window._clipboard = c }) }
 function pasteObj(fc) { if (!window._clipboard) return; window._clipboard.clone(c => { c.set({ left: c.left + 20, top: c.top + 20 }); fc.add(c); fc.setActiveObject(c); fc.renderAll(); saveState(fc) }) }
 function deleteObj(fc) { const a = fc.getActiveObject(); if (!a) return; if (a.type === 'activeSelection') { a.forEachObject(o => fc.remove(o)); fc.discardActiveObject() } else { fc.remove(a) } fc.renderAll(); saveState(fc) }
