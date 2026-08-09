@@ -118,18 +118,27 @@ async function loadAndInit() {
   // --- 箭头修复：解析 <marker> 定义，为每条箭头线合成三角形箭头 ---
   // Fabric.js 不支持 SVG <marker>，需要将 marker-end 替换为实体的 <polygon> 箭头三角形
 
-  // 1. 提取 marker 定义：id → fill (颜色已在上一步转为 hex)
+  // 1. 提取 marker 定义：id → { fill, tipOffset }
+  // tipOffset = tip 在 marker 坐标系中相对于 refX 的偏移
   const markers = {}
-  // 支持 polygon 形式的 marker（如 tcp-handshake.svg）
-  const markerPolyRe = /<marker\s+id="([^"]+)"[^>]*>\s*<polygon\s+[^>]*fill="([^"]+)"[^>]*\/>\s*<\/marker>/g
+  // polygon 形式的 marker
+  const markerPolyRe = /<marker\s+id="([^"]+)"[^>]*markerWidth="([^"]+)"[^>]*markerHeight="([^"]+)"[^>]*refX="([^"]+)"[^>]*refY="([^"]+)"[^>]*>\s*<polygon\s+[^>]*points="([^"]+)"[^>]*fill="([^"]+)"[^>]*\/>\s*<\/marker>/g
   let mm
   while ((mm = markerPolyRe.exec(renderSvg)) !== null) {
-    markers[mm[1]] = mm[2]
+    const id = mm[1], refX = parseFloat(mm[4]), pts = mm[6], fill = mm[7]
+    // 找 polygon 的最右点作为 tipX
+    const tipX = Math.max(...pts.split(/[\s,]+/).filter((_, i) => i % 2 === 0).map(Number))
+    markers[id] = { fill, tipOffset: tipX - refX }
   }
-  // 支持 path 形式的 marker（如 data-journey.svg）
-  const markerPathRe = /<marker\s+id="([^"]+)"[^>]*>\s*<path\s+[^>]*fill="([^"]+)"[^>]*\/>\s*<\/marker>/g
+  // path 形式的 marker（如 M0,0 L8,4 L0,8 Z）
+  const markerPathRe = /<marker\s+id="([^"]+)"[^>]*markerWidth="([^"]+)"[^>]*markerHeight="([^"]+)"[^>]*refX="([^"]+)"[^>]*refY="([^"]+)"[^>]*>\s*<path\s+[^>]*d="([^"]+)"[^>]*fill="([^"]+)"[^>]*\/>\s*<\/marker>/g
   while ((mm = markerPathRe.exec(renderSvg)) !== null) {
-    markers[mm[1]] = mm[2]
+    const id = mm[1], refX = parseFloat(mm[4]), d = mm[6], fill = mm[7]
+    // 提取 path d 中的所有 x 坐标，找最大值作为 tipX
+    const nums = d.match(/[\d.]+/g)?.map(Number) || []
+    const xCoords = nums.filter((_, i) => i % 2 === 0)
+    const tipX = Math.max(...xCoords)
+    markers[id] = { fill, tipOffset: tipX - refX }
   }
 
   // 2. 解析 <style> 中 CSS 类的 marker-end（如 .arrow { marker-end: url(#arrowhead) }）
@@ -175,17 +184,20 @@ async function loadAndInit() {
 
       // 计算箭头朝向
       const angle = Math.atan2(y2 - y1, x2 - x1)
-      // 底边中心在线终点，尖端朝外延伸1单位（匹配 marker refX=7, tip=8）
-      const sx = 4 * Math.sin(angle)
-      const sy = -4 * Math.cos(angle)
-      const tipX = x2 + Math.cos(angle)
-      const tipY = y2 + Math.sin(angle)
+      // 底边中心在线终点，尖端朝外延伸（tipOffset 来自 marker 定义）
+      const marker = markers[markerId]
+      const tipOffset = marker.tipOffset || 0
+      const halfW = (marker.markerHeight || 7) / 2 || 3.5
+      const sx = halfW * Math.sin(angle)
+      const sy = -halfW * Math.cos(angle)
+      const tipX = x2 + tipOffset * Math.cos(angle)
+      const tipY = y2 + tipOffset * Math.sin(angle)
       const points = `${tipX.toFixed(1)},${tipY.toFixed(1)} ${(x2 + sx).toFixed(1)},${(y2 + sy).toFixed(1)} ${(x2 - sx).toFixed(1)},${(y2 - sy).toFixed(1)}`
 
       // 移除 marker-end，保留其余属性
       const cleanAttrs = attrs.replace(/\s*marker-end="[^"]*"/, '')
 
-      return `<line ${cleanAttrs}/><polygon points="${points}" fill="${markers[markerId]}"/>`
+      return `<line ${cleanAttrs}/><polygon points="${points}" fill="${marker.fill}"/>`
     }
   )
 
@@ -204,14 +216,17 @@ async function loadAndInit() {
       const x1 = nums.length >= 4 ? nums[nums.length - 4] : x2 - 10
       const y1 = nums.length >= 4 ? nums[nums.length - 3] : y2
       const angle = Math.atan2(y2 - y1, x2 - x1)
-      // 底边中心在线终点，尖端朝外延伸1单位（匹配 marker refX=7, tip=8）
-      const sx = 4 * Math.sin(angle)
-      const sy = -4 * Math.cos(angle)
-      const tipX = x2 + Math.cos(angle)
-      const tipY = y2 + Math.sin(angle)
+      // 底边中心在线终点，尖端朝外延伸（tipOffset 来自 marker 定义）
+      const marker = markers[markerId]
+      const tipOffset = marker.tipOffset || 0
+      const halfW = (marker.markerHeight || 7) / 2 || 3.5
+      const sx = halfW * Math.sin(angle)
+      const sy = -halfW * Math.cos(angle)
+      const tipX = x2 + tipOffset * Math.cos(angle)
+      const tipY = y2 + tipOffset * Math.sin(angle)
       const points = `${tipX.toFixed(1)},${tipY.toFixed(1)} ${(x2 + sx).toFixed(1)},${(y2 + sy).toFixed(1)} ${(x2 - sx).toFixed(1)},${(y2 - sy).toFixed(1)}`
       const combined = (before + ' ' + after).replace(/\s*marker-end="[^"]*"/, '')
-      return `<path ${combined}/><polygon points="${points}" fill="${markers[markerId]}"/>`
+      return `<path ${combined}/><polygon points="${points}" fill="${marker.fill}"/>`
     }
   )
 
