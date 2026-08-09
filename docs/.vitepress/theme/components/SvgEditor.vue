@@ -266,6 +266,9 @@ async function loadAndInit() {
     backgroundColor: '#f5f5f5',
     selection: true,
     preserveObjectStacking: true,
+    perPixelTargetFind: false,
+    targetFindTolerance: 8,
+    controlsAboveOverlay: true,
   })
 
   // 控制点样式
@@ -278,7 +281,8 @@ async function loadAndInit() {
     borderColor: '#0078d4',
     borderScaleFactor: 1.5,
     borderDashArray: [4, 2],
-    padding: 6,
+    padding: 8,
+    perPixelTargetFind: false,
   })
 
   // 加载 SVG
@@ -321,8 +325,18 @@ async function loadAndInit() {
       }
       const converted = merged.map(convertToTextbox)
       const setInteractive = (o) => {
-        o.set({ selectable: true, evented: true })
-        // 递归设置 group 成员，确保子对象也可交互
+        o.set({
+          selectable: true,
+          evented: true,
+          // 确保透明填充的元素也能被点击选中
+          perPixelTargetFind: false,
+        })
+        // 无填充的形状加一层透明 hit 区域
+        if (!o.fill || o.fill === 'none' || o.fill === 'transparent') {
+          if (o.type === 'rect' || o.type === 'path' || o.type === 'polygon' || o.type === 'circle' || o.type === 'ellipse') {
+            o.set({ fill: 'rgba(0,0,0,0.001)' })
+          }
+        }
         if (o._objects) o._objects.forEach(setInteractive)
       }
       converted.forEach(obj => {
@@ -353,16 +367,21 @@ async function loadAndInit() {
       if (obj._objects) obj._objects.forEach(o => o.set({ selectable: true, evented: true }))
     }
   })
-  // 悬停时显示边框
+  // 悬停时改变鼠标样式 + 蓝色边框
   fc.on('mouse:over', (e) => {
-    if (e.target && !fc.getActiveObject()) {
-      e.target.set('borderColor', '#0078d4')
-      fc.requestRenderAll()
+    if (e.target && e.target.selectable) {
+      fc.setCursor('pointer')
+      if (!fc.getActiveObject()) {
+        e.target._origBorderColor = e.target.borderColor
+        e.target.set({ borderColor: '#0078d4' })
+        fc.requestRenderAll()
+      }
     }
   })
   fc.on('mouse:out', (e) => {
+    fc.setCursor('default')
     if (e.target && !fc.getActiveObject()) {
-      e.target.set('borderColor', 'transparent')
+      e.target.set({ borderColor: e.target._origBorderColor || '#0078d4' })
       fc.requestRenderAll()
     }
   })
@@ -477,9 +496,9 @@ function zoomFit(fc) {
   const bw = maxX - minX, bh = maxY - minY
   const cw = fc.width, ch = fc.height
   const z = Math.min((cw - 60) / bw, (ch - 60) / bh, 2)
-  fc.setZoom(z)
-  fc.viewportTransform[4] = (cw - bw * z) / 2 - minX * z
-  fc.viewportTransform[5] = (ch - bh * z) / 2 - minY * z
+  // 使用 setViewportTransform 确保内部状态一致
+  const vpt = [z, 0, 0, z, (cw - bw * z) / 2 - minX * z, (ch - bh * z) / 2 - minY * z]
+  fc.setViewportTransform(vpt)
   fc.requestRenderAll()
   zoomLevel.value = Math.round(z * 100)
 }
@@ -600,45 +619,58 @@ const guideLineStyle = 'rgba(0, 120, 212, 0.5)'
 const guideLineDash = [4, 4]
 
 function setupGuideLines(fc) {
+  // 用单例 debounce 防止同帧多次吸附
+  let _snapLock = false
+
   fc.on('object:moving', (opt) => {
+    if (_snapLock) return
     const obj = opt.target
     if (!obj) return
+
     const lines = []
+    const z = fc.getZoom()
     const objBounds = getObjBounds(obj)
     const objects = fc.getObjects().filter(o => o !== obj && o.visible)
 
+    let snapped = false
     for (const other of objects) {
+      if (snapped) break
       const otherBounds = getObjBounds(other)
 
       // 垂直参考线：左、中、右
       const vChecks = [
         { objX: objBounds.left, otherX: otherBounds.left },
-        { objX: objBounds.left, otherX: otherBounds.right },
         { objX: objBounds.centerX, otherX: otherBounds.centerX },
-        { objX: objBounds.right, otherX: otherBounds.left },
         { objX: objBounds.right, otherX: otherBounds.right },
+        { objX: objBounds.left, otherX: otherBounds.right },
+        { objX: objBounds.right, otherX: otherBounds.left },
       ]
       for (const check of vChecks) {
         if (Math.abs(check.objX - check.otherX) < SNAP_THRESHOLD) {
           lines.push({ type: 'vertical', x: check.otherX })
-          obj.set('left', obj.left + (check.otherX - check.objX))
+          // getBoundingRect 是屏幕坐标，差值要除以 zoom 才能加到对象坐标
+          obj.set('left', obj.left + (check.otherX - check.objX) / z)
           obj.setCoords()
+          snapped = true
+          break
         }
       }
 
       // 水平参考线：上、中、下
       const hChecks = [
         { objY: objBounds.top, otherY: otherBounds.top },
-        { objY: objBounds.top, otherY: otherBounds.bottom },
         { objY: objBounds.centerY, otherY: otherBounds.centerY },
-        { objY: objBounds.bottom, otherY: otherBounds.top },
         { objY: objBounds.bottom, otherY: otherBounds.bottom },
+        { objY: objBounds.top, otherY: otherBounds.bottom },
+        { objY: objBounds.bottom, otherY: otherBounds.top },
       ]
       for (const check of hChecks) {
         if (Math.abs(check.objY - check.otherY) < SNAP_THRESHOLD) {
           lines.push({ type: 'horizontal', y: check.otherY })
-          obj.set('top', obj.top + (check.otherY - check.objY))
+          obj.set('top', obj.top + (check.otherY - check.objY) / z)
           obj.setCoords()
+          snapped = true
+          break
         }
       }
     }
@@ -649,6 +681,7 @@ function setupGuideLines(fc) {
 
   fc.on('object:modified', () => {
     guideLines.value = []
+    _snapLock = false
   })
   fc.on('selection:cleared', () => {
     guideLines.value = []
@@ -656,19 +689,21 @@ function setupGuideLines(fc) {
 
   // 自定义渲染参考线
   fc.on('after:render', () => {
+    if (!guideLines.value.length) return
     const ctx = fc.getContext()
     ctx.save()
     ctx.strokeStyle = guideLineStyle
     ctx.lineWidth = 1
     ctx.setLineDash(guideLineDash)
+    const vpt = fc.viewportTransform
     for (const line of guideLines.value) {
       ctx.beginPath()
       if (line.type === 'vertical') {
-        const x = line.x * fc.getZoom() + (fc.viewportTransform[4] || 0)
+        const x = line.x * vpt[0] + vpt[4]
         ctx.moveTo(x, 0)
         ctx.lineTo(x, fc.height)
       } else {
-        const y = line.y * fc.getZoom() + (fc.viewportTransform[5] || 0)
+        const y = line.y * vpt[3] + vpt[5]
         ctx.moveTo(0, y)
         ctx.lineTo(fc.width, y)
       }
