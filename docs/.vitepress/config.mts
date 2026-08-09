@@ -38,9 +38,9 @@ export default withMermaid(
             req.on('end', () => {
               try {
                 const { path: svgPath, content } = JSON.parse(body)
-                // 安全检查：只允许写入 public/diagrams/ 下的 .svg 文件
-                const diagramsDir = path.resolve(__dirname, '../public/diagrams')
-                const fullPath = path.resolve(__dirname, '../public', svgPath.replace(/^\//, ''))
+                const diagramsDir = path.resolve(process.cwd(), 'docs/public/diagrams')
+                const fullPath = path.resolve(process.cwd(), 'docs/public', svgPath.replace(/^\//, ''))
+                console.log(`[svg-save] svgPath=${svgPath} diagramsDir=${diagramsDir} fullPath=${fullPath}`)
                 if (!fullPath.startsWith(diagramsDir) || !fullPath.endsWith('.svg')) {
                   res.statusCode = 403
                   res.end('Forbidden: only SVG files in public/diagrams/ are allowed')
