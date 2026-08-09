@@ -187,9 +187,8 @@ async function loadAndInit() {
       // 底边中心在线终点，尖端朝外延伸（tipOffset 来自 marker 定义）
       const marker = markers[markerId]
       const tipOffset = marker.tipOffset || 0
-      const halfW = (marker.markerHeight || 7) / 2 || 3.5
-      const sx = halfW * Math.sin(angle)
-      const sy = -halfW * Math.cos(angle)
+      const sx = 4 * Math.sin(angle)
+      const sy = -4 * Math.cos(angle)
       const tipX = x2 + tipOffset * Math.cos(angle)
       const tipY = y2 + tipOffset * Math.sin(angle)
       const points = `${tipX.toFixed(1)},${tipY.toFixed(1)} ${(x2 + sx).toFixed(1)},${(y2 + sy).toFixed(1)} ${(x2 - sx).toFixed(1)},${(y2 - sy).toFixed(1)}`
@@ -219,9 +218,8 @@ async function loadAndInit() {
       // 底边中心在线终点，尖端朝外延伸（tipOffset 来自 marker 定义）
       const marker = markers[markerId]
       const tipOffset = marker.tipOffset || 0
-      const halfW = (marker.markerHeight || 7) / 2 || 3.5
-      const sx = halfW * Math.sin(angle)
-      const sy = -halfW * Math.cos(angle)
+      const sx = 4 * Math.sin(angle)
+      const sy = -4 * Math.cos(angle)
       const tipX = x2 + tipOffset * Math.cos(angle)
       const tipY = y2 + tipOffset * Math.sin(angle)
       const points = `${tipX.toFixed(1)},${tipY.toFixed(1)} ${(x2 + sx).toFixed(1)},${(y2 + sy).toFixed(1)} ${(x2 - sx).toFixed(1)},${(y2 - sy).toFixed(1)}`
@@ -468,18 +466,10 @@ function cleanFabricSvg(svg) {
     const keep = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray',
       'fill-rule', 'opacity', 'font-family', 'font-size', 'font-weight',
       'font-style', 'text-anchor']
-    const skipValues = {
-      fill: ['#000000'],
-      stroke: ['#000000', 'none'],
-      'stroke-width': ['1'],
-      'fill-rule': ['nonzero'],
-      opacity: ['1']
-    }
     const result = []
     for (const prop of styleStr.split(';')) {
       const [key, val] = prop.split(':').map(p => p.trim())
       if (key && val && keep.includes(key)) {
-        if (skipValues[key] && skipValues[key].includes(val)) continue
         result.push(`${key}="${val}"`)
       }
     }
@@ -508,14 +498,11 @@ function cleanFabricSvg(svg) {
         const content = textMatch[4]
         const absX = tx + localX
         const absY = ty + localY
-        // 提取 style 中的核心属性
-        const styleMatch = origAttrs.match(/style="([^"]*)"/)
-        const styleAttrs = styleMatch ? extractStyleAttrs(styleMatch[1]) : ''
         let attrs = origAttrs
-          .replace(/\s+style="[^"]*"/g, '')
           .replace(/\s+xml:space="preserve"/g, '')
           .replace(/^<text/, `<text x="${absX.toFixed(1)}" y="${absY.toFixed(1)}"`)
-        return `${attrs}${content}</text>`
+          .replace(/>$/, '')
+        return `${attrs}>${content}</text>`
       }
 
       // 处理 <rect> 结构
@@ -523,13 +510,10 @@ function cleanFabricSvg(svg) {
         /^(<rect[^>]*?)\s+style="[^"]*"([^>]*\/>)\s*$/
       )
       if (rectMatch) {
-        const styleMatch = trimmed.match(/style="([^"]*)"/)
-        const styleAttrs = styleMatch ? extractStyleAttrs(styleMatch[1]) : ''
         let attrs = trimmed
-          .replace(/\s+style="[^"]*"/g, '')
           .replace(/ x="([\d.\-]+)"/, (m, x) => ` x="${(tx + parseFloat(x)).toFixed(1)}"`)
           .replace(/ y="([\d.\-]+)"/, (m, y) => ` y="${(ty + parseFloat(y)).toFixed(1)}"`)
-        return attrs.replace(/^<rect/, `<rect ${styleAttrs}`).replace(/\s{2,}/g, ' ')
+        return attrs
       }
 
       // 处理 <line> 结构
@@ -537,14 +521,12 @@ function cleanFabricSvg(svg) {
         /^(<line[^>]*?)\s+style="[^"]*"([^>]*\/>)\s*$/
       )
       if (lineMatch) {
-        const styleMatch = trimmed.match(/style="([^"]*)"/)
-        const styleAttrs = styleMatch ? extractStyleAttrs(styleMatch[1]) : ''
-        let attrs = trimmed.replace(/\s+style="[^"]*"/g, '')
+        let attrs = trimmed
         attrs = attrs.replace(/ x1="([\d.\-]+)"/, (m, v) => ` x1="${(tx + parseFloat(v)).toFixed(1)}"`)
         attrs = attrs.replace(/ y1="([\d.\-]+)"/, (m, v) => ` y1="${(ty + parseFloat(v)).toFixed(1)}"`)
         attrs = attrs.replace(/ x2="([\d.\-]+)"/, (m, v) => ` x2="${(tx + parseFloat(v)).toFixed(1)}"`)
         attrs = attrs.replace(/ y2="([\d.\-]+)"/, (m, v) => ` y2="${(ty + parseFloat(v)).toFixed(1)}"`)
-        return attrs.replace(/^<line/, `<line ${styleAttrs}`).replace(/\s{2,}/g, ' ')
+        return attrs
       }
 
       // 处理 <polygon> 结构
@@ -552,17 +534,14 @@ function cleanFabricSvg(svg) {
         /^(<polygon[^>]*?)\s+style="[^"]*"([^>]*\/>)\s*$/
       )
       if (polyMatch) {
-        const styleMatch = trimmed.match(/style="([^"]*)"/)
-        const styleAttrs = styleMatch ? extractStyleAttrs(styleMatch[1]) : ''
-        let attrs = trimmed.replace(/\s+style="[^"]*"/g, '')
-        attrs = attrs.replace(/ points="([^"]+)"/, (m, pts) => {
+        let attrs = trimmed.replace(/ points="([^"]+)"/, (m, pts) => {
           const newPts = pts.trim().split(/\s+/).map((pair) => {
             const [x, y] = pair.split(',').map(Number)
             return `${(tx + x).toFixed(1)},${(ty + y).toFixed(1)}`
           }).join(' ')
           return ` points="${newPts}"`
         })
-        return attrs.replace(/^<polygon/, `<polygon ${styleAttrs}`).replace(/\s{2,}/g, ' ')
+        return attrs
       }
 
       // 多个子元素或无法识别，保留原始 Group
@@ -570,14 +549,8 @@ function cleanFabricSvg(svg) {
     }
   )
 
-  // 3. 清理剩余的 style 属性（提取有意义的属性后移除）
-  s = s.replace(
-    /(<(?:text|rect|line|circle|ellipse|path|polygon)[^>]*?)\s+style="([^"]*)"/g,
-    (full, tag, style) => {
-      const styleAttrs = extractStyleAttrs(style)
-      return styleAttrs ? `${tag} ${styleAttrs}` : tag
-    }
-  )
+  // 3. 清理 Fabric.js 特有的冗余属性（保留 style 中的核心属性）
+  // 不再提取 style 为直接属性，保留 style 原样
 
   // 4. 清理多余的空白行
   s = s.replace(/\n\s*\n/g, '\n')
