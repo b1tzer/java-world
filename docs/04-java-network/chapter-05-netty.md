@@ -1,26 +1,30 @@
 # 第5章 Netty：Java 高性能网络框架
 
-> Java NIO 提供了非阻塞 I/O 的底层能力，但直接使用 NIO 编写生产级网络程序，开发者要面对复杂的 Selector 事件循环、手动管理 Buffer 位置与容量、以及 JDK 历史上著名的 epoll Bug。Netty 的出现，就是要把这些底层复杂性封装成一套清晰、可扩展、高性能的编程模型——让开发者专注于业务逻辑，而非 I/O 细节。
+> 你的 Dubbo Provider 日志刷出一条让你心惊的 WARN：`Thread pool is EXHAUSTED! Pool Size: 200 (active: 200, core: 200, max: 200)`。200 个 `DubboServerHandler-20880-thread` 全部 active，45678 个任务在排队。溯源代码发现一个 `sleep(6000)` 的测试残留——这一个慢调用，把整个线程池堵了 6 秒。你能做的不是改那个 `sleep`（你已经改完了），而是理解 Dubbo 背后的 Netty 线程模型为什么 200 个线程全被拖死了、dispatcher 和 threadpool 的区别是什么、以及为什么只调大 `threads` 有时候没用。
 
-## 5.1 为什么需要 Netty
+> **📖 阅读建议**：§5.1 是为什么要有 Netty（对比第4章 NIO），§5.2 是核心线程模型（你线上排障最需要的部分），§5.3 ByteBuf（`Direct buffer memory` OOM 根因），§5.4 编解码（粘包/拆包解决方案），§5.5 Reactor 模式全景。删除API罗列式讲解，保留原理和排查路径。
 
-### 5.1.1 NIO 的三大痛点
+---
 
-Java NIO（`java.nio` 包）在 JDK 1.4 引入，提供了 Channel、Selector、Buffer 等核心抽象，实现了非阻塞 I/O。然而，直接使用 NIO 编写网络应用面临三个显著痛点：
+## 5.1 从 NIO 到 Netty：为什么原生 NIO 没人直接用了
 
-| 痛点 | 具体表现 | 后果 |
-|------|----------|------|
-| **API 复杂** | Selector 注册/轮询、Buffer 的 position/limit/capacity 手动管理、ByteBuffer 类型单一 | 开发效率低，极易出 Bug |
-| **epoll Bug** | JDK 在 Linux 上的 Selector 空轮询（epoll bug），导致 CPU 100% | 线上事故频发，JDK 长期未彻底修复 |
-| **扩展困难** | 缺少成熟的编解码、线程模型、连接管理框架 | 每个项目重复造轮子 |
+第4章讲了 NIO 的 Channel、Buffer、Selector。你能用 500 行写一个 NIO Echo Server，但第4章也在末尾告诉你：生产代码没人这么写。具体原因一个一个看。
 
-### 5.1.2 Netty 的定位
+### 5.1.1 NIO 的三个致命缺陷
 
-Netty 是一个 **异步事件驱动的网络应用框架**，它在 NIO 之上构建了一层更高阶的抽象：
+| 缺陷 | 后果 |
+|------|------|
+| **Buffer 的 flip/clear/compact** | 读写模式手动切，忘记一次 flip → 读到错误数据，且不报错 |
+| **epoll 空轮询 Bug（JDK-6670302）** | `selector.select()` 偶发立即返回 0 → CPU 空转 100% |
+| **缺少编解码、线程模型、连接管理** | 粘包要自己写、半包要自己攒、线程调度要自己管 |
+
+Netty 把这三个坑全部填平了。
+
+### 5.1.2 Netty 填了什么
 
 ```text
 ┌─────────────────────────────────────┐
-│         业务应用 (你的代码)           │
+│         业务代码 (你的 Dubbo Consumer)│
 ├─────────────────────────────────────┤
 │         Netty 框架层                 │
 │  ┌──────────┬──────────┬─────────┐  │
@@ -34,497 +38,150 @@ Netty 是一个 **异步事件驱动的网络应用框架**，它在 NIO 之上�
 └─────────────────────────────────────┘
 ```
 
-Netty 解决了上述三个痛点：
-
-1. **封装 API**：用 Channel、Pipeline、Handler 的责任链模型取代裸 NIO 的 Selector 循环
-2. **规避 epoll Bug**：通过 `Selector.select(timeout)` + 空轮询计数器机制，在检测到空轮询时重建 Selector
-3. **提供扩展点**：内置编解码器、线程模型、内存管理、连接池等生产级组件
-
-### 5.1.3 谁在用 Netty
-
-Netty 是 Java 生态中事实标准的网络框架：
-
-- **Dubbo / gRPC**：RPC 通信底层
-- **Elasticsearch**：节点间通信
-- **RocketMQ / Kafka**：消息传递
-- **Spring WebFlux**：默认使用 Reactor Netty
-- **Cassandra / HBase**：客户端连接
-
-## 5.2 Netty 核心架构
-
-### 5.2.1 整体组件关系
-
-Netty 的架构由五个核心组件构成，它们之间的关系可以用以下调用链概括：
-
-```text
-Bootstrap
-  └─ EventLoopGroup (bossGroup, workerGroup)
-       └─ EventLoop (每个线程一个)
-            └─ Channel (每个连接一个)
-                 └─ Pipeline
-                      └─ Handler (业务处理器链)
-```
-
-### 5.2.2 Bootstrap 启动器
-
-Bootstrap 是 Netty 应用的入口，分为两种：
-
-| 类型 | 用途 | 线程组 |
-|------|------|--------|
-| `ServerBootstrap` | 服务端，监听端口 | 需要 bossGroup + workerGroup |
-| `Bootstrap` | 客户端，发起连接 | 只需一个 group |
-
-一个典型的服务端启动代码：
-
-```java
-EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-EventLoopGroup workerGroup = new NioEventLoopGroup();
-
-try {
-    ServerBootstrap bootstrap = new ServerBootstrap();
-    bootstrap.group(bossGroup, workerGroup)
-             .channel(NioServerSocketChannel.class)
-             .option(ChannelOption.SO_BACKLOG, 128)
-             .childOption(ChannelOption.SO_KEEPALIVE, true)
-             .childHandler(new ChannelInitializer<SocketChannel>() {
-                 @Override
-                 protected void initChannel(SocketChannel ch) {
-                     ch.pipeline().addLast(new MyBusinessHandler());
-                 }
-             });
-
-    ChannelFuture future = bootstrap.bind(8080).sync();
-    future.channel().closeFuture().sync();
-} finally {
-    bossGroup.shutdownGracefully();
-    workerGroup.shutdownGracefully();
-}
-```
-
-### 5.2.3 Channel 通道
-
-Channel 是 Netty 对网络连接的抽象，对应操作系统的一个文件描述符（fd）。与 `java.nio.channels.Channel` 不同，Netty 的 Channel 提供了更丰富的操作：
-
-```java
-// Channel 核心方法
-channel.id()              // 唯一标识
-channel.isActive()        // 是否激活
-channel.remoteAddress()   // 远端地址
-channel.writeAndFlush(msg)// 写出数据并刷新
-channel.close()           // 关闭连接
-channel.pipeline()        // 获取 Pipeline
-channel.alloc()           // 获取 ByteBuf 分配器
-```
-
-常见的 Channel 类型：
-
-| Channel 类型 | 说明 |
-|-------------|------|
-| `NioServerSocketChannel` | 服务端 TCP 监听通道 |
-| `NioSocketChannel` | 客户端 TCP 数据通道 |
-| `OioServerSocketChannel` | 阻塞式服务端（已废弃） |
-| `EpollServerSocketChannel` | Linux epoll 原生实现 |
-
-## 5.3 EventLoop 线程模型
-
-### 5.3.1 EventLoop 是什么
-
-EventLoop 是 Netty 的核心线程模型，**一个 EventLoop 绑定一个线程**，负责处理其上所有 Channel 的 I/O 事件。这是 Netty 保证线程安全的关键设计：
-
-```text
-EventLoop-1 (Thread-1)
-  ├── Channel-A (read, write)
-  ├── Channel-B (read, write)
-  └── Channel-C (read, write)
-
-EventLoop-2 (Thread-2)
-  ├── Channel-D (read, write)
-  └── Channel-E (read, write)
-
-EventLoop-3 (Thread-3)
-  └── Channel-F (read, write)
-```
-
-**核心原则：一个 Channel 的所有 I/O 事件永远由同一个 EventLoop（线程）处理。**
-
-这意味着：
-- Handler 中不需要同步锁（单线程执行）
-- 不要阻塞 EventLoop 线程（否则该线程上所有 Channel 都会卡住）
-
-### 5.3.2 EventLoop 生命周期
-
-<SvgDiagram src="/diagrams/netty-eventloop.svg" />
-
-每个 EventLoop 内部维护三个任务队列：
-
-| 队列 | 用途 | 方法 |
-|------|------|------|
-| 普通任务队列 | 用户提交的异步任务 | `execute(Runnable)` |
-| 定时任务队列 | 延迟/周期任务 | `schedule(Runnable, delay, unit)` |
-| 尾部任务队列 | Channel 生命周期回调 | 内部使用 |
-
-### 5.3.3 EventLoopGroup 分配策略
-
-当一个新的 Channel 注册时，EventLoopGroup 通过 **轮询（Round-Robin）** 策略选择一个 EventLoop 将其绑定：
-
-```java
-// NioEventLoopGroup 默认线程数 = CPU 核心数 × 2
-EventLoopGroup group = new NioEventLoopGroup();
-// 可以指定线程数
-EventLoopGroup group = new NioEventLoopGroup(4);
-```
-
-**最佳实践：**
-- bossGroup 设为 1（只负责 accept）
-- workerGroup 使用默认值（CPU × 2），或根据业务调优
-- 耗时业务逻辑交给独立的业务线程池，不要阻塞 EventLoop
-
-## 5.4 ChannelPipeline 责任链
-
-### 5.4.1 Pipeline 结构
-
-每个 Channel 拥有一个 Pipeline，Pipeline 内部是一条 **双向链表**，由 Handler 节点组成：
-
-```text
-  Head → [Handler A] → [Handler B] → [Handler C] → Tail
-  │        Inbound      Inbound       Outbound        │
-  │        ──────────→  ──────────→   ←──────────     │
-  │                                                   │
-  └── Inbound 事件从 Head 流向 Tail ───────────────────┘
-  └── Outbound 事件从 Tail 流向 Head ──────────────────┘
-```
-
-### 5.4.2 Inbound vs Outbound Handler
-
-| 特性 | Inbound Handler | Outbound Handler |
-|------|----------------|-----------------|
-| 处理方向 | Head → Tail | Tail → Head |
-| 触发时机 | 数据到达、连接建立/断开 | 数据写出、连接绑定 |
-| 典型用途 | 解码、业务处理 | 编码、流量控制 |
-| 接口 | `ChannelInboundHandler` | `ChannelOutboundHandler` |
-| 适配器 | `SimpleChannelInboundHandler<T>` | `ChannelOutboundHandlerAdapter` |
-
-### 5.4.3 Handler 执行顺序
-
-以一个典型的编解码链为例：
-
-```text
-Pipeline:
-  [HttpDecoder]         → Inbound: 将字节解码为 HttpRequest
-  [HttpAggregator]      → Inbound: 聚合完整请求体
-  [BusinessHandler]     → Inbound: 处理业务逻辑
-  [HttpEncoder]         → Outbound: 将 HttpResponse 编码为字节
-```
-
-数据流入（读取）过程：
-
-```text
-Socket 读取字节
-  → HttpDecoder.channelRead()   // 字节 → HttpRequest
-  → HttpAggregator.channelRead() // 分片 → 完整请求
-  → BusinessHandler.channelRead() // 业务处理
-```
-
-数据流出（写入）过程：
-
-```text
-BusinessHandler.write(response)
-  → HttpEncoder.write()          // HttpResponse → 字节
-  → Socket 写出字节
-```
-
-### 5.4.4 添加与删除 Handler
-
-```java
-pipeline.addLast("decoder", new HttpServerCodec());
-pipeline.addLast("aggregator", new HttpObjectAggregator(65536));
-pipeline.addLast("handler", new MyBusinessHandler());
-
-// 按名字移除
-pipeline.remove("aggregator");
-
-// 替换
-pipeline.replace("decoder", "new-decoder", new BetterDecoder());
-```
-
-**注意：** `ChannelInitializer` 中添加的 Handler 在连接建立后只会执行一次，之后其自身会被从 Pipeline 中移除。
-
-## 5.5 ByteBuf 内存模型
-
-### 5.5.1 ByteBuffer 的局限
-
-JDK 原生的 `ByteBuffer` 存在以下问题：
-
-| 问题 | 说明 |
-|------|------|
-| 固定容量 | 创建后不可扩容，需要手动 `flip()` 切换读写模式 |
-| 单一 API | 只有一个 position 指针，操作不便 |
-| 无引用计数 | 无法精确控制内存释放 |
-| 类型单一 | 只有 heap 和 direct 两种，缺少池化能力 |
-
-### 5.5.2 ByteBuf 的优势
-
-Netty 的 `ByteBuf` 采用 **读写分离的双指针设计**，彻底消除了 `flip()` 的困扰：
-
-```text
-+-------------------+------------------+------------------+
-| discardable bytes |  readable bytes  |  writable bytes  |
-|    (已读/可丢弃)   |   (可读数据)      |   (可写空间)      |
-+-------------------+------------------+------------------+
-|                   |                  |                  |
-0              readerIndex        writerIndex        capacity
-```
-
-核心操作：
-
-```java
-ByteBuf buf = Unpooled.buffer(256);
-
-// 写入
-buf.writeInt(42);
-buf.writeBytes("hello".getBytes());
-
-// 读取（readerIndex 自动前移）
-int num = buf.readInt();           // 42
-byte[] bytes = new byte[5];
-buf.readBytes(bytes);              // "hello"
-
-// 随机访问（不影响 readerIndex）
-byte first = buf.getByte(0);
-
-// 标记与重置
-buf.markReaderIndex();
-buf.readByte();
-buf.resetReaderIndex();            // 回到标记位置
-```
-
-### 5.5.3 ByteBuf 分类
-
-| 类型 | 分配方式 | 是否池化 | 特点 |
-|------|----------|----------|------|
-| Heap ByteBuf | `heapBuffer()` | 可选 | JVM 堆上，受 GC 管理 |
-| Direct ByteBuf | `directBuffer()` | 可选 | 堆外内存，零拷贝友好 |
-| Pooled Heap | `PooledByteBufAllocator` | 池化 | 减少 GC 压力 |
-| Pooled Direct | `PooledByteBufAllocator` | 池化 | 性能最佳，Netty 默认 |
-
-**最佳实践：**
-- I/O 操作（网络读写）使用 Direct ByteBuf，减少一次堆内→堆外的拷贝
-- 业务处理使用 Heap ByteBuf，便于操作
-- 使用池化分配器（Netty 4.x 默认已开启）
-
-### 5.5.4 引用计数与释放
-
-ByteBuf 使用 **引用计数** 管理生命周期，防止内存泄漏：
-
-```java
-ByteBuf buf = allocator.buffer();
-// 引用计数初始为 1
-System.out.println(buf.refCnt());  // 1
-
-buf.retain();  // 引用计数 +1 → 2
-buf.release(); // 引用计数 -1 → 1
-buf.release(); // 引用计数 -1 → 0，内存释放
-```
-
-**关键规则：**
-- `channelRead()` 中分配的 ByteBuf，由下一个 Handler 负责释放
-- `SimpleChannelInboundHandler` 会自动释放消息（调用 `ReferenceCountUtil.release(msg)`）
-- 手动 `write()` 的 ByteBuf 由 Netty 负责释放
-
-**内存泄漏检测：** 启动时加 JVM 参数 `-Dio.netty.leakDetection.level=PARANOID`，Netty 会在 ByteBuf 未释放时打印泄漏堆栈。
-
-## 5.6 编解码机制
-
-### 5.6.1 为什么需要编解码
-
-TCP 是 **字节流协议**，没有消息边界。发送端写入的两条消息 `Hello` 和 `World`，接收端可能一次读到 `HelloWorld`，也可能分两次读到 `Hel` 和 `loWorld`。这就是 **TCP 粘包/拆包** 问题。
-
-```text
-发送端:                          接收端可能收到:
-  write("Hello")                 情况1: "HelloWorld"     (粘包)
-  write("World")                 情况2: "Hel" + "loWorld" (拆包)
-                                 情况3: "Hello" + "World"  (正常)
-```
-
-Netty 提供了多种 Frame Decoder（帧解码器）来解决这个问题。
-
-### 5.6.2 FixedLengthFrameDecoder
-
-**定长帧解码器**：每条消息固定长度，不足时补空格。
-
-```java
-// 每条消息固定 10 字节
-pipeline.addLast(new FixedLengthFrameDecoder(10));
-```
-
-```text
-原始字节流: [Hello_____][World_____][12345_____]
-解码结果:   "Hello"     "World"     "12345"
-```
-
-**适用场景：** 简单协议，消息长度固定。
-
-### 5.6.3 DelimiterBasedFrameDecoder
-
-**分隔符帧解码器**：用特殊字符（如 `\n`、`\r\n`）作为消息边界。
-
-```java
-// 以 \r\n 作为分隔符，最大帧长度 8192
-pipeline.addLast(new DelimiterBasedFrameDecoder(8192,
-    Delimiters.lineDelimiter()));
-```
-
-```text
-原始字节流: "Hello\r\nWorld\r\n"
-解码结果:   "Hello"  "World"
-```
-
-**适用场景：** 文本协议（如 Redis、Memcached 的部分命令）。
-
-### 5.6.4 LengthFieldBasedFrameDecoder
-
-**长度字段帧解码器**：最灵活的方案，在消息头部用 N 个字节表示消息体长度。
-
-```java
-// maxFrameLength=1024, lengthFieldOffset=0, lengthFieldLength=4,
-// lengthAdjustment=0, initialBytesToStrip=4
-pipeline.addLast(new LengthFieldBasedFrameDecoder(1024, 0, 4, 0, 4));
-```
-
-```text
-原始数据:
-+--------+------------------+
-| Length  |     Payload      |
-| 4 bytes |   N bytes        |
-+--------+------------------+
-| 0x0005 | H e l l o        |
-| 0x0005 | W o r l d        |
-+--------+------------------+
-
-解码结果: "Hello"  "World"
-```
-
-参数说明：
-
-| 参数 | 含义 |
-|------|------|
-| `maxFrameLength` | 最大帧长度，超过则抛异常 |
-| `lengthFieldOffset` | 长度字段起始偏移 |
-| `lengthFieldLength` | 长度字段占用字节数 |
-| `lengthAdjustment` | 长度修正值（长度字段值 + adjustment = 实际载荷长度） |
-| `initialBytesToStrip` | 跳过前 N 字节（如不想要长度头） |
-
-**适用场景：** 大多数二进制协议（如 Dubbo、RocketMQ）。
-
-### 5.6.5 编解码器组合模式
-
-Netty 提供了 `Codec` 类将 Encoder 和 Decoder 合二为一：
-
-```java
-// 将 HttpRequestDecoder + HttpResponseEncoder 合并
-pipeline.addLast(new HttpServerCodec());
-
-// 自定义编解码器
-public class MyMessageCodec extends MessageToMessageCodec<ByteBuf, MyMessage> {
-    @Override
-    protected void encode(ChannelHandlerContext ctx, MyMessage msg, List<Object> out) {
-        // MyMessage → ByteBuf
-    }
-
-    @Override
-    protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) {
-        // ByteBuf → MyMessage
-    }
-}
-```
-
-## 5.7 主从 Reactor 模型
-
-### 5.7.1 Reactor 模式回顾
-
-Reactor 模式是高性能网络服务器的经典架构，核心思想是 **一个或少量线程通过事件循环监听大量连接**。
-
-三种典型的 Reactor 变体：
-
-<SvgDiagram src="/diagrams/netty-reactor.svg" />
-
-### 5.7.2 Netty 的主从 Reactor 实现
-
-Netty 默认采用 **主从 Reactor** 模型：
-
-```text
-                        ┌─────────────────────────────────────┐
-                        │         ServerBootstrap              │
-                        └──────────────┬──────────────────────┘
-                                       │
-                   ┌───────────────────┼───────────────────┐
-                   ▼                                       ▼
-            bossGroup                                  workerGroup
-         (NioEventLoopGroup)                      (NioEventLoopGroup)
-         ┌────────────────┐                     ┌────────────────────┐
-         │  NioEventLoop   │                     │  NioEventLoop-1    │
-         │  (1 thread)     │  ── accept ──→      │  Channel A, B, C   │
-         │  Selector       │  分配 Channel       │  read/write/decode │
-         └────────────────┘                     ├────────────────────┤
-                                                │  NioEventLoop-2    │
-                                                │  Channel D, E      │
-                                                │  read/write/decode │
-                                                └────────────────────┘
-                                                ├────────────────────┤
-                                                │  NioEventLoop-N    │
-                                                │  Channel F, G      │
-                                                └────────────────────┘
-```
-
-### 5.7.3 一次请求的完整流程
-
-以客户端发送一个 HTTP 请求为例，完整的数据流经过程：
-
-<SvgDiagram src="/diagrams/netty-pipeline.svg" />
-
-### 5.7.4 TaskQueue 的作用
-
-当 Handler 中有耗时操作（如数据库查询、RPC 调用）时，不能阻塞 EventLoop 线程。Netty 提供了两种方式将任务提交到独立线程池：
-
-```java
-// 方式1：使用 ctx.channel().eventLoop().execute()
-ctx.channel().eventLoop().execute(() -> {
-    // 耗时操作
-    String result = database.query(sql);
-    ctx.writeAndFlush(result);
-});
-
-// 方式2：使用独立的业务线程池
-EventLoopGroup businessGroup = new DefaultEventLoopGroup(8);
-bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
-    @Override
-    protected void initChannel(SocketChannel ch) {
-        ch.pipeline()
-         .addLast(workerGroup, "codec", new HttpCodecHandler())     // I/O 线程
-         .addLast(businessGroup, "biz", new BusinessHandler());     // 业务线程
-    }
-});
-```
-
-Handler 绑定线程池的规则：
-- 如果指定了线程池，该 Handler 的方法由指定线程池中的线程执行
-- 如果未指定，由 Channel 所在的 EventLoop 线程执行
-
-### 5.7.5 线程模型调优建议
-
-| 场景 | 建议配置 |
-|------|----------|
-| 简单代理/网关 | boss=1, worker=CPU×2, 无业务线程池 |
-| 计算密集型业务 | boss=1, worker=CPU×2, 业务线程池=CPU×2 |
-| I/O 密集型业务（DB/RPC） | boss=1, worker=CPU×2, 业务线程池=较大值(如100) |
-| 海量连接、低吞吐 | boss=1, worker=CPU, 减少内存占用 |
+| NIO 坑 | Netty 对策 |
+|---------|-----------|
+| Buffer flip 繁琐 | ByteBuf 读写指针分离，自动扩容，不需要 flip |
+| epoll 空轮询 Bug | 连续 512 次空返回 → 重建 Selector |
+| 缺少协议支持 | 内置 HTTP/WebSocket/SSL 编解码器 |
+| 粘包/拆包 | 内置 LengthField / Delimiter / FixedLength 帧解码器 |
+| 线程模型缺失 | EventLoopGroup + Pipeline，一行代码绑到线程池 |
+
+Netty 在 Java 生态中是事实标准：Dubbo 的传输层、gRPC 的 Netty Transport、Elasticsearch 节点间通信、RocketMQ 的网络层，全都跑在 Netty 上。
 
 ---
 
-> **本章小结：** Netty 通过 EventLoop 线程模型、Pipeline 责任链、ByteBuf 内存管理三大核心机制，将 Java NIO 的复杂性封装为一套优雅的编程模型。主从 Reactor 架构实现了连接管理与数据处理的分离，为高并发网络应用提供了坚实的基础设施。
+## 5.2 EventLoop 线程模型：Dubbo「线程池打满」的根
+
+回到开头那个故障。Dubbo Provider 200 个线程全部耗尽，但你的服务一共才 4 个 CPU 核。为什么会有 200 个线程同时在跑？因为 Dubbo 默认用 Netty 的 **EventLoop + 业务线程池** 两层模型——失败不在 Netty 的 IO 层，而在业务线程池层。
+
+### 5.2.1 Boss 和 Worker：连接和数据分开管
+
+Netty 服务端有两个线程组：
+
+```text
+bossGroup (1 个线程)                workerGroup (CPU×2 个线程)
+┌────────────────┐                 ┌────────────────────┐
+│  NioEventLoop   │                 │  NioEventLoop-1    │
+│  Selector       │  ── accept ──→  │  Channel A, B, C   │
+│  只做 accept()  │  分配 Channel   │  read/write/decode │
+└────────────────┘                 ├────────────────────┤
+                                   │  NioEventLoop-2    │
+                                   │  Channel D, E      │
+                                   │  read/write/decode │
+                                   └────────────────────┘
+```
+
+**bossGroup 只管 accept**：一条线程收到新连接后，按 Round-Robin 分给 workerGroup 的某个 EventLoop。**workerGroup 负责读数据**：从 Channel 读字节 → 解码 → 触发 Handler。
+
+**关键规则**：一个 Channel 的所有 I/O 事件永远由同一个 EventLoop 线程处理。这意味着你在 I/O Handler 里不需要加锁——天然的线程安全。但也意味着你不能阻塞 EventLoop 线程——一个 Handler 里加了 `sleep`，这个 EventLoop 上所有 Channel 全部罢工。
+
+### 5.2.2 Dubbo 的 dispatcher 和 threadpool：IO 线程和业务线程的分工
+
+Dubbo 在 Netty workerGroup 之上又加了一层业务线程池。控制「谁出谁进」的是 `dispatcher`：
+
+| dispatcher | 行为 | 代价 |
+|---|---|---|
+| `all`（默认） | 所有消息都丢给业务线程池 | 多一次线程切换 |
+| `direct` | 所有消息都留在 I/O 线程上处理 | Handler 里不能有任何阻塞 |
+| `message` | 只有请求进业务线程池，响应留在 I/O 线程 | 折中 |
+| `execution` | 只有请求进业务线程池，响应也留在 I/O 线程 | 和 message 类似 |
+
+**dispatcher 和 threadpool 解决的不是一个问题**：
+- **dispatcher** 决定「这个 Handler 在哪个线程上跑」——I/O 线程还是业务线程。
+- **threadpool** 决定「进了业务线程池后，用多大的池子来接」。
+
+很多线上调参无效就是因为搞混了这两层。你调大 `threads=500`，但如果 dispatcher 选的 `direct`，消息根本没进业务线程池——加再多 threads 也没用。
+
+回到开头那个故障：dispatcher 用的是 `all`，threadpool 用的是 `fixed:200`。一个测试残留的 `sleep(6000)` 把 200 个业务线程全部占满。后续新请求进入业务线程池时被 `AbortPolicyWithReport` 拒绝，Dubbo 会返回 `SERVER_THREADPOOL_EXHAUSTED_ERROR` 给 Consumer。Consumer 如果设了 `retries>0`，重试又会涌进来更多请求→雪崩。
+
+### 5.2.3 EventLoop 任务队列：别阻塞 I/O 线程
+
+Netty 的 EventLoop 不仅处理 I/O 事件，还执行用户提交的任务：
+
+```java
+// ✅ 耗时操作交给独立业务线程池
+EventLoopGroup businessGroup = new DefaultEventLoopGroup(8);
+ch.pipeline()
+ .addLast(workerGroup, "codec", new HttpCodecHandler())   // I/O 线程
+ .addLast(businessGroup, "biz", new BusinessHandler());   // 业务线程池
+
+// ❌ 耗时操作直接霸占 I/O 线程
+ch.pipeline().addLast(new BusinessHandler());  // 跑在 workerGroup 上
+```
+
+---
+
+## 5.3 ByteBuf：你线上见过但没看懂的 `Direct buffer memory` OOM
+
+Netty 的 ByteBuf 用一个独立指针 `readerIndex` 和一个独立指针 `writerIndex` 替代了 NIO Buffer 的单一 position。不需要 flip，不需要 compact——读就自动移动 `readerIndex`，写就自动移动 `writerIndex`：
+
+```text
++-------------------+------------------+------------------+
+| 已读/可丢弃       |  可读数据         |  可写空间         |
++-------------------+------------------+------------------+
+0              readerIndex        writerIndex        capacity
+```
+
+ByteBuf 默认使用池化的堆外内存（PooledDirectByteBuf）。堆外内存不受 JVM GC 管理，这意味着：你线上堆还有 2GB 空闲，但 Netty 的 PooledDirectByteBuf 已经把堆外内存吃了几百 MB，JVM 发现不了。
+
+```text
+java.lang.OutOfMemoryError: Direct buffer memory
+```
+
+这就是那道令无数开发者困惑的 OOM。堆里明明闲着，为什么会 OOM？因为 `-XX:MaxDirectMemorySize` 默认等于 `-Xmx`，而 Netty 的 ByteBuf 全部走堆外。
+
+排查命令：
+
+```bash
+# 看堆外内存使用（需要 JDK 9+）
+jcmd <pid> VM.native_memory summary | grep -A 5 "Direct"
+
+# 开 Netty 内存泄漏检测
+-Dio.netty.leakDetection.level=PARANOID
+```
+
+引用计数是 ByteBuf 的另一道防线。每个 ByteBuf 创建后 `refCnt=1`，每 `retain()` 一次 +1，每 `release()` 一次 -1，归零后释放内存。Netty 的 `SimpleChannelInboundHandler` 会自动 `release()`，但自定义 Handler 里如果手动 `retain()` 了却忘记 `release()` → 永久泄漏。
+
+---
+
+## 5.4 编解码：TCP 粘包/拆包的工业化解决方案
+
+TCP 没有消息边界。你发了两条消息，对方可能收到一条「粘在一起」的数据。Netty 内置了三种帧解码器：
+
+| 解码器 | 原理 | 适用协议 |
+|--------|------|---------|
+| `FixedLengthFrameDecoder` | 每条消息固定 N 字节 | 简单私有协议 |
+| `DelimiterBasedFrameDecoder` | 用特殊字符分隔（如 `\r\n`） | 文本协议（Redis） |
+| `LengthFieldBasedFrameDecoder` | 消息头 N 字节 = 消息体长度 | 大多数二进制协议（Dubbo） |
+
+`LengthFieldBasedFrameDecoder` 是最常用的，Dubbo 协议帧本身就是这个模式：
+
+```java
+// maxFrameLength=65535, offset=0, length=4B, strip=4B
+pipeline.addLast(new LengthFieldBasedFrameDecoder(65535, 0, 4, 0, 4));
+```
+
+帧解码之后的数据才能交给业务 Handler。如果在帧解码之前解码了 —— 你拿到了半条消息或者两条消息粘在一起的数据，然后你的业务代码按「完整消息」来解析，不是报错就是静默丢数据。
+
+---
+
+## 5.5 Reactor 模式全景：从单线程到主从
+
+把 EventLoop、Pipeline、编解码器串起来，一次请求的完整旅程：
+
+```text
+bossGroup (accept) → workerGroup (read/decode) → [可选: businessGroup (业务)]
+                                                       ↓
+                                                    Pipeline:
+                                          Head → FrameDecoder → Codec → BizHandler → Tail
+```
+
+Netty 的主从 Reactor 模型和 Tomcat 的 Acceptor/Poller/Worker 三线程模型是同一种思想的不同实现。区别在于 Tomcat 是为 HTTP 优化的 Servlet 容器，Netty 是通用网络框架——你可以用它写 HTTP 服务器，也可以写 RPC 框架、消息队列、IM 服务。
+
+---
+
+> **纵横联系**
 >
-> **纵横联系：**
-> - 📖 **第二卷《Java 并发编程》**：EventLoop 模型本质上是单线程事件循环 + 多线程协作的并发设计，理解线程池（`DefaultEventLoopGroup`）和锁的取舍需要并发知识基础
-> - 📖 **第三卷《Java I/O 与文件》**：Netty 的 ByteBuf 建立在 NIO 的 ByteBuffer 之上，Channel 抽象源于 `java.nio.channels`，理解底层 NIO 有助于排查 Netty 问题
-> - 📖 **第六章 HTTP 协议**：Netty 内置了 `HttpServerCodec` 和 `HttpObjectAggregator`，是实现 HTTP 服务的常用框架
-> - 📖 **后续微服务卷**：Dubbo、gRPC 等 RPC 框架的底层通信均基于 Netty
+> - **第4章 NIO** 的 Selector + Channel + Buffer 是 Netty 的地基。你在 Netty 里看到的 `NioEventLoop`、`NioSocketChannel`、`ByteBuf` 都是对 NIO 的装箱。
+> - **第7章 Servlet** 的 Tomcat NioEndpoint 和本章 Netty 的主从 Reactor 是同一种模式——Tomcat 用 Java NIO 自建，Netty 做了更通用的封装。
+> - **第8章 RPC** 的 Dubbo 传输层基于 Netty。Dubbo 的 dispatcher/threadpool 配置直接影响 Netty EventLoop 的业务线程分配策略。
