@@ -391,6 +391,38 @@ async function loadAndInit() {
         o.set({ selectable: true, evented: true })
         if (o._objects) o._objects.forEach(child => child.set({ selectable: true, evented: true }))
       })
+
+      // 添加画布背景白板 + 边框，明确 SVG 实际区域
+      if (svgWidth.value > 0 && svgHeight.value > 0) {
+        const bg = new window.fabric.Rect({
+          left: 0, top: 0,
+          width: svgWidth.value,
+          height: svgHeight.value,
+          fill: '#ffffff',
+          stroke: '#cccccc',
+          strokeWidth: 1,
+          selectable: false,
+          evented: false,
+          excludeFromExport: true,
+        })
+        // 阴影边框
+        const shadow = new window.fabric.Rect({
+          left: -1, top: -1,
+          width: svgWidth.value + 2,
+          height: svgHeight.value + 2,
+          fill: 'transparent',
+          stroke: 'rgba(0,0,0,0.15)',
+          strokeWidth: 3,
+          selectable: false,
+          evented: false,
+          excludeFromExport: true,
+        })
+        fc.add(shadow)
+        fc.add(bg)
+        shadow.sendToBack()
+        bg.sendToBack()
+      }
+
       fc.renderAll()
       zoomFit(fc)
       saveState(fc)
@@ -401,6 +433,18 @@ async function loadAndInit() {
       fabricCanvas.value = fc
     }
   })
+
+  // 窗口大小变化时自适应
+  const ro = new ResizeObserver(() => {
+    const c = canvasRef.value
+    if (!c || !fc) return
+    const nw = c.clientWidth || 800
+    const nh = c.clientHeight || 500
+    fc.setDimensions({ width: nw, height: nh })
+    fc.requestRenderAll()
+  })
+  ro.observe(container)
+  onUnmounted(() => ro.disconnect())
 
   // T7: 画布缩放平移事件
   setupCanvasEvents(fc)
@@ -649,9 +693,8 @@ function ungroupSelected(fc) {
 
 // T7: 画布缩放平移
 function setupCanvasEvents(fc) {
-  // Ctrl+滚轮缩放
+  // 滚轮缩放（无需 Ctrl，更符合编辑器习惯）
   fc.on('mouse:wheel', (opt) => {
-    if (!opt.e.ctrlKey) return
     opt.e.preventDefault()
     opt.e.stopPropagation()
     const delta = opt.e.deltaY
@@ -1413,8 +1456,8 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 .text-format-group button {
   min-width: 28px; height: 28px; font-size: 13px;
 }
-.editor-canvas { flex: 1; position: relative; overflow: hidden; }
-.editor-canvas canvas { position: absolute; top: 0; left: 0; }
+.editor-canvas { flex: 1; position: relative; overflow: hidden; background: #1a1a1a; }
+.editor-canvas canvas { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
 .loading {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   background: #1e1e1e; color: #888; font-size: 14px;
