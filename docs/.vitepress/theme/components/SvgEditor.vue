@@ -16,6 +16,11 @@ const selectionInfo = ref('')
 const currentFill = ref('')
 const currentStroke = ref('')
 const currentFontSize = ref(12)
+const currentFontWeight = ref('normal')
+const currentFontStyle = ref('normal')
+const currentUnderline = ref(false)
+const currentTextAlign = ref('left')
+const currentTextFill = ref('')
 const keyHandlerFn = ref(null)
 const originalViewBox = ref('')
 
@@ -357,6 +362,9 @@ async function loadAndInit() {
       if (e.key === 'c') { e.preventDefault(); copyObj(fc) }
       if (e.key === 'v') { e.preventDefault(); pasteObj(fc) }
       if (e.key === 's') { e.preventDefault(); save() }
+      if (e.key === 'b') { e.preventDefault(); toggleBold(fc) }
+      if (e.key === 'i') { e.preventDefault(); toggleItalic(fc) }
+      if (e.key === 'u') { e.preventDefault(); toggleUnderline(fc) }
     }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
@@ -415,7 +423,13 @@ function updateSelection(fc) {
   selectionInfo.value = isMulti ? `${active._objects.length} 个选中` : active.type
   if (active.fill && typeof active.fill === 'string') currentFill.value = active.fill
   if (active.stroke && typeof active.stroke === 'string') currentStroke.value = active.stroke
+  // 文字格式
   if (active.fontSize) currentFontSize.value = active.fontSize
+  if (active.fontWeight) currentFontWeight.value = active.fontWeight
+  if (active.fontStyle) currentFontStyle.value = active.fontStyle
+  if (active.underline !== undefined) currentUnderline.value = active.underline
+  if (active.textAlign) currentTextAlign.value = active.textAlign
+  if (active.fill && typeof active.fill === 'string') currentTextFill.value = active.fill
 }
 
 function saveState(fc) {
@@ -445,6 +459,45 @@ function align(fc, type) {
 
 function applyFill(fc, hex) { const a = fc.getActiveObject(); if (a) { a.set('fill', hex); fc.renderAll(); saveState(fc) } }
 function applyStroke(fc, hex) { const a = fc.getActiveObject(); if (a) { a.set('stroke', hex); fc.renderAll(); saveState(fc) } }
+function applyFontSize(fc, size) { const a = fc.getActiveObject(); if (a && (a.type === 'textbox' || a.type === 'i-text')) { a.set('fontSize', size); fc.renderAll(); saveState(fc) } }
+function toggleBold(fc) {
+  const a = fc.getActiveObject()
+  if (!a || (a.type !== 'textbox' && a.type !== 'i-text')) return
+  const next = a.fontWeight === 'bold' ? 'normal' : 'bold'
+  a.set('fontWeight', next)
+  currentFontWeight.value = next
+  fc.renderAll(); saveState(fc)
+}
+function toggleItalic(fc) {
+  const a = fc.getActiveObject()
+  if (!a || (a.type !== 'textbox' && a.type !== 'i-text')) return
+  const next = a.fontStyle === 'italic' ? 'normal' : 'italic'
+  a.set('fontStyle', next)
+  currentFontStyle.value = next
+  fc.renderAll(); saveState(fc)
+}
+function toggleUnderline(fc) {
+  const a = fc.getActiveObject()
+  if (!a || (a.type !== 'textbox' && a.type !== 'i-text')) return
+  const next = !a.underline
+  a.set('underline', next)
+  currentUnderline.value = next
+  fc.renderAll(); saveState(fc)
+}
+function applyTextAlign(fc, align) {
+  const a = fc.getActiveObject()
+  if (!a || (a.type !== 'textbox' && a.type !== 'i-text')) return
+  a.set('textAlign', align)
+  currentTextAlign.value = align
+  fc.renderAll(); saveState(fc)
+}
+function applyTextFill(fc, hex) {
+  const a = fc.getActiveObject()
+  if (!a || (a.type !== 'textbox' && a.type !== 'i-text')) return
+  a.set('fill', hex)
+  currentTextFill.value = hex
+  fc.renderAll(); saveState(fc)
+}
 
 // --- Fabric.js toSVG() 格式清理 ---
 // 将 Fabric.js 输出的 SVG 还原为原始简洁格式
@@ -651,6 +704,21 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <input type="color" :value="currentStroke" @input="applyStroke(fabricCanvas, $event.target.value)" />
         </div>
         <div class="sep" />
+        <!-- 文字格式 -->
+        <div class="text-format-group">
+          <select class="font-size-select" :value="currentFontSize" @change="applyFontSize(fabricCanvas, +$event.target.value)">
+            <option v-for="s in [8,9,10,11,12,14,16,18,20,24,28,32,36,48,64,72,96]" :key="s" :value="s">{{ s }}</option>
+          </select>
+          <button @click="toggleBold(fabricCanvas)" title="加粗" :class="{ active: currentFontWeight === 'bold' }"><b>B</b></button>
+          <button @click="toggleItalic(fabricCanvas)" title="斜体" :class="{ active: currentFontStyle === 'italic' }"><i>I</i></button>
+          <button @click="toggleUnderline(fabricCanvas)" title="下划线" :class="{ active: currentUnderline }"><u>U</u></button>
+          <input type="color" :value="currentTextFill" @input="applyTextFill(fabricCanvas, $event.target.value)" title="文字颜色" />
+          <div class="sep" />
+          <button @click="applyTextAlign(fabricCanvas,'left')" title="文字左对齐" :class="{ active: currentTextAlign === 'left' }">≡</button>
+          <button @click="applyTextAlign(fabricCanvas,'center')" title="文字居中" :class="{ active: currentTextAlign === 'center' }">≡</button>
+          <button @click="applyTextAlign(fabricCanvas,'right')" title="文字右对齐" :class="{ active: currentTextAlign === 'right' }">≡</button>
+        </div>
+        <div class="sep" />
         <button class="btn-save" title="保存" @click="save" :disabled="saving">{{ saving ? '保存中...' : '💾 保存' }}</button>
         <button title="关闭" @click="emit('close')">✕</button>
       </div>
@@ -700,6 +768,16 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 .color-row { display: flex; align-items: center; gap: 4px; }
 .color-row .label { font-size: 10px; color: #888; }
 .color-row input[type="color"] { width: 24px; height: 24px; border: 1px solid #555; border-radius: 3px; cursor: pointer; padding: 0; }
+.text-format-group { display: flex; align-items: center; gap: 2px; }
+.text-format-group .font-size-select {
+  width: 52px; height: 24px; background: #333; color: #ccc; border: 1px solid #555;
+  border-radius: 3px; font-size: 11px; padding: 0 2px;
+}
+.text-format-group button {
+  width: 24px; height: 24px; font-size: 12px;
+}
+.text-format-group button.active { background: #0078d4; color: #fff; }
+.text-format-group input[type="color"] { width: 20px; height: 24px; border: 1px solid #555; border-radius: 3px; cursor: pointer; padding: 0; }
 .editor-canvas { flex: 1; position: relative; overflow: hidden; }
 .editor-canvas canvas { position: absolute; top: 0; left: 0; }
 .loading {

@@ -27,9 +27,10 @@
 
 ### 第一阶段 — P0（核心编辑能力）
 
-- [ ] **T1: 文字格式工具栏**
-  - 状态：待开始
+- [x] **T1: 文字格式工具栏**
+  - 状态：✅ 完成
   - 内容：字号选择、加粗、斜体、下划线、文字颜色、文字对齐（左/中/右）
+  - 快捷键：Ctrl+B/I/U
   - Fabric.js API：`textbox.setFontSize()`, `textbox.setBold()`, `textbox.setFill()`, `textbox.setTextAlign()` 等
   - 参考：vue-fabric-editor `src/components/font.vue`
 
@@ -97,3 +98,4 @@
 | 日期 | 进展 |
 |:--|:--|
 | 2026-08-09 | 调研完成，任务清单建立，当前处于第一阶段 T1 待开始 |
+| 2026-08-09 | T1 文字格式工具栏完成：字号/B/I/U/文字颜色/文字对齐 + Ctrl+B/I/U 快捷键 |
