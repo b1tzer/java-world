@@ -1,57 +1,106 @@
 <script setup>
 /**
- * SVG 编辑器 — 基于 vue-fabric-editor 的 iframe 集成
+ * SVG 编辑器 — 直接集成 vue-fabric-editor 的 Editor 核心（非 iframe）
  *
- * 通过 postMessage 将 SVG 数据传到 iframe 内的 vue-fabric-editor，
- * 接收用户编辑后的保存结果。
+ * 从 @kuaitu/core 提取的 Editor 类 + 必要插件，在组件内部直接创建 Fabric.js 画布。
+ * 用户打开即编辑，保存直接写回文件。
  */
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { fabric } from 'fabric'
 
 const props = defineProps({ src: { type: String, required: true } })
 const emit = defineEmits(['close', 'saved'])
 
-const iframeRef = ref(null)
+const canvasRef = ref(null)
 const loading = ref(true)
 const saving = ref(false)
+let canvasEditor = null
+let canvas = null
 let _keyHandler = null
-let _msgHandler = null
 
 onMounted(async () => {
   await nextTick()
 
-  // 加载 SVG 内容
+  // 1. 加载 SVG 内容
   const base = import.meta.env.BASE_URL || '/'
   const url = props.src.startsWith('/') ? base + props.src.slice(1) : props.src
   let svgContent = ''
   try {
     const resp = await fetch(url)
     if (resp.ok) svgContent = await resp.text()
+    else { loading.value = false; return }
   } catch (e) {
-    console.error('[SvgEditor] 加载 SVG 失败:', url, e)
+    console.error('[SvgEditor] SVG 加载失败:', url, e)
     loading.value = false
     return
   }
 
-  // 监听 iframe 消息
-  _msgHandler = (event) => {
-    const data = event.data
-    if (!data || data.source !== 'svg-editor-iframe') return
-    if (data.type === 'ready') {
-      // iframe 就绪，发送 SVG 数据
-      iframeRef.value?.contentWindow?.postMessage({
-        source: 'svg-editor-parent',
-        path: props.src,
-        content: svgContent,
-      }, '*')
-      loading.value = false
-    }
-    if (data.type === 'save') {
-      handleSave(data.content)
-    }
-  }
-  window.addEventListener('message', _msgHandler)
+  // 2. 创建 Fabric 画布
+  canvas = new fabric.Canvas(canvasRef.value, {
+    width: 800,
+    height: 600,
+    fireRightClick: true,
+    stopContextMenu: true,
+    controlsAboveOverlay: true,
+    preserveObjectStacking: true,
+    backgroundColor: '#f1f1f1',
+  })
 
-  // 键盘监听
+  // 3. 动态导入 Editor 和插件（避免 SSR 报错）
+  const [
+    { default: Editor },
+    { default: DringPlugin },
+    { default: AlignGuidLinePlugin },
+    { default: ControlsPlugin },
+    { default: CenterAlignPlugin },
+    { default: LayerPlugin },
+    { default: CopyPlugin },
+    { default: MoveHotKeyPlugin },
+    { default: DeleteHotKeyPlugin },
+    { default: GroupPlugin },
+    { default: HistoryPlugin },
+  ] = await Promise.all([
+    import('@kuaitu/core'),
+    import('@kuaitu/core/plugin/DringPlugin'),
+    import('@kuaitu/core/plugin/AlignGuidLinePlugin'),
+    import('@kuaitu/core/plugin/ControlsPlugin'),
+    import('@kuaitu/core/plugin/CenterAlignPlugin'),
+    import('@kuaitu/core/plugin/LayerPlugin'),
+    import('@kuaitu/core/plugin/CopyPlugin'),
+    import('@kuaitu/core/plugin/MoveHotKeyPlugin'),
+    import('@kuaitu/core/plugin/DeleteHotKeyPlugin'),
+    import('@kuaitu/core/plugin/GroupPlugin'),
+    import('@kuaitu/core/plugin/HistoryPlugin'),
+    import('@kuaitu/core/plugin/WorkspacePlugin'),
+  ])
+
+  // 4. 初始化 Editor
+  canvasEditor = new Editor()
+  canvasEditor.init(canvas)
+
+  // 5. 挂载必要插件
+  canvasEditor
+    .use(DringPlugin)
+    .use(AlignGuidLinePlugin)
+    .use(ControlsPlugin)
+    .use(CenterAlignPlugin)
+    .use(LayerPlugin)
+    .use(CopyPlugin)
+    .use(MoveHotKeyPlugin)
+    .use(DeleteHotKeyPlugin)
+    .use(GroupPlugin)
+    .use(HistoryPlugin)
+
+  // 6. 将 SVG 加载到画布
+  try {
+    await loadSvgToCanvas(svgContent)
+  } catch (e) {
+    console.error('[SvgEditor] SVG 渲染失败:', e)
+  }
+
+  loading.value = false
+
+  // 7. 键盘监听
   _keyHandler = (e) => {
     if (e.key === 'Escape') emit('close')
   }
@@ -60,33 +109,61 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (_keyHandler) document.removeEventListener('keydown', _keyHandler)
-  if (_msgHandler) window.removeEventListener('message', _msgHandler)
+  if (canvasEditor) canvasEditor.destory()
+  canvas = null
+  canvasEditor = null
 })
 
-async function handleSave(svgContent) {
+/**
+ * 将 SVG 字符串渲染到 Fabric 画布
+ */
+function loadSvgToCanvas(svgContent) {
+  return new Promise((resolve, reject) => {
+    // 预处理：移除 XML 声明
+    const cleaned = svgContent.replace(/<\?xml[^?]*\?>\s*/g, '')
+    fabric.loadSVGFromString(cleaned, (objects, options) => {
+      if (!objects || objects.length === 0) {
+        reject(new Error('SVG 解析结果为空'))
+        return
+      }
+      // 使用 SVG 原始 viewBox 尺寸
+      const vbMatch = cleaned.match(/viewBox="([^"]+)"/)
+      if (vbMatch) {
+        const [, , w, h] = vbMatch[1].split(/\s+/).map(Number)
+        if (w && h) {
+          canvas.setWidth(w)
+          canvas.setHeight(h)
+        }
+      }
+      // 添加到画布
+      objects.forEach((obj) => {
+        canvas.add(obj)
+      })
+      canvas.renderAll()
+      // 标记第一个历史快照
+      canvas.fire('object:modified')
+      resolve(true)
+    })
+  })
+}
+
+/** 保存 SVG 到文件 */
+async function handleSave() {
   saving.value = true
   try {
+    const svg = canvas.toSVG()
     const resp = await fetch('/__svg-save__', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: props.src, content: svgContent }),
+      body: JSON.stringify({ path: props.src, content: svg }),
     })
-    if (resp.ok) {
-      emit('saved')
-      emit('close')
-    } else {
-      alert('保存失败: ' + await resp.text())
-    }
+    if (resp.ok) { emit('saved'); emit('close') }
+    else { alert('保存失败: ' + await resp.text()) }
   } catch (e) {
     alert('保存失败: ' + e.message)
   }
   saving.value = false
 }
-
-// 编辑器 URL：VitePress 中 public/ 静态文件需要通过完整路径访问
-// /java-world/editor/         → VitePress SPA 路由拦截 → 404 页面（因为不存在 editor/index.md）
-// /java-world/editor/index.html → 正确返回 docs/public/editor/index.html
-const editorUrl = `${import.meta.env.BASE_URL || '/'}editor/index.html`
 </script>
 
 <template>
@@ -97,14 +174,13 @@ const editorUrl = `${import.meta.env.BASE_URL || '/'}editor/index.html`
         <span v-if="loading" class="info">加载中…</span>
         <span v-if="saving" class="info">保存中…</span>
         <div class="spacer" />
+        <button class="btn-save" @click="handleSave" :disabled="saving">
+          💾 保存
+        </button>
         <button class="btn-close" @click="emit('close')" title="关闭 (Esc)">✕</button>
       </div>
       <div class="editor-body">
-        <iframe
-          ref="iframeRef"
-          :src="editorUrl"
-          class="editor-iframe"
-        />
+        <canvas ref="canvasRef" id="svg-editor-canvas"></canvas>
       </div>
     </div>
   </div>
@@ -147,6 +223,13 @@ const editorUrl = `${import.meta.env.BASE_URL || '/'}editor/index.html`
 }
 .editor-toolbar .info { font-size: 12px; color: #999; margin-left: 12px; }
 .editor-toolbar .spacer { flex: 1; }
+.btn-save {
+  margin-right: 8px; padding: 4px 12px;
+  background: #0078d4; color: #fff; border: none; border-radius: 4px;
+  font-size: 12px; cursor: pointer;
+}
+.btn-save:hover { background: #106ebe; }
+.btn-save:disabled { opacity: 0.5; cursor: default; }
 .btn-close {
   width: 32px; height: 32px; border: none; border-radius: 6px;
   background: transparent; color: #666; font-size: 18px; cursor: pointer;
@@ -154,8 +237,10 @@ const editorUrl = `${import.meta.env.BASE_URL || '/'}editor/index.html`
 }
 .btn-close:hover { background: #e9ecef; color: #333; }
 
-.editor-body { flex: 1; overflow: hidden; position: relative; }
-.editor-iframe {
-  width: 100%; height: 100%; border: none;
+.editor-body {
+  flex: 1; overflow: auto;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 20px;
+  background: #f1f1f1;
 }
 </style>

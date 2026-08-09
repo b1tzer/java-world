@@ -214,6 +214,11 @@ export default withMermaid(
   },
 
   vite: {
+    resolve: {
+      alias: {
+        '@kuaitu/core': resolve(__dirname, 'theme/components/editor-core'),
+      },
+    },
     plugins: [
       editorIntegration.vite(),
       {

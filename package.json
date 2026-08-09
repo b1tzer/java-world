@@ -15,6 +15,10 @@
     "vitepress-plugin-open-in-editor": "^0.1.0"
   },
   "dependencies": {
+    "events": "^3.3.0",
+    "fabric": "^5.5.2",
+    "hotkeys-js": "^4.0.4",
+    "tapable": "^2.3.3",
     "vitepress-theme-teek": "^1.6.2"
   }
 }
