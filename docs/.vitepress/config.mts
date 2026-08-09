@@ -3,6 +3,8 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { openInEditor } from 'vitepress-plugin-open-in-editor'
+import fs from 'fs'
+import path from 'path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const docsDir = resolve(__dirname, '..')
@@ -212,6 +214,38 @@ export default withMermaid(
   },
 
   vite: {
-    plugins: [editorIntegration.vite()],
+    plugins: [
+      editorIntegration.vite(),
+      {
+        name: 'svg-save-api',
+        configureServer(server) {
+          server.middlewares.use('/__svg-save__', (req, res, next) => {
+            if (req.method !== 'POST') return next()
+            let body = ''
+            req.on('data', chunk => body += chunk)
+            req.on('end', () => {
+              try {
+                const { path: svgPath, content } = JSON.parse(body)
+                const diagramsDir = path.resolve(process.cwd(), 'docs/public/diagrams')
+                const fullPath = path.resolve(process.cwd(), 'docs/public', svgPath.replace(/^\//, ''))
+                console.log(`[svg-save] svgPath=${svgPath} diagramsDir=${diagramsDir} fullPath=${fullPath}`)
+                if (!fullPath.startsWith(diagramsDir) || !fullPath.endsWith('.svg')) {
+                  res.statusCode = 403
+                  res.end('Forbidden: only SVG files in public/diagrams/ are allowed')
+                  return
+                }
+                fs.writeFileSync(fullPath, content, 'utf-8')
+                res.setHeader('Content-Type', 'application/json')
+                res.end(JSON.stringify({ ok: true, file: fullPath }))
+                console.log(`[svg-save] ${path.basename(fullPath)} saved`)
+              } catch (e) {
+                res.statusCode = 500
+                res.end(e.message)
+              }
+            })
+          })
+        }
+      }
+    ],
   },
 }))
