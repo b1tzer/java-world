@@ -173,15 +173,14 @@ async function loadAndInit() {
       const x2 = parseFloat((attrs.match(/x2="([^"]+)"/) || [])[1] || '0')
       const y2 = parseFloat((attrs.match(/y2="([^"]+)"/) || [])[1] || '0')
 
-      // 计算箭头朝向：tip 在线终点，body 朝反方向
+      // 计算箭头朝向
       const angle = Math.atan2(y2 - y1, x2 - x1)
-      // 匹配 SVG marker 8x8 三角形：tip 在终点，body 退5，wings ±4
-      const size = 5
-      const bx = x2 - size * Math.cos(angle)
-      const by = y2 - size * Math.sin(angle)
+      // 底边中心在线终点，尖端朝外延伸1单位（匹配 marker refX=7, tip=8）
       const sx = 4 * Math.sin(angle)
       const sy = -4 * Math.cos(angle)
-      const points = `${x2},${y2} ${(bx + sx).toFixed(1)},${(by + sy).toFixed(1)} ${(bx - sx).toFixed(1)},${(by - sy).toFixed(1)}`
+      const tipX = x2 + Math.cos(angle)
+      const tipY = y2 + Math.sin(angle)
+      const points = `${tipX.toFixed(1)},${tipY.toFixed(1)} ${(x2 + sx).toFixed(1)},${(y2 + sy).toFixed(1)} ${(x2 - sx).toFixed(1)},${(y2 - sy).toFixed(1)}`
 
       // 移除 marker-end，保留其余属性
       const cleanAttrs = attrs.replace(/\s*marker-end="[^"]*"/, '')
@@ -205,13 +204,12 @@ async function loadAndInit() {
       const x1 = nums.length >= 4 ? nums[nums.length - 4] : x2 - 10
       const y1 = nums.length >= 4 ? nums[nums.length - 3] : y2
       const angle = Math.atan2(y2 - y1, x2 - x1)
-      // 匹配 SVG marker 8x8 三角形：tip 在终点，body 退5，wings ±4
-      const size = 5
-      const bx = x2 - size * Math.cos(angle)
-      const by = y2 - size * Math.sin(angle)
+      // 底边中心在线终点，尖端朝外延伸1单位（匹配 marker refX=7, tip=8）
       const sx = 4 * Math.sin(angle)
       const sy = -4 * Math.cos(angle)
-      const points = `${x2},${y2} ${(bx + sx).toFixed(1)},${(by + sy).toFixed(1)} ${(bx - sx).toFixed(1)},${(by - sy).toFixed(1)}`
+      const tipX = x2 + Math.cos(angle)
+      const tipY = y2 + Math.sin(angle)
+      const points = `${tipX.toFixed(1)},${tipY.toFixed(1)} ${(x2 + sx).toFixed(1)},${(y2 + sy).toFixed(1)} ${(x2 - sx).toFixed(1)},${(y2 - sy).toFixed(1)}`
       const combined = (before + ' ' + after).replace(/\s*marker-end="[^"]*"/, '')
       return `<path ${combined}/><polygon points="${points}" fill="${markers[markerId]}"/>`
     }
