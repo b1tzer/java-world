@@ -498,6 +498,11 @@ function applyTextFill(fc, hex) {
   currentTextFill.value = hex
   fc.renderAll(); saveState(fc)
 }
+// 层级控制
+function layerForward(fc) { const a = fc.getActiveObject(); if (a) { fc.bringForward(a); fc.renderAll(); saveState(fc) } }
+function layerBackward(fc) { const a = fc.getActiveObject(); if (a) { fc.sendBackwards(a); fc.renderAll(); saveState(fc) } }
+function layerToFront(fc) { const a = fc.getActiveObject(); if (a) { fc.bringToFront(a); fc.renderAll(); saveState(fc) } }
+function layerToBack(fc) { const a = fc.getActiveObject(); if (a) { fc.sendToBack(a); fc.renderAll(); saveState(fc) } }
 
 // --- Fabric.js toSVG() 格式清理 ---
 // 将 Fabric.js 输出的 SVG 还原为原始简洁格式
@@ -694,6 +699,13 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <button @click="align(fabricCanvas,'centerV')" title="垂直居中">⫟</button>
           <button @click="align(fabricCanvas,'bottom')" title="底对齐">⫡</button>
         </div>
+        <div class="sep" />
+        <div class="layer-group">
+          <button @click="layerForward(fabricCanvas)" title="上移一层">⬆</button>
+          <button @click="layerBackward(fabricCanvas)" title="下移一层">⬇</button>
+          <button @click="layerToFront(fabricCanvas)" title="置顶">⏫</button>
+          <button @click="layerToBack(fabricCanvas)" title="置底">⏬</button>
+        </div>
         <div class="spacer" />
         <span class="info">{{ selectionInfo }}</span>
         <div class="sep" />
@@ -765,6 +777,7 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 .editor-toolbar .btn-save:hover { background: #1a8cff; }
 .editor-toolbar .btn-save:disabled { opacity: 0.5; cursor: default; }
 .align-group { display: flex; gap: 1px; }
+.layer-group { display: flex; gap: 1px; }
 .color-row { display: flex; align-items: center; gap: 4px; }
 .color-row .label { font-size: 10px; color: #888; }
 .color-row input[type="color"] { width: 24px; height: 24px; border: 1px solid #555; border-radius: 3px; cursor: pointer; padding: 0; }

@@ -34,11 +34,10 @@
   - Fabric.js API：`textbox.setFontSize()`, `textbox.setBold()`, `textbox.setFill()`, `textbox.setTextAlign()` 等
   - 参考：vue-fabric-editor `src/components/font.vue`
 
-- [ ] **T2: 层级控制**
-  - 状态：待开始
+- [x] **T2: 层级控制**
+  - 状态：✅ 完成
   - 内容：上移一层、下移一层、置顶、置底
   - Fabric.js API：`canvas.bringForward()`, `canvas.sendBackwards()`, `canvas.bringToFront()`, `canvas.sendToBack()`
-  - 参考：vue-fabric-editor `src/components/layer.vue`
 
 - [ ] **T3: 等间距分布**
   - 状态：待开始
