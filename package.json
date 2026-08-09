@@ -16,6 +16,7 @@
     "vitepress-plugin-open-in-editor": "^0.1.0"
   },
   "dependencies": {
+    "fabric": "^5.5.2",
     "vitepress-theme-teek": "^1.6.2"
   }
 }
