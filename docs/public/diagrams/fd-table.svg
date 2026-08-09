@@ -53,12 +53,14 @@
 
   <!-- 右侧注释 -->
   <line x1="463" y1="204" x2="484" y2="204" stroke="var(--diagram-accent-1)" stroke-width="1.3" marker-end="url(#arrowR)"/>
+  <text x="496" y="208" text-anchor="middle" fill="var(--diagram-accent-1)" font-size="9" font-weight="bold">
+    <tspan x="496" dy="0">每</tspan>
+    <tspan x="496" dy="14">个</tspan>
+    <tspan x="496" dy="13">Socket</tspan>
+    <tspan x="496" dy="14">占 1</tspan>
+    <tspan x="496" dy="14">个 fd</tspan>
+  </text>
   <rect x="484" y="187" width="24" height="68" fill="none"/>
-  <text x="496" y="208" text-anchor="middle" fill="var(--diagram-accent-1)" font-size="9" font-weight="bold">每</text>
-  <text x="496" y="222" text-anchor="middle" fill="var(--diagram-accent-1)" font-size="9" font-weight="bold">个</text>
-  <text x="496" y="235" text-anchor="middle" fill="var(--diagram-accent-1)" font-size="9" font-weight="bold">Socket</text>
-  <text x="496" y="249" text-anchor="middle" fill="var(--diagram-accent-1)" font-size="9" font-weight="bold">占 1</text>
-  <text x="496" y="263" text-anchor="middle" fill="var(--diagram-accent-1)" font-size="9" font-weight="bold">个 fd</text>
 
   <!-- 底部注释 -->
   <text x="255" y="280" text-anchor="middle" fill="var(--diagram-text-3)" font-size="10">Socket 本质是 fd + 协议栈，close(fd) 同时释放两者</text>

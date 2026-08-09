@@ -65,7 +65,12 @@ watch(() => props.src, loadSvg)
   overflow-x: auto;
 }
 
+.svg-container :deep(> div) {
+  display: contents;
+}
+
 .svg-container :deep(svg) {
+  display: block;
   max-width: 100%;
   height: auto;
 }
