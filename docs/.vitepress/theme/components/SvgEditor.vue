@@ -83,8 +83,10 @@ async function handleSave(svgContent) {
   saving.value = false
 }
 
-// 编辑器 base URL（VitePress base + editor）
-const editorUrl = `${import.meta.env.BASE_URL || '/'}editor/`
+// 编辑器 URL：Vite dev server 中 docs/public/ 从根 / 提供，而非 base 路径
+// import.meta.env.BASE_URL = /java-world/ → /java-world/editor/ 会 404
+// 正确路径：/editor/（Vite 把 public/ 直接映射到根）
+const editorUrl = '/editor/'
 </script>
 
 <template>
