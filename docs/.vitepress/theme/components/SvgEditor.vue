@@ -83,9 +83,10 @@ async function handleSave(svgContent) {
   saving.value = false
 }
 
-// 编辑器 URL：VitePress 从 BASE_URL 路径提供 docs/public/ 下的静态文件
-// 即 docs/public/editor/index.html → /java-world/editor/
-const editorUrl = `${import.meta.env.BASE_URL || '/'}editor/`
+// 编辑器 URL：VitePress 中 public/ 静态文件需要通过完整路径访问
+// /java-world/editor/         → VitePress SPA 路由拦截 → 404 页面（因为不存在 editor/index.md）
+// /java-world/editor/index.html → 正确返回 docs/public/editor/index.html
+const editorUrl = `${import.meta.env.BASE_URL || '/'}editor/index.html`
 </script>
 
 <template>
