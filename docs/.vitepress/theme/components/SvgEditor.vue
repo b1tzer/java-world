@@ -30,6 +30,16 @@ const isPanning = ref(false)
 const spacePressed = ref(false)
 const lastPanPoint = ref({ x: 0, y: 0 })
 const guideLines = ref([])
+const currentOpacity = ref(100)
+const gradientType = ref('none')
+const gradientAngle = ref(0)
+const gradientColor1 = ref('#1565C0')
+const gradientColor2 = ref('#E3F2FD')
+const shadowEnabled = ref(false)
+const shadowColor = ref('#000000')
+const shadowBlur = ref(5)
+const shadowOffsetX = ref(3)
+const shadowOffsetY = ref(3)
 
 // CSS 变量色彩方案（与 custom.css :root 中保持一致，共28个变量）
 const CSS_COLORS = {
@@ -464,6 +474,31 @@ function updateSelection(fc) {
   else currentStrokeDash.value = false
   // 旋转角度
   currentRotation.value = Math.round(active.angle || 0)
+  // T9: 透明度
+  currentOpacity.value = Math.round((active.opacity != null ? active.opacity : 1) * 100)
+  // T10: 渐变
+  if (active.fill && typeof active.fill === 'object' && active.fill.type) {
+    gradientType.value = active.fill.type
+    const coords = active.fill.coords || {}
+    if (active.fill.type === 'linear') {
+      gradientAngle.value = Math.round(Math.atan2(coords.y2 - coords.y1, coords.x2 - coords.x1) * 180 / Math.PI)
+    }
+    const colorStops = active.fill.colorStops || []
+    if (colorStops[0]) gradientColor1.value = colorStops[0].color
+    if (colorStops[1]) gradientColor2.value = colorStops[1].color
+  } else {
+    gradientType.value = 'none'
+  }
+  // T11: 阴影
+  if (active.shadow) {
+    shadowEnabled.value = true
+    shadowColor.value = active.shadow.color || '#000000'
+    shadowBlur.value = active.shadow.blur || 5
+    shadowOffsetX.value = active.shadow.offsetX || 3
+    shadowOffsetY.value = active.shadow.offsetY || 3
+  } else {
+    shadowEnabled.value = false
+  }
   // 文字格式
   if (active.fontSize) currentFontSize.value = active.fontSize
   if (active.fontWeight) currentFontWeight.value = active.fontWeight
@@ -629,6 +664,78 @@ function getObjBounds(obj) {
     centerX: bound.left + bound.width / 2,
     centerY: bound.top + bound.height / 2,
   }
+}
+
+// T9: 透明度控制
+function applyOpacity(fc, value) {
+  const a = fc.getActiveObject()
+  if (!a) return
+  a.set('opacity', value / 100)
+  currentOpacity.value = value
+  fc.renderAll(); saveState(fc)
+}
+
+// T10: 渐变填充
+function applyGradient(fc) {
+  const a = fc.getActiveObject()
+  if (!a) return
+  if (gradientType.value === 'none') {
+    a.set('fill', gradientColor1.value)
+  } else {
+    const angle = gradientAngle.value * Math.PI / 180
+    const len = Math.max(a.width || 100, a.height || 100) / 2
+    const grad = new window.fabric.Gradient({
+      type: gradientType.value,
+      coords: gradientType.value === 'linear' ? {
+        x1: a.width / 2 - len * Math.cos(angle),
+        y1: a.height / 2 - len * Math.sin(angle),
+        x2: a.width / 2 + len * Math.cos(angle),
+        y2: a.height / 2 + len * Math.sin(angle),
+      } : {
+        r1: 0,
+        r2: Math.max(a.width || 100, a.height || 100) / 2,
+        x1: a.width / 2,
+        y1: a.height / 2,
+        x2: a.width / 2,
+        y2: a.height / 2,
+      },
+      colorStops: [
+        { offset: 0, color: gradientColor1.value },
+        { offset: 1, color: gradientColor2.value },
+      ],
+    })
+    a.set('fill', grad)
+  }
+  fc.renderAll(); saveState(fc)
+}
+
+// T11: 阴影效果
+function toggleShadow(fc) {
+  const a = fc.getActiveObject()
+  if (!a) return
+  shadowEnabled.value = !shadowEnabled.value
+  if (shadowEnabled.value) {
+    a.set('shadow', new window.fabric.Shadow({
+      color: shadowColor.value,
+      blur: shadowBlur.value,
+      offsetX: shadowOffsetX.value,
+      offsetY: shadowOffsetY.value,
+    }))
+  } else {
+    a.set('shadow', null)
+  }
+  fc.renderAll(); saveState(fc)
+}
+function applyShadow(fc) {
+  const a = fc.getActiveObject()
+  if (!a || !shadowEnabled.value) return
+  a.set('shadow', new window.fabric.Shadow({
+    color: shadowColor.value,
+    blur: shadowBlur.value,
+    offsetX: shadowOffsetX.value,
+    offsetY: shadowOffsetY.value,
+  }))
+  fc.renderAll(); saveState(fc)
 }
 
 function saveState(fc) {
@@ -961,6 +1068,42 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <input type="number" class="rotation-input" :value="currentRotation" @change="applyRotation(fabricCanvas, +$event.target.value)" min="-360" max="360" step="15" />
           <span class="label">°</span>
         </div>
+        <div class="sep" />
+        <!-- T9: 透明度 -->
+        <div class="opacity-group">
+          <span class="label">透明度</span>
+          <input type="range" class="opacity-slider" :value="currentOpacity" @input="applyOpacity(fabricCanvas, +$event.target.value)" min="0" max="100" step="1" />
+          <span class="info">{{ currentOpacity }}%</span>
+        </div>
+        <div class="sep" />
+        <!-- T10: 渐变 -->
+        <div class="gradient-group">
+          <select class="gradient-select" v-model="gradientType" @change="applyGradient(fabricCanvas)">
+            <option value="none">纯色</option>
+            <option value="linear">线性渐变</option>
+            <option value="radial">径向渐变</option>
+          </select>
+          <template v-if="gradientType !== 'none'">
+            <input type="color" :value="gradientColor1" @input="gradientColor1 = $event.target.value; applyGradient(fabricCanvas)" />
+            <input type="color" :value="gradientColor2" @input="gradientColor2 = $event.target.value; applyGradient(fabricCanvas)" />
+            <input v-if="gradientType === 'linear'" type="number" class="angle-input" :value="gradientAngle" @change="gradientAngle = +$event.target.value; applyGradient(fabricCanvas)" min="0" max="360" step="15" />
+            <span v-if="gradientType === 'linear'" class="label">°</span>
+          </template>
+        </div>
+        <div class="sep" />
+        <!-- T11: 阴影 -->
+        <div class="shadow-group">
+          <button @click="toggleShadow(fabricCanvas)" title="阴影" :class="{ active: shadowEnabled }">🔲</button>
+          <template v-if="shadowEnabled">
+            <input type="color" :value="shadowColor" @input="shadowColor = $event.target.value; applyShadow(fabricCanvas)" title="阴影颜色" />
+            <span class="label">模糊</span>
+            <input type="number" class="shadow-input" :value="shadowBlur" @change="shadowBlur = +$event.target.value; applyShadow(fabricCanvas)" min="0" max="50" />
+            <span class="label">X</span>
+            <input type="number" class="shadow-input" :value="shadowOffsetX" @change="shadowOffsetX = +$event.target.value; applyShadow(fabricCanvas)" min="-50" max="50" />
+            <span class="label">Y</span>
+            <input type="number" class="shadow-input" :value="shadowOffsetY" @change="shadowOffsetY = +$event.target.value; applyShadow(fabricCanvas)" min="-50" max="50" />
+          </template>
+        </div>
         <div class="spacer" />
         <span class="info">{{ selectionInfo }}</span>
         <div class="sep" />
@@ -1048,6 +1191,27 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 }
 .rotation-input::-webkit-inner-spin-button,
 .rotation-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.opacity-group { display: flex; align-items: center; gap: 4px; }
+.opacity-slider { width: 60px; height: 16px; cursor: pointer; }
+.gradient-group { display: flex; align-items: center; gap: 4px; }
+.gradient-select {
+  width: 72px; height: 24px; background: #333; color: #ccc; border: 1px solid #555;
+  border-radius: 3px; font-size: 11px; padding: 0 2px;
+}
+.gradient-group input[type="color"] { width: 20px; height: 20px; border: 1px solid #555; border-radius: 3px; cursor: pointer; padding: 0; }
+.angle-input {
+  width: 42px; height: 24px; background: #333; color: #ccc; border: 1px solid #555;
+  border-radius: 3px; font-size: 11px; padding: 0 4px;
+  -moz-appearance: textfield;
+}
+.shadow-group { display: flex; align-items: center; gap: 4px; }
+.shadow-group button.active { background: #0078d4; color: #fff; }
+.shadow-group input[type="color"] { width: 20px; height: 20px; border: 1px solid #555; border-radius: 3px; cursor: pointer; padding: 0; }
+.shadow-input {
+  width: 36px; height: 24px; background: #333; color: #ccc; border: 1px solid #555;
+  border-radius: 3px; font-size: 11px; padding: 0 4px;
+  -moz-appearance: textfield;
+}
 .color-row { display: flex; align-items: center; gap: 4px; }
 .color-row .label { font-size: 10px; color: #888; }
 .color-row input[type="color"] { width: 24px; height: 24px; border: 1px solid #555; border-radius: 3px; cursor: pointer; padding: 0; }
