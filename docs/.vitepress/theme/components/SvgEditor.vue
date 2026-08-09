@@ -25,6 +25,41 @@ const currentStrokeWidth = ref(1)
 const currentStrokeDash = ref(false)
 const keyHandlerFn = ref(null)
 const originalViewBox = ref('')
+
+// Lucide 图标 SVG（24x24, stroke=currentColor, stroke-width=2）
+const ICONS = {
+  undo: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>',
+  redo: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>',
+  copy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
+  paste: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H9a1 1 0 0 0-1 1v2c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V3c0-1.1-.9-1-1-1Z"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/></svg>',
+  trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
+  save: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
+  zoomFit: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>',
+  alignLeft: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="18" y2="18"/></svg>',
+  alignCenter: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="17" x2="7" y1="12" y2="12"/><line x1="19" x2="5" y1="18" y2="18"/></svg>',
+  alignRight: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="21" x2="9" y1="12" y2="12"/><line x1="21" x2="7" y1="18" y2="18"/></svg>',
+  alignTop: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="21"/><line x1="12" x2="12" y1="9" y2="21"/><line x1="18" x2="18" y1="7" y2="21"/></svg>',
+  alignMiddle: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="21"/><line x1="12" x2="12" y1="7" y2="17"/><line x1="18" x2="18" y1="5" y2="19"/></svg>',
+  alignBottom: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="21"/><line x1="12" x2="12" y1="3" y2="15"/><line x1="18" x2="18" y1="3" y2="17"/></svg>',
+  layerUp: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>',
+  layerDown: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  layerTop: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/><path d="m18 9-6-6-6 6"/></svg>',
+  layerBottom: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6 6 6-6"/><path d="m6 9 6 6 6-6"/></svg>',
+  distributeH: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="16" rx="1"/><rect x="14" y="4" width="6" height="16" rx="1"/></svg>',
+  distributeV: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="6" rx="1"/><rect x="4" y="14" width="16" height="6" rx="1"/></svg>',
+  group: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10h10V2z"/><path d="M22 12H12v10h10V12z"/><path d="M22 2h-5"/><path d="M22 7h-5"/><path d="M7 22v-5"/><path d="M2 22v-5"/></svg>',
+  ungroup: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/><path d="m6 6 12 12"/><path d="m18 6-12 12"/></svg>',
+  rotate: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>',
+  shadow: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="8" height="8" rx="1"/><rect x="2" y="2" width="8" height="8" rx="1"/><path d="M6 2h12"/><path d="M18 6v12"/></svg>',
+  bold: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>',
+  italic: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg>',
+  underline: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" x2="20" y1="20" y2="20"/></svg>',
+  textLeft: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="18" y2="18"/></svg>',
+  textCenter: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="17" x2="7" y1="12" y2="12"/><line x1="19" x2="5" y1="18" y2="18"/></svg>',
+  textRight: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="21" x2="9" y1="12" y2="12"/><line x1="21" x2="7" y1="18" y2="18"/></svg>',
+  dashed: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h2"/><path d="M10 12h2"/><path d="M15 12h2"/><path d="M20 12h2"/></svg>',
+  close: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+}
 const currentRotation = ref(0)
 const isPanning = ref(false)
 const spacePressed = ref(false)
@@ -1099,40 +1134,40 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
       <div class="editor-toolbar">
         <span class="title">✏️ {{ src }}</span>
         <div class="sep" />
-        <button @click="undo(fabricCanvas)" data-tip="撤销">↩</button>
-        <button @click="redo(fabricCanvas)" data-tip="重做">↪</button>
+        <button @click="undo(fabricCanvas)" data-tip="撤销"><span v-html="ICONS.undo"></span></button>
+        <button @click="redo(fabricCanvas)" data-tip="重做"><span v-html="ICONS.redo"></span></button>
         <div class="sep" />
-        <button @click="copyObj(fabricCanvas)" data-tip="复制">📋</button>
-        <button @click="pasteObj(fabricCanvas)" data-tip="粘贴">📌</button>
-        <button @click="deleteObj(fabricCanvas)" data-tip="删除">🗑</button>
+        <button @click="copyObj(fabricCanvas)" data-tip="复制"><span v-html="ICONS.copy"></span></button>
+        <button @click="pasteObj(fabricCanvas)" data-tip="粘贴"><span v-html="ICONS.paste"></span></button>
+        <button @click="deleteObj(fabricCanvas)" data-tip="删除"><span v-html="ICONS.trash"></span></button>
         <div class="sep" />
-        <button @click="zoomFit(fabricCanvas)" data-tip="适应画布">⊞</button>
+        <button @click="zoomFit(fabricCanvas)" data-tip="适应画布"><span v-html="ICONS.zoomFit"></span></button>
         <span class="info">{{ zoomLevel }}%</span>
         <div class="sep" />
         <div class="align-group">
-          <button @click="align(fabricCanvas,'left')" data-tip="左对齐">⫷</button>
-          <button @click="align(fabricCanvas,'centerH')" data-tip="水平居中">⫿</button>
-          <button @click="align(fabricCanvas,'right')" data-tip="右对齐">⫸</button>
-          <button @click="align(fabricCanvas,'top')" data-tip="顶对齐">⫠</button>
-          <button @click="align(fabricCanvas,'centerV')" data-tip="垂直居中">⫟</button>
-          <button @click="align(fabricCanvas,'bottom')" data-tip="底对齐">⫡</button>
+          <button @click="align(fabricCanvas,'left')" data-tip="左对齐"><span v-html="ICONS.alignLeft"></span></button>
+          <button @click="align(fabricCanvas,'centerH')" data-tip="水平居中"><span v-html="ICONS.alignCenter"></span></button>
+          <button @click="align(fabricCanvas,'right')" data-tip="右对齐"><span v-html="ICONS.alignRight"></span></button>
+          <button @click="align(fabricCanvas,'top')" data-tip="顶对齐"><span v-html="ICONS.alignTop"></span></button>
+          <button @click="align(fabricCanvas,'centerV')" data-tip="垂直居中"><span v-html="ICONS.alignMiddle"></span></button>
+          <button @click="align(fabricCanvas,'bottom')" data-tip="底对齐"><span v-html="ICONS.alignBottom"></span></button>
         </div>
         <div class="sep" />
         <div class="layer-group">
-          <button @click="layerForward(fabricCanvas)" data-tip="上移一层">⬆</button>
-          <button @click="layerBackward(fabricCanvas)" data-tip="下移一层">⬇</button>
-          <button @click="layerToFront(fabricCanvas)" data-tip="置顶">⏫</button>
-          <button @click="layerToBack(fabricCanvas)" data-tip="置底">⏬</button>
+          <button @click="layerForward(fabricCanvas)" data-tip="上移一层"><span v-html="ICONS.layerUp"></span></button>
+          <button @click="layerBackward(fabricCanvas)" data-tip="下移一层"><span v-html="ICONS.layerDown"></span></button>
+          <button @click="layerToFront(fabricCanvas)" data-tip="置顶"><span v-html="ICONS.layerTop"></span></button>
+          <button @click="layerToBack(fabricCanvas)" data-tip="置底"><span v-html="ICONS.layerBottom"></span></button>
         </div>
         <div class="sep" />
         <div class="dist-group">
-          <button @click="distribute(fabricCanvas,'horizontal')" data-tip="水平等间距分布">⇔</button>
-          <button @click="distribute(fabricCanvas,'vertical')" data-tip="垂直等间距分布">⇕</button>
+          <button @click="distribute(fabricCanvas,'horizontal')" data-tip="水平等间距分布"><span v-html="ICONS.distributeH"></span></button>
+          <button @click="distribute(fabricCanvas,'vertical')" data-tip="垂直等间距分布"><span v-html="ICONS.distributeV"></span></button>
         </div>
         <div class="sep" />
         <div class="group-btn">
-          <button @click="groupSelected(fabricCanvas)" data-tip="组合 (Ctrl+G)">🔲</button>
-          <button @click="ungroupSelected(fabricCanvas)" data-tip="取消组合 (Ctrl+Shift+G)">🔳</button>
+          <button @click="groupSelected(fabricCanvas)" data-tip="组合 (Ctrl+G)"><span v-html="ICONS.group"></span></button>
+          <button @click="ungroupSelected(fabricCanvas)" data-tip="取消组合 (Ctrl+Shift+G)"><span v-html="ICONS.ungroup"></span></button>
         </div>
         <div class="sep" />
         <div class="rotation-group">
@@ -1165,7 +1200,7 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
         <div class="sep" />
         <!-- T11: 阴影 -->
         <div class="shadow-group">
-          <button @click="toggleShadow(fabricCanvas)" data-tip="阴影" :class="{ active: shadowEnabled }">🔲</button>
+          <button @click="toggleShadow(fabricCanvas)" data-tip="阴影" :class="{ active: shadowEnabled }"><span v-html="ICONS.shadow"></span></button>
           <template v-if="shadowEnabled">
             <input type="color" :value="shadowColor" @input="shadowColor = $event.target.value; applyShadow(fabricCanvas)" data-tip="阴影颜色" />
             <span class="label">模糊</span>
@@ -1188,7 +1223,7 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <select class="stroke-width-select" :value="currentStrokeWidth" @change="applyStrokeWidth(fabricCanvas, +$event.target.value)">
             <option v-for="w in [0.5,1,1.5,2,2.5,3,4,5]" :key="w" :value="w">{{ w }}</option>
           </select>
-          <button @click="toggleStrokeDash(fabricCanvas)" data-tip="虚线" :class="{ active: currentStrokeDash }" style="font-size:10px">╌</button>
+          <button @click="toggleStrokeDash(fabricCanvas)" data-tip="虚线" :class="{ active: currentStrokeDash }"><span v-html="ICONS.dashed"></span></button>
         </div>
         <div class="sep" />
         <!-- 文字格式 -->
@@ -1196,18 +1231,18 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <select class="font-size-select" :value="currentFontSize" @change="applyFontSize(fabricCanvas, +$event.target.value)">
             <option v-for="s in [8,9,10,11,12,14,16,18,20,24,28,32,36,48,64,72,96]" :key="s" :value="s">{{ s }}</option>
           </select>
-          <button @click="toggleBold(fabricCanvas)" data-tip="加粗" :class="{ active: currentFontWeight === 'bold' }"><b>B</b></button>
-          <button @click="toggleItalic(fabricCanvas)" data-tip="斜体" :class="{ active: currentFontStyle === 'italic' }"><i>I</i></button>
-          <button @click="toggleUnderline(fabricCanvas)" data-tip="下划线" :class="{ active: currentUnderline }"><u>U</u></button>
+          <button @click="toggleBold(fabricCanvas)" data-tip="加粗" :class="{ active: currentFontWeight === 'bold' }"><span v-html="ICONS.bold"></span></button>
+          <button @click="toggleItalic(fabricCanvas)" data-tip="斜体" :class="{ active: currentFontStyle === 'italic' }"><span v-html="ICONS.italic"></span></button>
+          <button @click="toggleUnderline(fabricCanvas)" data-tip="下划线" :class="{ active: currentUnderline }"><span v-html="ICONS.underline"></span></button>
           <input type="color" :value="currentTextFill" @input="applyTextFill(fabricCanvas, $event.target.value)" data-tip="文字颜色" />
           <div class="sep" />
-          <button @click="applyTextAlign(fabricCanvas,'left')" data-tip="文字左对齐" :class="{ active: currentTextAlign === 'left' }">≡</button>
-          <button @click="applyTextAlign(fabricCanvas,'center')" data-tip="文字居中" :class="{ active: currentTextAlign === 'center' }">≡</button>
-          <button @click="applyTextAlign(fabricCanvas,'right')" data-tip="文字右对齐" :class="{ active: currentTextAlign === 'right' }">≡</button>
+          <button @click="applyTextAlign(fabricCanvas,'left')" data-tip="文字左对齐" :class="{ active: currentTextAlign === 'left' }"><span v-html="ICONS.textLeft"></span></button>
+          <button @click="applyTextAlign(fabricCanvas,'center')" data-tip="文字居中" :class="{ active: currentTextAlign === 'center' }"><span v-html="ICONS.textCenter"></span></button>
+          <button @click="applyTextAlign(fabricCanvas,'right')" data-tip="文字右对齐" :class="{ active: currentTextAlign === 'right' }"><span v-html="ICONS.textRight"></span></button>
         </div>
         <div class="sep" />
         <button class="btn-save" data-tip="保存" @click="save" :disabled="saving">{{ saving ? '保存中...' : '💾 保存' }}</button>
-        <button data-tip="关闭" @click="emit('close')">✕</button>
+        <button data-tip="关闭" @click="emit('close')"><span v-html="ICONS.close"></span></button>
       </div>
 
       <!-- 画布 -->
@@ -1246,6 +1281,8 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 .editor-toolbar button:hover { background: #3c3c3c; border-color: #505050; }
 .editor-toolbar button:active { background: #0078d4; border-color: #0078d4; color: #fff; }
 .editor-toolbar button.active { background: #0078d4; border-color: #0078d4; color: #fff; }
+.editor-toolbar button span { display: flex; align-items: center; justify-content: center; }
+.editor-toolbar button span svg { width: 18px; height: 18px; }
 .editor-toolbar .info { font-size: 12px; color: #888; min-width: 50px; text-align: center; }
 /* 快速 tooltip */
 .editor-toolbar button[data-tip] {
