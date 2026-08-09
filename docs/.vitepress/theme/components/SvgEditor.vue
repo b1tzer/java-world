@@ -173,15 +173,14 @@ async function loadAndInit() {
       const x2 = parseFloat((attrs.match(/x2="([^"]+)"/) || [])[1] || '0')
       const y2 = parseFloat((attrs.match(/y2="([^"]+)"/) || [])[1] || '0')
 
-      // 计算箭头朝向：tip 在线终点，body 朝反方向（angle+π），wings 垂直于线
+      // 计算箭头朝向：tip 在线终点，body 朝反方向
       const angle = Math.atan2(y2 - y1, x2 - x1)
-      const size = 6
-      // body 中心：从终点往回退
+      // 匹配 SVG marker 8x8 三角形：tip 在终点，body 退5，wings ±4
+      const size = 5
       const bx = x2 - size * Math.cos(angle)
       const by = y2 - size * Math.sin(angle)
-      // 垂直方向的展开分量
-      const sx = size * Math.sin(angle)
-      const sy = -size * Math.cos(angle)
+      const sx = 4 * Math.sin(angle)
+      const sy = -4 * Math.cos(angle)
       const points = `${x2},${y2} ${(bx + sx).toFixed(1)},${(by + sy).toFixed(1)} ${(bx - sx).toFixed(1)},${(by - sy).toFixed(1)}`
 
       // 移除 marker-end，保留其余属性
@@ -206,13 +205,12 @@ async function loadAndInit() {
       const x1 = nums.length >= 4 ? nums[nums.length - 4] : x2 - 10
       const y1 = nums.length >= 4 ? nums[nums.length - 3] : y2
       const angle = Math.atan2(y2 - y1, x2 - x1)
-      const size = 6
-      // body 中心：从终点往回退
+      // 匹配 SVG marker 8x8 三角形：tip 在终点，body 退5，wings ±4
+      const size = 5
       const bx = x2 - size * Math.cos(angle)
       const by = y2 - size * Math.sin(angle)
-      // 垂直方向的展开分量
-      const sx = size * Math.sin(angle)
-      const sy = -size * Math.cos(angle)
+      const sx = 4 * Math.sin(angle)
+      const sy = -4 * Math.cos(angle)
       const points = `${x2},${y2} ${(bx + sx).toFixed(1)},${(by + sy).toFixed(1)} ${(bx - sx).toFixed(1)},${(by - sy).toFixed(1)}`
       const combined = (before + ' ' + after).replace(/\s*marker-end="[^"]*"/, '')
       return `<path ${combined}/><polygon points="${points}" fill="${markers[markerId]}"/>`
