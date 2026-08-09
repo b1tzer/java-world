@@ -25,6 +25,11 @@ const currentStrokeWidth = ref(1)
 const currentStrokeDash = ref(false)
 const keyHandlerFn = ref(null)
 const originalViewBox = ref('')
+const currentRotation = ref(0)
+const isPanning = ref(false)
+const spacePressed = ref(false)
+const lastPanPoint = ref({ x: 0, y: 0 })
+const guideLines = ref([])
 
 // CSS 变量色彩方案（与 custom.css :root 中保持一致，共28个变量）
 const CSS_COLORS = {
@@ -62,6 +67,7 @@ async function loadAndInit() {
   onUnmounted(() => {
     if (keyHandlerFn.value) {
       document.removeEventListener('keydown', keyHandlerFn.value)
+      document.removeEventListener('keyup', keyUpHandler)
       keyHandlerFn.value = null
     }
     if (fabricCanvas.value) {
@@ -324,6 +330,11 @@ async function loadAndInit() {
     }
   })
 
+  // T7: 画布缩放平移事件
+  setupCanvasEvents(fc)
+  // T8: 对齐辅助线
+  setupGuideLines(fc)
+
   // 事件
   fc.on('selection:created', () => updateSelection(fc))
   fc.on('selection:updated', () => updateSelection(fc))
@@ -357,6 +368,14 @@ async function loadAndInit() {
 
   // 快捷键
   keyHandlerFn.value = (e) => {
+    // 空格键 — 平移模式
+    if (e.key === ' ' && !e.repeat) {
+      e.preventDefault()
+      spacePressed.value = true
+      fc.setCursor('grab')
+      return
+    }
+
     if (e.ctrlKey || e.metaKey) {
       if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(fc) }
       if (e.key === 'z' && e.shiftKey) { e.preventDefault(); redo(fc) }
@@ -367,15 +386,30 @@ async function loadAndInit() {
       if (e.key === 'b') { e.preventDefault(); toggleBold(fc) }
       if (e.key === 'i') { e.preventDefault(); toggleItalic(fc) }
       if (e.key === 'u') { e.preventDefault(); toggleUnderline(fc) }
+      // T6: Ctrl+G 组合
+      if (e.key === 'g' && !e.shiftKey) { e.preventDefault(); groupSelected(fc) }
+      // T6: Ctrl+Shift+G 取消组合
+      if (e.key === 'g' && e.shiftKey) { e.preventDefault(); ungroupSelected(fc) }
     }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
         e.preventDefault(); deleteObj(fc)
       }
     }
-    if (e.key === 'Escape') emit('close')
+    if (e.key === 'Escape') {
+      spacePressed.value = false
+      emit('close')
+    }
+  }
+  // 空格键释放
+  const keyUpHandler = (e) => {
+    if (e.key === ' ') {
+      spacePressed.value = false
+      if (!isPanning.value) fc.setCursor('default')
+    }
   }
   document.addEventListener('keydown', keyHandlerFn.value)
+  document.addEventListener('keyup', keyUpHandler)
 }
 
 function mergeArrows(objects) {
@@ -428,6 +462,8 @@ function updateSelection(fc) {
   if (active.strokeWidth) currentStrokeWidth.value = active.strokeWidth
   if (active.strokeDashArray) currentStrokeDash.value = true
   else currentStrokeDash.value = false
+  // 旋转角度
+  currentRotation.value = Math.round(active.angle || 0)
   // 文字格式
   if (active.fontSize) currentFontSize.value = active.fontSize
   if (active.fontWeight) currentFontWeight.value = active.fontWeight
@@ -435,6 +471,164 @@ function updateSelection(fc) {
   if (active.underline !== undefined) currentUnderline.value = active.underline
   if (active.textAlign) currentTextAlign.value = active.textAlign
   if (active.fill && typeof active.fill === 'string') currentTextFill.value = active.fill
+}
+
+// T5: 旋转 — 精确角度输入
+function applyRotation(fc, angle) {
+  const a = fc.getActiveObject()
+  if (!a) return
+  a.rotate(angle)
+  currentRotation.value = angle
+  fc.renderAll(); saveState(fc)
+}
+
+// T6: 组合/取消组合
+function groupSelected(fc) {
+  const active = fc.getActiveObject()
+  if (!active || active.type !== 'activeSelection') return
+  const group = active.toGroup()
+  group.set({ selectable: true, evented: true })
+  fc.renderAll(); saveState(fc)
+}
+function ungroupSelected(fc) {
+  const active = fc.getActiveObject()
+  if (!active || active.type !== 'group') return
+  const items = active.toActiveSelection()
+  items.set({ selectable: true, evented: true })
+  fc.renderAll(); saveState(fc)
+}
+
+// T7: 画布缩放平移
+function setupCanvasEvents(fc) {
+  // Ctrl+滚轮缩放
+  fc.on('mouse:wheel', (opt) => {
+    if (!opt.e.ctrlKey) return
+    opt.e.preventDefault()
+    opt.e.stopPropagation()
+    const delta = opt.e.deltaY
+    let zoom = fc.getZoom()
+    zoom *= 0.999 ** delta
+    zoom = Math.min(Math.max(0.1, zoom), 5)
+    fc.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom)
+    zoomLevel.value = Math.round(zoom * 100)
+  })
+
+  // 空格+拖拽平移
+  fc.on('mouse:down', (opt) => {
+    if (!spacePressed.value) return
+    isPanning.value = true
+    lastPanPoint.value = { x: opt.e.clientX, y: opt.e.clientY }
+    fc.selection = false
+    fc.setCursor('grabbing')
+  })
+  fc.on('mouse:move', (opt) => {
+    if (!isPanning.value) return
+    const dx = opt.e.clientX - lastPanPoint.value.x
+    const dy = opt.e.clientY - lastPanPoint.value.y
+    fc.relativePan({ x: dx, y: dy })
+    lastPanPoint.value = { x: opt.e.clientX, y: opt.e.clientY }
+  })
+  fc.on('mouse:up', () => {
+    if (isPanning.value) {
+      isPanning.value = false
+      fc.selection = true
+      fc.setCursor('default')
+    }
+  })
+}
+
+// T8: 对齐辅助线
+const SNAP_THRESHOLD = 5
+const guideLineStyle = 'rgba(0, 120, 212, 0.5)'
+const guideLineDash = [4, 4]
+
+function setupGuideLines(fc) {
+  fc.on('object:moving', (opt) => {
+    const obj = opt.target
+    if (!obj) return
+    const lines = []
+    const objBounds = getObjBounds(obj)
+    const objects = fc.getObjects().filter(o => o !== obj && o.visible)
+
+    for (const other of objects) {
+      const otherBounds = getObjBounds(other)
+
+      // 垂直参考线：左、中、右
+      const vChecks = [
+        { objX: objBounds.left, otherX: otherBounds.left },
+        { objX: objBounds.left, otherX: otherBounds.right },
+        { objX: objBounds.centerX, otherX: otherBounds.centerX },
+        { objX: objBounds.right, otherX: otherBounds.left },
+        { objX: objBounds.right, otherX: otherBounds.right },
+      ]
+      for (const check of vChecks) {
+        if (Math.abs(check.objX - check.otherX) < SNAP_THRESHOLD) {
+          lines.push({ type: 'vertical', x: check.otherX })
+          obj.set('left', obj.left + (check.otherX - check.objX))
+        }
+      }
+
+      // 水平参考线：上、中、下
+      const hChecks = [
+        { objY: objBounds.top, otherY: otherBounds.top },
+        { objY: objBounds.top, otherY: otherBounds.bottom },
+        { objY: objBounds.centerY, otherY: otherBounds.centerY },
+        { objY: objBounds.bottom, otherY: otherBounds.top },
+        { objY: objBounds.bottom, otherY: otherBounds.bottom },
+      ]
+      for (const check of hChecks) {
+        if (Math.abs(check.objY - check.otherY) < SNAP_THRESHOLD) {
+          lines.push({ type: 'horizontal', y: check.otherY })
+          obj.set('top', obj.top + (check.otherY - check.objY))
+        }
+      }
+    }
+
+    guideLines.value = lines
+    fc.requestRenderAll()
+  })
+
+  fc.on('object:modified', () => {
+    guideLines.value = []
+  })
+  fc.on('selection:cleared', () => {
+    guideLines.value = []
+  })
+
+  // 自定义渲染参考线
+  fc.on('after:render', () => {
+    const ctx = fc.getContext()
+    ctx.save()
+    ctx.strokeStyle = guideLineStyle
+    ctx.lineWidth = 1
+    ctx.setLineDash(guideLineDash)
+    for (const line of guideLines.value) {
+      ctx.beginPath()
+      if (line.type === 'vertical') {
+        const x = line.x * fc.getZoom() + (fc.viewportTransform[4] || 0)
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, fc.height)
+      } else {
+        const y = line.y * fc.getZoom() + (fc.viewportTransform[5] || 0)
+        ctx.moveTo(0, y)
+        ctx.lineTo(fc.width, y)
+      }
+      ctx.stroke()
+    }
+    ctx.restore()
+  })
+}
+
+function getObjBounds(obj) {
+  const bound = obj.getBoundingRect()
+  return {
+    left: bound.left,
+    top: bound.top,
+    right: bound.left + bound.width,
+    bottom: bound.top + bound.height,
+    centerX: bound.left + bound.width / 2,
+    centerY: bound.top + bound.height / 2,
+  }
 }
 
 function saveState(fc) {
@@ -756,6 +950,17 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <button @click="distribute(fabricCanvas,'horizontal')" title="水平等间距分布">⇔</button>
           <button @click="distribute(fabricCanvas,'vertical')" title="垂直等间距分布">⇕</button>
         </div>
+        <div class="sep" />
+        <div class="group-btn">
+          <button @click="groupSelected(fabricCanvas)" title="组合 (Ctrl+G)">🔲</button>
+          <button @click="ungroupSelected(fabricCanvas)" title="取消组合 (Ctrl+Shift+G)">🔳</button>
+        </div>
+        <div class="sep" />
+        <div class="rotation-group">
+          <span class="label">旋转</span>
+          <input type="number" class="rotation-input" :value="currentRotation" @change="applyRotation(fabricCanvas, +$event.target.value)" min="-360" max="360" step="15" />
+          <span class="label">°</span>
+        </div>
         <div class="spacer" />
         <span class="info">{{ selectionInfo }}</span>
         <div class="sep" />
@@ -834,6 +1039,15 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 .align-group { display: flex; gap: 1px; }
 .layer-group { display: flex; gap: 1px; }
 .dist-group { display: flex; gap: 1px; }
+.group-btn { display: flex; gap: 1px; }
+.rotation-group { display: flex; align-items: center; gap: 4px; }
+.rotation-input {
+  width: 48px; height: 24px; background: #333; color: #ccc; border: 1px solid #555;
+  border-radius: 3px; font-size: 11px; padding: 0 4px;
+  -moz-appearance: textfield;
+}
+.rotation-input::-webkit-inner-spin-button,
+.rotation-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .color-row { display: flex; align-items: center; gap: 4px; }
 .color-row .label { font-size: 10px; color: #888; }
 .color-row input[type="color"] { width: 24px; height: 24px; border: 1px solid #555; border-radius: 3px; cursor: pointer; padding: 0; }

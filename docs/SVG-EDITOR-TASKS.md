@@ -52,28 +52,25 @@
 
 ### 第二阶段 — P1（交互增强）
 
-- [ ] **T5: 旋转支持**
-  - 状态：待开始
-  - 内容：选中时显示旋转手柄，拖拽旋转
-  - Fabric.js API：默认已启用旋转控制点，需确认 `hasRotatingPoint: true`
+- [x] **T5: 旋转支持**
+  - 状态：✅ 完成
+  - 内容：选中时显示旋转手柄，拖拽旋转，精确角度输入框
+  - Fabric.js API：默认已启用旋转控制点 + `object.rotate(angle)`
 
-- [ ] **T6: 组合/取消组合**
-  - 状态：待开始
-  - 内容：Ctrl+G 组合、Ctrl+Shift+G 取消组合
-  - Fabric.js API：`fabric.Group(group)`, `group.toActiveSelection()`
-  - 参考：vue-fabric-editor `src/plugins/GroupPlugin.ts`
+- [x] **T6: 组合/取消组合**
+  - 状态：✅ 完成
+  - 内容：Ctrl+G 组合、Ctrl+Shift+G 取消组合，工具栏按钮
+  - Fabric.js API：`activeSelection.toGroup()`, `group.toActiveSelection()`
 
-- [ ] **T7: 画布缩放和平移**
-  - 状态：待开始
-  - 内容：Ctrl+滚轮缩放、拖拽空白区域平移画布
-  - Fabric.js API：`canvas.setZoom()`, `canvas.relativePan()`
-  - 参考：vue-fabric-editor `src/plugins/WorkspacePlugin.ts`
+- [x] **T7: 画布缩放和平移**
+  - 状态：✅ 完成
+  - 内容：Ctrl+滚轮缩放、空格+拖拽平移画布
+  - Fabric.js API：`canvas.zoomToPoint()`, `canvas.relativePan()`
 
-- [ ] **T8: 对齐辅助线**
-  - 状态：待开始
-  - 内容：拖动元素时显示水平/垂直参考线，接近时自动吸附
-  - Fabric.js API：`canvas.on('object:moving')` + 自定义参考线渲染
-  - 参考：vue-fabric-editor `src/plugins/AlignGuidLinePlugin.ts`
+- [x] **T8: 对齐辅助线**
+  - 状态：✅ 完成
+  - 内容：拖动元素时显示水平/垂直参考线，接近时自动吸附（阈值5px）
+  - Fabric.js API：`canvas.on('object:moving')` + `canvas.on('after:render')` 自定义绘制
 
 ### 第三阶段 — P2（视觉效果）
 
@@ -102,3 +99,8 @@
 | 2026-08-09 | T3 等间距分布完成：水平/垂直等间距分布 |
 | 2026-08-09 | T4 边框粗细样式完成：stroke-width 选择器 + 虚线切换 |
 | 2026-08-09 | **第一阶段 P0 全部完成** |
+| 2026-08-09 | T5 旋转支持完成：旋转手柄 + 精确角度输入框 |
+| 2026-08-09 | T6 组合/取消组合完成：Ctrl+G / Ctrl+Shift+G + 工具栏按钮 |
+| 2026-08-09 | T7 画布缩放平移完成：Ctrl+滚轮缩放 + 空格拖拽平移 |
+| 2026-08-09 | T8 对齐辅助线完成：拖动时参考线 + 5px 自动吸附 |
+| 2026-08-09 | **第二阶段 P1 全部完成** |
