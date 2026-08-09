@@ -583,13 +583,16 @@ function updateSelection(fc) {
   } else {
     shadowEnabled.value = false
   }
-  // 文字格式
-  if (active.fontSize) currentFontSize.value = active.fontSize
-  if (active.fontWeight) currentFontWeight.value = active.fontWeight
-  if (active.fontStyle) currentFontStyle.value = active.fontStyle
-  if (active.underline !== undefined) currentUnderline.value = active.underline
-  if (active.textAlign) currentTextAlign.value = active.textAlign
-  if (active.fill && typeof active.fill === 'string') currentTextFill.value = active.fill
+  // 文字格式 — 从第一个文字对象读取（支持多选）
+  const textObj = getTextObjects(fc)[0]
+  if (textObj) {
+    if (textObj.fontSize) currentFontSize.value = textObj.fontSize
+    if (textObj.fontWeight) currentFontWeight.value = textObj.fontWeight
+    if (textObj.fontStyle) currentFontStyle.value = textObj.fontStyle
+    if (textObj.underline !== undefined) currentUnderline.value = textObj.underline
+    if (textObj.textAlign) currentTextAlign.value = textObj.textAlign
+    if (textObj.fill && typeof textObj.fill === 'string') currentTextFill.value = textObj.fill
+  }
 }
 
 // T5: 旋转 — 精确角度输入
@@ -881,42 +884,58 @@ function toggleStrokeDash(fc) {
   currentStrokeDash.value = next
   fc.renderAll(); saveState(fc)
 }
-function applyFontSize(fc, size) { const a = fc.getActiveObject(); if (a && (a.type === 'textbox' || a.type === 'i-text')) { a.set('fontSize', size); fc.renderAll(); saveState(fc) } }
-function toggleBold(fc) {
+// 获取当前选中的所有文字对象（单个或多个）
+function getTextObjects(fc) {
   const a = fc.getActiveObject()
-  if (!a || (a.type !== 'textbox' && a.type !== 'i-text')) return
-  const next = a.fontWeight === 'bold' ? 'normal' : 'bold'
-  a.set('fontWeight', next)
+  if (!a) return []
+  if (a.type === 'textbox' || a.type === 'i-text') return [a]
+  if (a.type === 'activeSelection' || a.type === 'group') {
+    return (a._objects || []).filter(o => o.type === 'textbox' || o.type === 'i-text')
+  }
+  return []
+}
+
+function applyFontSize(fc, size) {
+  const texts = getTextObjects(fc)
+  if (!texts.length) return
+  texts.forEach(t => t.set('fontSize', size))
+  fc.renderAll(); saveState(fc)
+}
+function toggleBold(fc) {
+  const texts = getTextObjects(fc)
+  if (!texts.length) return
+  const next = texts[0].fontWeight === 'bold' ? 'normal' : 'bold'
+  texts.forEach(t => t.set('fontWeight', next))
   currentFontWeight.value = next
   fc.renderAll(); saveState(fc)
 }
 function toggleItalic(fc) {
-  const a = fc.getActiveObject()
-  if (!a || (a.type !== 'textbox' && a.type !== 'i-text')) return
-  const next = a.fontStyle === 'italic' ? 'normal' : 'italic'
-  a.set('fontStyle', next)
+  const texts = getTextObjects(fc)
+  if (!texts.length) return
+  const next = texts[0].fontStyle === 'italic' ? 'normal' : 'italic'
+  texts.forEach(t => t.set('fontStyle', next))
   currentFontStyle.value = next
   fc.renderAll(); saveState(fc)
 }
 function toggleUnderline(fc) {
-  const a = fc.getActiveObject()
-  if (!a || (a.type !== 'textbox' && a.type !== 'i-text')) return
-  const next = !a.underline
-  a.set('underline', next)
+  const texts = getTextObjects(fc)
+  if (!texts.length) return
+  const next = !texts[0].underline
+  texts.forEach(t => t.set('underline', next))
   currentUnderline.value = next
   fc.renderAll(); saveState(fc)
 }
 function applyTextAlign(fc, align) {
-  const a = fc.getActiveObject()
-  if (!a || (a.type !== 'textbox' && a.type !== 'i-text')) return
-  a.set('textAlign', align)
+  const texts = getTextObjects(fc)
+  if (!texts.length) return
+  texts.forEach(t => t.set('textAlign', align))
   currentTextAlign.value = align
   fc.renderAll(); saveState(fc)
 }
 function applyTextFill(fc, hex) {
-  const a = fc.getActiveObject()
-  if (!a || (a.type !== 'textbox' && a.type !== 'i-text')) return
-  a.set('fill', hex)
+  const texts = getTextObjects(fc)
+  if (!texts.length) return
+  texts.forEach(t => t.set('fill', hex))
   currentTextFill.value = hex
   fc.renderAll(); saveState(fc)
 }
