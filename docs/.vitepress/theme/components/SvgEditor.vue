@@ -921,12 +921,18 @@ function applyShadow(fc) {
 
 function saveState(fc) {
   if (!fc) return
+  // 保存前移除背景白板，避免被保存进 undo 栈
+  _bgRects.forEach(r => fc.remove(r))
   undoStack.push(fc.toJSON(['selectable', 'evented']))
   if (undoStack.length > 30) undoStack.shift()
   redoStack = []
+  // 恢复背景白板
+  reAddBg(fc)
 }
 function reAddBg(fc) {
   if (!_bgRects.length) return
+  // 移除可能从 JSON 加载回来的旧背景
+  fc.getObjects().filter(o => o.excludeFromExport).forEach(o => fc.remove(o))
   _bgRects.forEach(r => { fc.add(r); r.sendToBack() })
   fc.requestRenderAll()
 }
