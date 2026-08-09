@@ -7,6 +7,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved'])
 
 const canvasRef = ref(null)
+const overlayRef = ref(null)
 const fabricCanvas = ref(null)
 const loading = ref(true)
 const saving = ref(false)
@@ -436,11 +437,151 @@ function align(fc, type) {
 function applyFill(fc, hex) { const a = fc.getActiveObject(); if (a) { a.set('fill', hex); fc.renderAll(); saveState(fc) } }
 function applyStroke(fc, hex) { const a = fc.getActiveObject(); if (a) { a.set('stroke', hex); fc.renderAll(); saveState(fc) } }
 
+// --- Fabric.js toSVG() 格式清理 ---
+// 将 Fabric.js 输出的 SVG 还原为原始简洁格式
+function cleanFabricSvg(svg) {
+  let s = svg
+
+  // 1. 移除 Fabric.js 附加的头部信息
+  s = s.replace(/<\?xml[^?]*\?>\s*/g, '')
+  s = s.replace(/<!DOCTYPE[^>]*>\s*/g, '')
+  s = s.replace(/<desc>[^<]*<\/desc>\s*/g, '')
+  s = s.replace(/<defs>\s*<\/defs>\s*/g, '')
+  s = s.replace(/ xmlns:xlink="[^"]*"/g, '')
+  s = s.replace(/ version="[^"]*"/g, '')
+  s = s.replace(/ xml:space="preserve"/g, '')
+
+  // 提取 style 属性中的核心属性并转为直接属性
+  function extractStyleAttrs(styleStr) {
+    if (!styleStr) return ''
+    const keep = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray',
+      'fill-rule', 'opacity', 'font-family', 'font-size', 'font-weight',
+      'font-style', 'text-anchor']
+    const skipValues = {
+      fill: ['#000000'],
+      stroke: ['#000000', 'none'],
+      'stroke-width': ['1'],
+      'fill-rule': ['nonzero'],
+      opacity: ['1']
+    }
+    const result = []
+    for (const prop of styleStr.split(';')) {
+      const [key, val] = prop.split(':').map(p => p.trim())
+      if (key && val && keep.includes(key)) {
+        if (skipValues[key] && skipValues[key].includes(val)) continue
+        result.push(`${key}="${val}"`)
+      }
+    }
+    return result.join(' ')
+  }
+
+  // 2. 展开 Fabric.js 的 Group 包裹（矩阵平移 → 绝对坐标）
+  // Fabric.js 将每个元素包裹在 <g transform="matrix(1 0 0 1 tx ty)"> 中
+  // 需要将子元素的坐标转为绝对坐标
+  s = s.replace(
+    /<g\s+transform="matrix\(1\s+0\s+0\s+1\s+([\d.\-]+)\s+([\d.\-]+)\)"[^>]*>\s*([\s\S]*?)<\/g>/g,
+    (full, txStr, tyStr, inner) => {
+      const tx = parseFloat(txStr)
+      const ty = parseFloat(tyStr)
+      // 只处理单个子元素的情况
+      const trimmed = inner.trim()
+
+      // 处理 <text><tspan> 结构
+      const textMatch = trimmed.match(
+        /^(<text[^>]*>)\s*<tspan\s+x="([\d.\-]+)"\s+y="([\d.\-]+)"[^>]*>([\s\S]*?)<\/tspan>\s*<\/text>$/
+      )
+      if (textMatch) {
+        const origAttrs = textMatch[1]
+        const localX = parseFloat(textMatch[2])
+        const localY = parseFloat(textMatch[3])
+        const content = textMatch[4]
+        const absX = tx + localX
+        const absY = ty + localY
+        // 提取 style 中的核心属性
+        const styleMatch = origAttrs.match(/style="([^"]*)"/)
+        const styleAttrs = styleMatch ? extractStyleAttrs(styleMatch[1]) : ''
+        let attrs = origAttrs
+          .replace(/\s+style="[^"]*"/g, '')
+          .replace(/\s+xml:space="preserve"/g, '')
+          .replace(/^<text/, `<text x="${absX.toFixed(1)}" y="${absY.toFixed(1)}"`)
+        return `${attrs}${content}</text>`
+      }
+
+      // 处理 <rect> 结构
+      const rectMatch = trimmed.match(
+        /^(<rect[^>]*?)\s+style="[^"]*"([^>]*\/>)\s*$/
+      )
+      if (rectMatch) {
+        const styleMatch = trimmed.match(/style="([^"]*)"/)
+        const styleAttrs = styleMatch ? extractStyleAttrs(styleMatch[1]) : ''
+        let attrs = trimmed
+          .replace(/\s+style="[^"]*"/g, '')
+          .replace(/ x="([\d.\-]+)"/, (m, x) => ` x="${(tx + parseFloat(x)).toFixed(1)}"`)
+          .replace(/ y="([\d.\-]+)"/, (m, y) => ` y="${(ty + parseFloat(y)).toFixed(1)}"`)
+        return attrs.replace(/^<rect/, `<rect ${styleAttrs}`).replace(/\s{2,}/g, ' ')
+      }
+
+      // 处理 <line> 结构
+      const lineMatch = trimmed.match(
+        /^(<line[^>]*?)\s+style="[^"]*"([^>]*\/>)\s*$/
+      )
+      if (lineMatch) {
+        const styleMatch = trimmed.match(/style="([^"]*)"/)
+        const styleAttrs = styleMatch ? extractStyleAttrs(styleMatch[1]) : ''
+        let attrs = trimmed.replace(/\s+style="[^"]*"/g, '')
+        attrs = attrs.replace(/ x1="([\d.\-]+)"/, (m, v) => ` x1="${(tx + parseFloat(v)).toFixed(1)}"`)
+        attrs = attrs.replace(/ y1="([\d.\-]+)"/, (m, v) => ` y1="${(ty + parseFloat(v)).toFixed(1)}"`)
+        attrs = attrs.replace(/ x2="([\d.\-]+)"/, (m, v) => ` x2="${(tx + parseFloat(v)).toFixed(1)}"`)
+        attrs = attrs.replace(/ y2="([\d.\-]+)"/, (m, v) => ` y2="${(ty + parseFloat(v)).toFixed(1)}"`)
+        return attrs.replace(/^<line/, `<line ${styleAttrs}`).replace(/\s{2,}/g, ' ')
+      }
+
+      // 处理 <polygon> 结构
+      const polyMatch = trimmed.match(
+        /^(<polygon[^>]*?)\s+style="[^"]*"([^>]*\/>)\s*$/
+      )
+      if (polyMatch) {
+        const styleMatch = trimmed.match(/style="([^"]*)"/)
+        const styleAttrs = styleMatch ? extractStyleAttrs(styleMatch[1]) : ''
+        let attrs = trimmed.replace(/\s+style="[^"]*"/g, '')
+        attrs = attrs.replace(/ points="([^"]+)"/, (m, pts) => {
+          const newPts = pts.trim().split(/\s+/).map((pair) => {
+            const [x, y] = pair.split(',').map(Number)
+            return `${(tx + x).toFixed(1)},${(ty + y).toFixed(1)}`
+          }).join(' ')
+          return ` points="${newPts}"`
+        })
+        return attrs.replace(/^<polygon/, `<polygon ${styleAttrs}`).replace(/\s{2,}/g, ' ')
+      }
+
+      // 多个子元素或无法识别，保留原始 Group
+      return full
+    }
+  )
+
+  // 3. 清理剩余的 style 属性（提取有意义的属性后移除）
+  s = s.replace(
+    /(<(?:text|rect|line|circle|ellipse|path|polygon)[^>]*?)\s+style="([^"]*)"/g,
+    (full, tag, style) => {
+      const styleAttrs = extractStyleAttrs(style)
+      return styleAttrs ? `${tag} ${styleAttrs}` : tag
+    }
+  )
+
+  // 4. 清理多余的空白行
+  s = s.replace(/\n\s*\n/g, '\n')
+
+  return s.trim()
+}
+
 async function save() {
   if (!fabricCanvas.value) return
   saving.value = true
   const fc = fabricCanvas.value
   let svgText = fc.toSVG()
+
+  // 清理 Fabric.js 的格式，还原为简洁 SVG
+  svgText = cleanFabricSvg(svgText)
 
   // Fabric.js toSVG() 输出 rgb() 格式色值（如 fill: rgb(51,51,51)），
   // 必须先转为 hex（如 #333333），CSS 变量替换才能命中
@@ -487,10 +628,12 @@ async function save() {
 }
 
 onMounted(loadAndInit)
+// 打开时聚焦 overlay，确保 Escape 键生效
+onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 </script>
 
 <template>
-  <div class="editor-overlay" @click.self="emit('close')">
+  <div class="editor-overlay" @click.self="emit('close')" @keydown.escape="emit('close')" tabindex="-1" ref="overlayRef">
     <div class="editor-panel">
       <!-- 工具栏 -->
       <div class="editor-toolbar">
@@ -524,8 +667,8 @@ onMounted(loadAndInit)
           <input type="color" :value="currentStroke" @input="applyStroke(fabricCanvas, $event.target.value)" />
         </div>
         <div class="sep" />
-        <button class="btn-save" @click="save" :disabled="saving">{{ saving ? '保存中...' : '💾 保存' }}</button>
-        <button @click="emit('close')">✕</button>
+        <button class="btn-save" title="保存" @click="save" :disabled="saving">{{ saving ? '保存中...' : '💾 保存' }}</button>
+        <button title="关闭" @click="emit('close')">✕</button>
       </div>
 
       <!-- 画布 -->
