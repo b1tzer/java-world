@@ -289,6 +289,7 @@ async function loadAndInit() {
   // 初始化画布
   const fc = canvasMgr.init(container.querySelector('canvas'), w, h)
   window.__fabricCanvas = fc
+  window.__canvasMgr = canvasMgr
 
   // 加载 SVG 对象
   fabric.loadSVGFromString(svg, (objects) => {
