@@ -1,8 +1,11 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests',
   timeout: 30000,
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+  ],
   use: {
     baseURL: 'http://localhost:5173/java-world',
     headless: true,

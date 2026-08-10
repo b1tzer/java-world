@@ -67,13 +67,18 @@ test.describe('SvgEditor UI 运行时验证', () => {
       console.log(`  按钮 ${i}: title="${title}", text="${text?.trim()}"`)
     }
 
-    const expectedTitles = ['撤销', '重做', '复制', '粘贴', '删除', '适应画布', '保存']
-    for (const t of expectedTitles) {
-      const btn = toolbar.locator(`button[title="${t}"]`)
+    // 按钮检查：data-tip 属性的按钮
+    const expectedTips = ['撤销', '重做', '复制', '粘贴', '删除', '适应画布']
+    for (const t of expectedTips) {
+      const btn = toolbar.locator(`button[data-tip="${t}"]`)
       const exists = await btn.count()
       console.log(`[按钮检查] "${t}": ${exists > 0 ? '✅' : '❌'}`)
       expect(exists).toBeGreaterThan(0)
     }
+    // "保存"按钮用 textContent 而非 data-tip
+    const saveBtn = toolbar.locator('button').filter({ hasText: '保存' })
+    expect(await saveBtn.count()).toBeGreaterThan(0)
+    console.log(`[按钮检查] "保存": ✅ (text match)`)
   })
 
   test('5. 画布正确初始化', async ({ page }) => {
