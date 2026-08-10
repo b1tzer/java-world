@@ -43,7 +43,7 @@ import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useTheme } from '../composables/useTheme'
 
 // 动态导入 fabric.js（避免 SSR 问题）
-let fabric: typeof import('fabric') | null = null
+let fabricLib: any = null
 
 const props = defineProps<{
   src: string
@@ -64,12 +64,13 @@ const isFullscreen = ref(false)
 
 const { themeVars, canvasBackground } = useTheme()
 
-let fabricCanvas: InstanceType<typeof import('fabric').Canvas> | null = null
+let fabricCanvas: any = null
 
 // 初始化 fabric.js
 async function initFabric() {
-  if (!fabric) {
-    fabric = await import('fabric')
+  if (!fabricLib) {
+    const fabricModule = await import('fabric')
+    fabricLib = fabricModule.fabric || fabricModule.default || fabricModule
   }
 }
 
@@ -77,7 +78,7 @@ async function initFabric() {
 async function loadJson(src: string) {
   try {
     await initFabric()
-    if (!fabric || !canvasRef.value) return
+    if (!fabricLib || !canvasRef.value) return
 
     // 获取 JSON 数据
     const response = await fetch(src)
@@ -89,7 +90,7 @@ async function loadJson(src: string) {
       fabricCanvas.dispose()
     }
 
-    fabricCanvas = new fabric.Canvas(canvasRef.value, {
+    fabricCanvas = new fabricLib.Canvas(canvasRef.value, {
       selection: false,
       renderOnAddRemove: true,
     })
@@ -151,7 +152,7 @@ function zoomFit() {
     const center = fabricCanvas.getCenter()
     fabricCanvas.setViewportTransform([1, 0, 0, 1, 0, 0])
     fabricCanvas.zoomToPoint(
-      new fabric.Point(center.left, center.top),
+      new fabricLib.Point(center.left, center.top),
       scale
     )
   }

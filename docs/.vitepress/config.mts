@@ -3,6 +3,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { openInEditor } from 'vitepress-plugin-open-in-editor'
+import { imageEditorMarkdownIt } from './theme/plugins/image-editor/markdown-it'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const docsDir = resolve(__dirname, '..')
@@ -202,6 +203,11 @@ export default withMermaid(
     lineNumbers: true,
     config(md) {
       editorIntegration.markdown(md)
+      // Image Editor: 拦截 .editor.json 图片语法，自动升级为编辑器组件
+      imageEditorMarkdownIt(md, {
+        patterns: [/\.editor\.json$/, /\.fabric\.json$/],
+        defaultMode: 'view',
+      })
     },
   },
 

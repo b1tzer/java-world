@@ -77,9 +77,10 @@ function resolveSrc(src: string): string {
 }
 
 onMounted(() => {
+  console.log('[ImageViewerWrapper] mounted, src:', props.src)
   resolvedSrc.value = resolveSrc(props.src)
-  // 如果 resolvedSrc 是相对路径，直接使用 src（Vite 会处理）
-  // 实际加载在 ImageViewer 组件中通过 fetch 完成
-  resolvedSrc.value = props.src
+  console.log('[ImageViewerWrapper] resolvedSrc:', resolvedSrc.value)
+  // 直接设置 loading 为 false，让 ImageViewer 组件处理加载
+  loading.value = false
 })
 </script>
