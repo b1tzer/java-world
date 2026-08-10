@@ -830,9 +830,11 @@ Spring Boot 的配置优先级从高到低：
 
 ---
 
+> 系统安全部署上线了，但你怎么知道它运行得好不好？用户说"接口很慢"，你如何定位是数据库慢、缓存穿透还是下游超时？下一章从日志、指标、链路追踪三大支柱出发，构建完整的可观测体系。
+>
 > **纵横联系**
 >
-> - **与第三卷《Spring 框架》的关系**：Spring Security 的 Filter Chain 机制基于 Spring 的 IoC 和 AOP 体系，理解 Spring 容器是理解 Spring Security 的前提
-> - **与第五卷《微服务架构》的关系**：JWT 在微服务间传递用户身份，RBAC 权限模型可以按服务维度拆分权限，Service 对应 K8s 的 Service 资源
+> - **与第六卷第1章《Spring 核心思想》的关系**：Spring Security 的 Filter Chain 机制基于 Spring 的 IoC 和 AOP 体系，理解 Spring 容器是理解 Spring Security 的前提
+> - **与第六卷第6章《微服务架构》的关系**：JWT 在微服务间传递用户身份，RBAC 权限模型可以按服务维度拆分权限，Service 对应 K8s 的 Service 资源
 > - **与第六卷第 9 章《可观测性》的关系**：K8s 的 liveness/readiness 探针与健康检查是可观测性的基础设施，审计日志也是日志体系的一部分
 > - **与第六卷第 7 章《分布式系统治理》的关系**：ConfigMap/Secret 可以替代配置中心管理应用配置，多环境配置与 Nacos 的 Namespace 机制形成互补

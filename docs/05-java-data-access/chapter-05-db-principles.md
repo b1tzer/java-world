@@ -531,6 +531,8 @@ public void criticalTransfer(Long fromId, Long toId, BigDecimal amount) {
 
 ---
 
+> 数据库的锁和隔离级别是底层机制，但在 Java 应用中，你不会直接操作它们——Spring 用一个 `@Transactional` 注解帮你搞定。这个注解背后是什么？事务传播机制在嵌套调用时怎么运作？为什么加了注解数据还是"飞"了？下一章回答这些问题。
+>
 > **纵横联系**
 >
 > - **与第 3 章（JDBC）的联系**：JDBC 的 `PreparedStatement` 缓存与 Parser 的预编译直接相关；事务隔离级别通过 `Connection.setTransactionIsolation()` 设置。
