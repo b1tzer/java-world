@@ -70,3 +70,5 @@ $RECYCLE.BIN/
 ## Test artifacts
 test-results/
 
+# Test screenshots
+tests/screenshots/

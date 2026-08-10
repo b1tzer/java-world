@@ -1,28 +1,41 @@
 import { test, expect } from '@playwright/test';
 
-const PAGE_VT = 'http://localhost:5173/java-world/03-java-concurrency/chapter-12-virtual-thread';
-const PAGE_SEC = 'http://localhost:5173/java-world/06-java-enterprise/chapter-08-security-deploy';
+const PAGE_VT = '/java-world/03-java-concurrency/chapter-12-virtual-thread';
+const PAGE_SEC = '/java-world/06-java-enterprise/chapter-08-security-deploy';
 
 async function openEditor(page: any, url: string, svgIndex: number) {
   page.on('pageerror', e => console.log('  ⚠️ JS:', e.message));
   await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+  // 等待 VitePress 渲染完成
+  await page.waitForFunction(() => {
+    const app = document.querySelector('#app');
+    return app && app.children.length > 0;
+  }, { timeout: 15000 });
   await page.waitForSelector('.svg-container', { timeout: 15000 });
-  // 等待 SVG 内部渲染完成（VitePress 水合可能较慢）
-  await page.waitForSelector('.svg-container svg', { timeout: 10000 }).catch(() => {});
+  // 等待 SVG 在容器中渲染
+  await page.waitForFunction((idx: number) => {
+    const c = document.querySelectorAll('.svg-container')[idx];
+    return c && c.querySelector('svg');
+  }, svgIndex, { timeout: 10000 });
+  await page.waitForTimeout(500);
+  // 滚动 SVG 到视口中心并触发 mouseenter（Vue 的 hover 事件）
+  await page.evaluate((idx: number) => {
+    const c = document.querySelectorAll('.svg-container')[idx];
+    if (!c) return;
+    c.scrollIntoView({ block: 'center' });
+    setTimeout(() => c.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true })), 200);
+  }, svgIndex);
   await page.waitForTimeout(800);
-  const container = page.locator('.svg-container').nth(svgIndex);
-  await container.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(300);
-  const box = await container.boundingBox();
-  if (box && box.width > 0) {
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.waitForTimeout(500);
-  }
-  const editBtn = container.locator('.svg-edit-btn');
-  await editBtn.waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
-  await editBtn.click({ force: true }).catch(() => {});
+  // 点击编辑按钮
+  const editBtn = page.locator('.svg-container').nth(svgIndex).locator('.svg-edit-btn');
+  await editBtn.click({ force: true });
+  // 等待编辑器弹窗出现
   await page.waitForSelector('.editor-overlay', { timeout: 15000 });
-  await page.waitForTimeout(2000);
+  // 等待 loading 消失（画布初始化完成）
+  await page.waitForFunction(() => {
+    return !document.querySelector('.loading') && !!(window as any).__fabricCanvas;
+  }, { timeout: 15000 });
+  await page.waitForTimeout(500);
   await page.evaluate(() => {
     const c = (window as any).__fabricCanvas;
     if (c) c.setViewportTransform([1, 0, 0, 1, 0, 0]);
@@ -49,7 +62,23 @@ async function getArrowGroups(page: any) {
 }
 
 test('A1: vt决策树 — 9箭头全为三角形', async ({ page }) => {
+  // 收集所有 console 错误
+  const errors: string[] = [];
+  page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+  
   await openEditor(page, PAGE_VT, 1);
+  
+  // 检查是否有加载错误
+  if (errors.length > 0) console.log(`[Console错误] ${errors.join(' | ')}`);
+  
+  // 诊断 canvas 状态
+  const diag = await page.evaluate(() => {
+    const c = (window as any).__fabricCanvas;
+    if (!c) return { err: 'no canvas' };
+    return { total: c.getObjects().length, groups: c.getObjects().filter((o: any) => o.type === 'group').length, lines: c.getObjects().filter((o: any) => o.type === 'line').length };
+  });
+  console.log(`[诊断] total=${diag.total} groups=${diag.groups} lines=${diag.lines}`);
+  
   const arrows = await getArrowGroups(page);
   console.log(`箭头数: ${arrows.length}`);
   expect(arrows.length).toBeGreaterThanOrEqual(9);
@@ -164,30 +193,21 @@ test('F1: 拖拽不解体', async ({ page }) => {
   console.log('✅ 拖拽不解体');
 });
 
-test('G1: 保存后箭头不消失', async ({ page }) => {
+test('G1: 保存后重开 — 箭头组不消失', async ({ page }) => {
   await openEditor(page, PAGE_VT, 1);
-  // 清理可能残留的测试对象
-  await page.evaluate(() => {
-    const c = (window as any).__fabricCanvas;
-    if (!c) return;
-    c.getObjects().filter((o: any) => o.id?.startsWith('test') || o.id?.startsWith('gs-'))
-      .forEach((o: any) => c.remove(o));
-    c.renderAll();
-  });
   const before = await getArrowGroups(page);
   expect(before.length).toBeGreaterThanOrEqual(9, '初始应有至少9个箭头组');
 
-  // 点击保存按钮 — 等待按钮可用
+  // 点击保存（会 emit close，编辑器关闭）
   const saveBtn = page.locator('.btn-save');
   await saveBtn.waitFor({ state: 'attached', timeout: 5000 });
-  // 保存按钮可能因 page refresh 暂时 disabled，等待
-  await page.waitForFunction(() => {
-    const btn = document.querySelector('.btn-save') as HTMLButtonElement;
-    return btn && !btn.disabled;
-  }, { timeout: 5000 }).catch(() => {});
   await saveBtn.click({ force: true });
-  await page.waitForTimeout(2500);
+  // 等待编辑器关闭
+  await page.waitForSelector('.editor-overlay', { state: 'hidden', timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(1000);
 
+  // 重新打开编辑器，箭头组应完整
+  await openEditor(page, PAGE_VT, 1);
   const after = await getArrowGroups(page);
   expect(after.length).toBeGreaterThanOrEqual(before.length, '保存后箭头组不应消失');
   for (const a of after) {

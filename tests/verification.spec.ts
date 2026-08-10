@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const PAGE_URL = 'http://localhost:5173/java-world/01-java-language/chapter-01-type-system'
+const PAGE_URL = '/java-world/01-java-language/chapter-01-type-system'
 
 // 使用 SVG index 1（之前验证过的可用位置）
 const SVG_IDX = 1

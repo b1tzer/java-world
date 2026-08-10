@@ -56,6 +56,9 @@ export class CanvasManager {
     this._setupInteractionEvents(fc)
 
     this.canvas = fc
+    // 暴露实例到 window（便于测试和调试）
+    window.__fabricCanvas = fc
+    window.__canvasMgr = this
     return fc
   }
 
@@ -214,7 +217,7 @@ export class CanvasManager {
    */
   _setupInteractionEvents(fc) {
     fc.on('object:added', (e) => {
-      if (e.target) {
+      if (e.target && !e.target.excludeFromExport) {
         e.target.set({ selectable: true, evented: true })
         if (e.target._objects) e.target._objects.forEach(o => o.set({ selectable: true, evented: true }))
       }
@@ -336,7 +339,7 @@ export class CanvasManager {
     if (!this._bgRects.length) return
     const fc = this.canvas
     fc.getObjects().filter(o => o.excludeFromExport).forEach(o => fc.remove(o))
-    this._bgRects.forEach(r => { fc.add(r); r.set({ selectable: false, evented: false, hoverCursor: 'default' }); r.sendToBack() })
+    this._bgRects.forEach(r => { fc.add(r); r.sendToBack() })
     fc.requestRenderAll()
   }
 

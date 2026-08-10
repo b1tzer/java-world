@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const PAGE = 'http://localhost:5173/java-world/04-java-network/chapter-03-socket';
+const PAGE = '/java-world/04-java-network/chapter-03-socket';
 
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', e => console.log('  ⚠️ JS:', e.message));

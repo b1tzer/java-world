@@ -7,8 +7,7 @@
  */
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://localhost:5173/java-world';
-const PAGE = `${BASE}/04-java-network/chapter-03-socket`;
+const PAGE = '/java-world/04-java-network/chapter-03-socket';
 
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', e => console.log('  ⚠️ JS Error:', e.message));

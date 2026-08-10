@@ -14,7 +14,7 @@ async function waitForSvg(page: any) {
 
 test.describe('SvgEditor UI 运行时验证', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:5173/java-world/01-java-language/chapter-01-type-system')
+    await page.goto('/java-world/01-java-language/chapter-01-type-system')
     await waitForSvg(page)
   })
 
@@ -75,10 +75,10 @@ test.describe('SvgEditor UI 运行时验证', () => {
       console.log(`[按钮检查] "${t}": ${exists > 0 ? '✅' : '❌'}`)
       expect(exists).toBeGreaterThan(0)
     }
-    // "保存"按钮用 textContent 而非 data-tip
-    const saveBtn = toolbar.locator('button').filter({ hasText: '保存' })
+    // 保存按钮 data-tip 为 "保存 (Ctrl+S)"
+    const saveBtn = toolbar.locator('button[data-tip*="保存"]')
     expect(await saveBtn.count()).toBeGreaterThan(0)
-    console.log(`[按钮检查] "保存": ✅ (text match)`)
+    console.log(`[按钮检查] "保存": ✅ (partial match)`)
   })
 
   test('5. 画布正确初始化', async ({ page }) => {
