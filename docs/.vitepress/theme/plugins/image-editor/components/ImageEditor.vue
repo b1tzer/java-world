@@ -175,12 +175,19 @@ async function initEditor() {
   await initFabric()
   if (!fabricLib || !canvasRef.value) return
 
+  // 如果已有 canvas，先清空对象
+  if (fabricCanvas) {
+    fabricCanvas.clear()
+    // 不要 dispose，保留 canvas 元素
+  }
+
   fabricCanvas = new fabricLib.Canvas(canvasRef.value, {
     width: canvasWidth.value,
     height: canvasHeight.value,
     selection: true,
     preserveObjectStacking: true,
   })
+
 
   // 如果有 src，加载 JSON
   if (props.src) {
@@ -226,16 +233,27 @@ async function loadJson(src: string) {
     if (!response.ok) throw new Error(`Failed to load: ${src}`)
     const json = await response.json()
 
-    fabricCanvas.loadFromJSON(json, () => {
-      // 设置工作区
-      const workspace = fabricCanvas.getObjects().find((obj: any) => obj.id === 'workspace')
-      if (workspace) {
-        workspace.set('selectable', false)
-        workspace.set('evented', false)
-        canvasWidth.value = workspace.width
-        canvasHeight.value = workspace.height
+    return new Promise<void>((resolve, reject) => {
+      try {
+        fabricCanvas.loadFromJSON(json, function() {
+          try {
+            // 设置工作区
+            const workspace = fabricCanvas.getObjects().find((obj: any) => obj.id === 'workspace')
+            if (workspace) {
+              workspace.set('selectable', false)
+              workspace.set('evented', false)
+              canvasWidth.value = workspace.width
+              canvasHeight.value = workspace.height
+            }
+            fabricCanvas.renderAll()
+            resolve()
+          } catch (e) {
+            reject(e)
+          }
+        })
+      } catch (e) {
+        reject(e)
       }
-      fabricCanvas.renderAll()
     })
   } catch (err) {
     console.error('Failed to load JSON:', err)
@@ -431,8 +449,18 @@ function zoomFit() {
     const scaledWidth = (workspace.width || canvasWidth.value) * zoom.value
     const scaledHeight = (workspace.height || canvasHeight.value) * zoom.value
     fabricCanvas.setDimensions({ width: scaledWidth, height: scaledHeight })
+
+    // 居中 canvas
+    const canvasContainer = wrapper.querySelector('.canvas-container')
+    if (canvasContainer) {
+      const offsetX = (wrapperWidth - scaledWidth) / 2
+      const offsetY = (wrapperHeight - scaledHeight) / 2
+      canvasContainer.style.left = Math.max(0, offsetX) + 'px'
+      canvasContainer.style.top = Math.max(0, offsetY) + 'px'
+    }
+
+    fabricCanvas.renderAll()
   }
-  fabricCanvas.renderAll()
 }
 
 // 全屏切换

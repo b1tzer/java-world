@@ -207,6 +207,7 @@ export default withMermaid(
       imageEditorMarkdownIt(md, {
         patterns: [/\.editor\.json$/, /\.fabric\.json$/],
         defaultMode: 'edit',
+        base: SITE_BASE,
       })
     },
   },

@@ -13,6 +13,8 @@ export interface ImageEditorOptions {
   exportFormats?: ('png' | 'jpg' | 'svg' | 'json')[]
   /** 画布最大尺寸 */
   maxCanvasSize?: number
+  /** VitePress base 路径 */
+  base?: string
 }
 
 // 插件实例
