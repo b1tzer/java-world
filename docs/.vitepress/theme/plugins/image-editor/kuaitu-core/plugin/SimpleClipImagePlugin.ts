@@ -1,5 +1,5 @@
 import { fabric } from 'fabric';
-import { getPolygonVertices } from '../../../src/utils/math';
+import { getPolygonVertices } from '../../utils/math';
 import { get, set } from 'lodash-es';
 import type { IEditor, IPluginTempl } from '@kuaitu/core';
 

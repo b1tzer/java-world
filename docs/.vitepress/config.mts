@@ -220,5 +220,11 @@ export default withMermaid(
 
   vite: {
     plugins: [editorIntegration.vite()],
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'theme/plugins/image-editor'),
+        '@kuaitu/core': resolve(__dirname, 'theme/plugins/image-editor/kuaitu-core'),
+      },
+    },
   },
 }))

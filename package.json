@@ -9,6 +9,7 @@
     "preview": "vitepress preview docs"
   },
   "devDependencies": {
+    "less": "^4.8.1",
     "mermaid": "^11.16.1",
     "vitepress": "^1.6.3",
     "vitepress-plugin-mermaid": "^2.0.17",
@@ -25,6 +26,8 @@
     "tapable": "^2.3.3",
     "uuid": "^14.0.1",
     "view-ui-plus": "^1.3.24",
-    "vitepress-theme-teek": "^1.6.2"
+    "vitepress-theme-teek": "^1.6.2",
+    "vue-i18n": "^11.4.8",
+    "vue-router": "^5.2.0"
   }
 }
