@@ -336,7 +336,7 @@ export class CanvasManager {
     if (!this._bgRects.length) return
     const fc = this.canvas
     fc.getObjects().filter(o => o.excludeFromExport).forEach(o => fc.remove(o))
-    this._bgRects.forEach(r => { fc.add(r); r.sendToBack() })
+    this._bgRects.forEach(r => { fc.add(r); r.set({ selectable: false, evented: false, hoverCursor: 'default' }); r.sendToBack() })
     fc.requestRenderAll()
   }
 

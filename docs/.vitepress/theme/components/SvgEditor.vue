@@ -300,13 +300,28 @@ async function loadAndInit() {
         fc.add(obj)
       })
 
-      // 确保所有对象可选择
+      // 确保所有对象可选择（跳过背景层）
       fc.getObjects().forEach(o => {
+        if (o.excludeFromExport) return  // 背景层对象，已在 addBackground 中锁定
         o.set({ selectable: true, evented: true })
         if (o._objects) o._objects.forEach(c => c.set({ selectable: true, evented: true }))
       })
 
       canvasMgr.addBackground(svgWidth.value, svgHeight.value)
+
+      // ★ 锁定背景元素：canvas 背景层（excludeFromExport）+ SVG 大面积底框矩形
+      const svgW = svgWidth.value, svgH = svgHeight.value
+      fc.getObjects().forEach(o => {
+        if (o.excludeFromExport) {
+          o.set({ selectable: false, evented: false, hoverCursor: 'default' })
+          return
+        }
+        const ow = Math.round((o.width || 0) * (o.scaleX || 1))
+        const oh = Math.round((o.height || 0) * (o.scaleY || 1))
+        if (o.type === 'rect' && ow > svgW * 0.7 && oh > svgH * 0.7) {
+          o.set({ selectable: false, evented: false, hoverCursor: 'default' })
+        }
+      })
       fc.renderAll()
       canvasMgr.zoomFit()
       historyMgr.save(fc,
