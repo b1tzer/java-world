@@ -58,7 +58,7 @@ function parseMarkers(svg) {
   while ((m = polyRe.exec(svg)) !== null) {
     const [, id, mw, mh, refX, , pts, fill] = m
     const tipX = Math.max(...pts.split(/[\s,]+/).filter((_, i) => i % 2 === 0).map(Number))
-    markers[id] = { fill, tipOffset: tipX - parseFloat(refX), markerW: parseFloat(mw), markerH: parseFloat(mh) }
+    markers[id] = { fill, refX: parseFloat(refX), tipOffset: tipX - parseFloat(refX), markerW: parseFloat(mw), markerH: parseFloat(mh) }
   }
 
   // path 形式
@@ -67,7 +67,7 @@ function parseMarkers(svg) {
     const [, id, mw, mh, refX, , d, fill] = m
     const nums = d.match(/[\d.]+/g)?.map(Number) || []
     const tipX = Math.max(...nums.filter((_, i) => i % 2 === 0))
-    markers[id] = { fill, tipOffset: tipX - parseFloat(refX), markerW: parseFloat(mw), markerH: parseFloat(mh) }
+    markers[id] = { fill, refX: parseFloat(refX), tipOffset: tipX - parseFloat(refX), markerW: parseFloat(mw), markerH: parseFloat(mh) }
   }
 
   return markers
@@ -92,15 +92,28 @@ function parseClassMarkers(svg) {
 
 /**
  * 计算箭头三角的 3 个顶点坐标
+ *
+ * 核心公式：
+ *   tip     = 线终点 + tipOffset（沿箭头方向延伸）
+ *   base中心 = 线终点 - refX（沿箭头反方向回退，marker 的 base 到 ref 距离）
+ *   base两点 = base中心 ± (halfH * sin(angle), -halfH * cos(angle))（垂直方向展开）
  */
 function computeArrowPoints(x2, y2, angle, marker, prevX, prevY) {
+  const refX = marker.refX || 0
   const tipOffset = marker.tipOffset || 0
   const halfH = (marker.markerH || 8) / 2
-  const sx = halfH * Math.sin(angle)
-  const sy = -halfH * Math.cos(angle)
-  const tipX = x2 + tipOffset * Math.cos(angle)
-  const tipY = y2 + tipOffset * Math.sin(angle)
-  return `${tipX.toFixed(1)},${tipY.toFixed(1)} ${(x2 + sx).toFixed(1)},${(y2 + sy).toFixed(1)} ${(x2 - sx).toFixed(1)},${(y2 - sy).toFixed(1)}`
+  const cosA = Math.cos(angle)
+  const sinA = Math.sin(angle)
+  // 垂直偏移量（箭头的宽度/厚度方向）
+  const sx = halfH * sinA
+  const sy = -halfH * cosA
+  // 箭头尖：线终点 + tipOffset 沿箭头方向
+  const tipX = x2 + tipOffset * cosA
+  const tipY = y2 + tipOffset * sinA
+  // 箭头基底中心：线终点 - refX 沿箭头反方向
+  const baseX = x2 - refX * cosA
+  const baseY = y2 - refX * sinA
+  return `${tipX.toFixed(1)},${tipY.toFixed(1)} ${(baseX + sx).toFixed(1)},${(baseY + sy).toFixed(1)} ${(baseX - sx).toFixed(1)},${(baseY - sy).toFixed(1)}`
 }
 
 /**
