@@ -67,3 +67,6 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
+## Test artifacts
+test-results/
+
