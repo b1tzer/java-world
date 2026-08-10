@@ -770,13 +770,18 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 /* ── 画布 ────────────────────────────────────── */
 .editor-canvas {
   flex: 1; position: relative; overflow: hidden;
-  background: #111;
-  background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-color: #1a1a1a;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px);
   background-size: 20px 20px;
+  /* 内阴影 — 让 canvas 区有一个嵌入的"舞台"感 */
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.35), inset 0 0 4px rgba(0,0,0,0.2);
 }
 .editor-canvas canvas {
   position: absolute; top: 0; left: 0;
   width: 100% !important; height: 100% !important;
+  /* canvas 自身轻微阴影，模拟文档浮在画布上方 */
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+  border-radius: 2px;
 }
 .loading {
   position: absolute; inset: 0;
