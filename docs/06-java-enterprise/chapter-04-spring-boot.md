@@ -582,9 +582,3 @@ public class DataSourceConfig {
 └─────────────────────────────────────────────────────────┘
 ```
 
----
-
-> **卷间纵横联系**
->
-> - **纵向**：本章是 Spring Boot 的入门基础。理解自动配置原理后，下一章将深入数据访问层，看 Spring Boot 如何通过 Starter 机制自动整合 MyBatis。
-> - **横向**：对比第一卷《Java 基础》中的注解处理器机制，Spring Boot 的 `@Conditional` 系列注解是编译后处理的典型应用；对比第二卷《JVM》中的类加载机制，`@ConditionalOnClass` 依赖的正是 classpath 扫描能力。

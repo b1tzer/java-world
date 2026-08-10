@@ -481,4 +481,4 @@ private UserService userService;
 
 ---
 
-> **纵横联系：** 本章是整个第六卷的基石。IoC 容器机制在第 2 章深入展开为 BeanDefinition 扫描与循环依赖解决；AOP 依赖 BeanPostProcessor 实现切面织入（第 2 章）；Spring MVC 的 DispatcherServlet 本身就是一个 Bean（第 3 章）。从第一卷的 Java 基础到本卷的企业框架，面向接口编程和依赖注入是贯穿始终的设计原则。
+> IoC 的思想知道了，但 Bean 是怎么被创建出来的？从扫描到就绪，中间有 12 个步骤。循环依赖为什么靠三级缓存能解？AOP 代理在哪个环节织入？下一章深入容器内部，拆解这些机制。

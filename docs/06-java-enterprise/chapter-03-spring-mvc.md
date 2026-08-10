@@ -1,6 +1,6 @@
 # 第3章 Spring MVC
 
-> **核心问题：** 一个 HTTP 请求从浏览器发出后，经历了怎样的旅程才变成 Java 方法的参数？DispatcherServlet 如何调度整个请求处理流程？参数解析和异常处理的机制是什么？
+> 你在 Controller 写了个 `@GetMapping("/user")`，浏览器就拿到了 JSON。中间发生了什么？从 Tomcat 接收 TCP 连接，到 Filter 链、DispatcherServlet、HandlerMapping、参数解析、返回值处理、异常兜底——20 多个组件参与了这场接力。本章追踪一个请求从浏览器到 Java 方法再回到浏览器的完整旅程。
 
 ---
 
@@ -584,4 +584,4 @@ public class ExceptionHandlerFilter extends OncePerRequestFilter {
 
 ---
 
-> **纵横联系：** 本章的 DispatcherServlet 本身就是一个 Bean，其初始化过程遵循第 1 章的 Bean 生命周期。HandlerAdapter 中的参数解析和返回值处理大量使用了第 2 章的 AOP 机制（如 @Transactional 在 Controller 层的生效）。Spring MVC 的视图解析和 RESTful 设计将在后续章节与 Spring Boot 的自动配置、Spring Cloud 的网关层形成完整的请求处理链路。理解 Servlet → Filter → DispatcherServlet 的分层，也是理解第五卷 Web 安全中认证授权拦截机制的基础。
+> 从 Servlet 到 DispatcherServlet，请求处理链路已经清楚了。但配置一个 Spring MVC 项目要写一堆 XML——web.xml、spring-mvc.xml、applicationContext.xml。Spring Boot 把这些全干掉了。下一章看它是怎么做到"开箱即用"的。
