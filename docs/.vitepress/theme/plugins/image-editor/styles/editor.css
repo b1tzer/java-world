@@ -1,0 +1,215 @@
+/* 明暗色主题变量 */
+:root {
+  --ie-bg: #ffffff;
+  --ie-bg-secondary: #f5f5f5;
+  --ie-text: #333333;
+  --ie-text-secondary: #666666;
+  --ie-border: #e0e0e0;
+  --ie-accent: #2563eb;
+  --ie-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --ie-canvas-bg: #ffffff;
+  --ie-canvas-grid: #f0f0f0;
+  --ie-radius: 8px;
+  --ie-toolbar-height: 40px;
+  --ie-panel-width: 240px;
+}
+
+.dark {
+  --ie-bg: #1e1e1e;
+  --ie-bg-secondary: #252525;
+  --ie-text: #e0e0e0;
+  --ie-text-secondary: #a0a0a0;
+  --ie-border: #333333;
+  --ie-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --ie-canvas-bg: #1a1a1a;
+  --ie-canvas-grid: #2a2a2a;
+}
+
+/* 编辑器容器 */
+.ie-container {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--ie-border);
+  border-radius: var(--ie-radius);
+  overflow: hidden;
+  background: var(--ie-bg);
+  box-shadow: var(--ie-shadow);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--ie-text);
+}
+
+.ie-container * {
+  box-sizing: border-box;
+}
+
+/* 画布区域 */
+.ie-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  background: var(--ie-canvas-grid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ie-canvas-wrapper canvas {
+  display: block;
+}
+
+/* 浮动工具栏（看图模式） */
+.ie-viewer-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--ie-bg);
+  border: 1px solid var(--ie-border);
+  border-radius: 6px;
+  box-shadow: var(--ie-shadow);
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.ie-container:hover .ie-viewer-toolbar {
+  opacity: 1;
+}
+
+.ie-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ie-text);
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.ie-toolbar-btn:hover {
+  background: var(--ie-bg-secondary);
+}
+
+.ie-toolbar-btn:active {
+  background: var(--ie-border);
+}
+
+.ie-toolbar-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* 分隔线 */
+.ie-toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--ie-border);
+  margin: 4px 2px;
+}
+
+/* 顶部工具栏（编辑模式） */
+.ie-editor-toolbar {
+  display: flex;
+  align-items: center;
+  height: var(--ie-toolbar-height);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--ie-border);
+  background: var(--ie-bg);
+  gap: 4px;
+}
+
+/* 主内容区 */
+.ie-editor-body {
+  display: flex;
+  height: 500px;
+}
+
+/* 左侧工具栏 */
+.ie-tool-panel {
+  width: 48px;
+  border-right: 1px solid var(--ie-border);
+  background: var(--ie-bg-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 4px;
+}
+
+/* 右侧属性面板 */
+.ie-props-panel {
+  width: var(--ie-panel-width);
+  border-left: 1px solid var(--ie-border);
+  background: var(--ie-bg-secondary);
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* 状态栏 */
+.ie-status-bar {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-top: 1px solid var(--ie-border);
+  background: var(--ie-bg-secondary);
+  font-size: 12px;
+  color: var(--ie-text-secondary);
+  gap: 16px;
+}
+
+/* 加载状态 */
+.ie-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--ie-text-secondary);
+}
+
+.ie-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--ie-border);
+  border-top-color: var(--ie-accent);
+  border-radius: 50%;
+  animation: ie-spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes ie-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 错误状态 */
+.ie-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #ef4444;
+  font-size: 14px;
+}
+
+/* 全屏模式 */
+.ie-fullscreen {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999;
+  border-radius: 0;
+  border: none;
+}
+
+.ie-fullscreen .ie-canvas-wrapper {
+  height: calc(100vh - var(--ie-toolbar-height));
+}
