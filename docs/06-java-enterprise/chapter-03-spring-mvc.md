@@ -586,4 +586,4 @@ public class ExceptionHandlerFilter extends OncePerRequestFilter {
 
 > 从 Servlet 到 DispatcherServlet，请求处理链路已经清楚了。但配置一个 Spring MVC 项目要写一堆 XML——web.xml、spring-mvc.xml、applicationContext.xml。Spring Boot 把这些全干掉了。下一章看它是怎么做到"开箱即用"的。
 >
-> **纵横联系：** 本章的 DispatcherServlet 本身就是一个 Bean，其初始化过程遵循第 1 章的 Bean 生命周期。HandlerAdapter 中的参数解析和返回值处理大量使用了第 2 章的 AOP 机制（如 @Transactional 在 Controller 层的生效）。Spring MVC 的视图解析和 RESTful 设计将在后续章节与 Spring Boot 的自动配置、Spring Cloud 的网关层形成完整的请求处理链路。理解 Servlet → Filter → DispatcherServlet 的分层，也是理解第五卷 Web 安全中认证授权拦截机制的基础。
+> **纵横联系** 本章的 DispatcherServlet 本身就是一个 Bean，其初始化过程遵循第 1 章的 Bean 生命周期。HandlerAdapter 中的参数解析和返回值处理大量使用了第 2 章的 AOP 机制（如 @Transactional 在 Controller 层的生效）。Spring MVC 的视图解析和 RESTful 设计将在后续章节与 Spring Boot 的自动配置、Spring Cloud 的网关层形成完整的请求处理链路。理解 Servlet → Filter → DispatcherServlet 的分层，也是理解第五卷 Web 安全中认证授权拦截机制的基础。

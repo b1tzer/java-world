@@ -583,4 +583,4 @@ at com.example.OrderController.createOrder(OrderController.java:45)
 
 ---
 
-> **纵横联系：** 本章深入第 1 章 IoC 容器的内部机制，BeanDefinition 和 BeanPostProcessor 是理解 Spring Boot 自动配置的前提（第七卷）。AOP 是 @Transactional、@Cacheable 等声明式特性的底层支撑。三级缓存机制展示了 Spring 在设计上的精巧权衡——用一个 ObjectFactory 的延迟调用解决了代理对象的提前暴露问题。下一章 Spring MVC 中的拦截器（Interceptor）也运行在 AOP 的思想之上。
+> **纵横联系** 本章深入第 1 章 IoC 容器的内部机制，BeanDefinition 和 BeanPostProcessor 是理解 Spring Boot 自动配置的前提（第七卷）。AOP 是 @Transactional、@Cacheable 等声明式特性的底层支撑。三级缓存机制展示了 Spring 在设计上的精巧权衡——用一个 ObjectFactory 的延迟调用解决了代理对象的提前暴露问题。下一章 Spring MVC 中的拦截器（Interceptor）也运行在 AOP 的思想之上。

@@ -439,7 +439,7 @@ public void onEvent(OrderCreatedEvent event, Acknowledgment ack) {
 
 ---
 
-### 本章与其他卷的联系
+> **纵横联系**
 
 > - **第三卷《并发编程》**：消息消费者的线程模型、消费者组的并发控制，都建立在并发基础之上
 > - **第四卷《网络与通信》**：Kafka 的零拷贝、批处理网络传输，是高性能网络编程的典型实践
