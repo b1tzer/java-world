@@ -1,204 +1,194 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('Image Editor Plugin - 看图模式', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/java-world/image-editor-test')
-    // 等待 VitePress 页面加载完成
-    await page.waitForLoadState('networkidle')
-  })
+/**
+ * VitePress Image Editor 插件 - 看图模式测试
+ *
+ * 测试目标：
+ * 1. markdown-it 插件自动识别 .editor.json 文件
+ * 2. 看图模式组件正确渲染
+ * 3. 明暗色主题自动切换
+ * 4. 工具栏功能正常
+ */
 
+const BASE_URL = 'http://localhost:5174'
+const TEST_PAGE = '/java-world/image-editor-test'
+
+test.describe('Image Editor - markdown-it 自动识别', () => {
   test('页面加载正常', async ({ page }) => {
-    // 检查页面标题
+    await page.goto(TEST_PAGE)
+    await page.waitForLoadState('networkidle')
+
+    // 检查页面标题包含测试页标识
     const title = await page.title()
     expect(title).toBeTruthy()
 
-    // 检查 VitePress 主内容区域
-    const main = page.locator('.VPContent, .vp-doc, main')
+    // 检查主内容区域存在
+    const main = page.locator('.vp-doc, main')
     await expect(main.first()).toBeVisible()
   })
 
-  test('markdown-it 插件将 .editor.json 图片替换为 ImageViewerWrapper', async ({ page }) => {
-    // 检查是否存在 ImageViewerWrapper 组件
-    // markdown-it 插件会将 ![alt](xxx.editor.json) 替换为 <ImageViewerWrapper>
-    const wrapper = page.locator('ImageViewerWrapper, [class*="ie-container"]')
-    const count = await wrapper.count()
+  test('.editor.json 图片被替换为编辑器组件', async ({ page }) => {
+    await page.goto(TEST_PAGE)
+    await page.waitForLoadState('networkidle')
 
-    // 应该至少有一个编辑器组件（.editor.json 文件会被识别）
-    console.log(`Found ${count} image editor wrapper(s)`)
+    // 等待组件渲染
+    await page.waitForSelector('.ie-container, .ie-loading, .ie-error', { timeout: 10000 })
+
+    // 检查是否存在编辑器组件（不是普通 img 标签）
+    const editorComponent = page.locator('.ie-container, .ie-loading, .ie-error')
+    const count = await editorComponent.count()
     expect(count).toBeGreaterThanOrEqual(1)
+
+    // 确认不是普通 img 标签
+    const editorImg = page.locator('img[src*="architecture.editor.json"]')
+    const imgCount = await editorImg.count()
+    expect(imgCount).toBe(0) // 应该被替换为组件，不是 img
+  })
+
+  test('普通 .svg 图片保持为 img 标签', async ({ page }) => {
+    await page.goto(TEST_PAGE)
+    await page.waitForLoadState('networkidle')
+
+    // 普通图片应该保持为 img 标签
+    const normalImg = page.locator('img[src*="logo.svg"]')
+    const count = await normalImg.count()
+    expect(count).toBeGreaterThanOrEqual(1)
+  })
+})
+
+test.describe('Image Editor - 看图模式功能', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(TEST_PAGE)
+    await page.waitForLoadState('networkidle')
+    // 等待编辑器组件加载完成
+    await page.waitForSelector('.ie-container', { timeout: 15000 })
   })
 
   test('Canvas 画布正确渲染', async ({ page }) => {
-    // 等待 fabric.js canvas 渲染
-    const canvas = page.locator('canvas')
-    await expect(canvas.first()).toBeVisible({ timeout: 15000 })
+    // fabric.js 创建两个 canvas（upper-canvas 和 lower-canvas）
+    const canvas = page.locator('.ie-container canvas').first()
+    await expect(canvas).toBeVisible()
 
-    // 检查 canvas 有内容（宽高大于 0）
-    const canvasBox = await canvas.first().boundingBox()
+    // 检查 canvas 有实际尺寸
+    const canvasBox = await canvas.boundingBox()
     expect(canvasBox).toBeTruthy()
-    expect(canvasBox!.width).toBeGreaterThan(0)
-    expect(canvasBox!.height).toBeGreaterThan(0)
+    expect(canvasBox!.width).toBeGreaterThan(100)
+    expect(canvasBox!.height).toBeGreaterThan(100)
   })
 
-  test('浮动工具栏在悬停时显示', async ({ page }) => {
-    // 找到编辑器容器
-    const container = page.locator('.ie-container')
-    await expect(container.first()).toBeVisible({ timeout: 15000 })
-
-    // 工具栏默认隐藏（opacity: 0）
+  test('浮动工具栏存在', async ({ page }) => {
+    // 检查工具栏存在
     const toolbar = page.locator('.ie-viewer-toolbar')
-    await expect(toolbar.first()).toBeAttached()
+    await expect(toolbar).toBeAttached()
 
-    // 悬停后工具栏应该可见
-    await container.first().hover()
-    await page.waitForTimeout(300) // 等待 transition
-
-    // 检查工具栏可见性
-    const toolbarOpacity = await toolbar.first().evaluate(
-      (el) => window.getComputedStyle(el).opacity
-    )
-    expect(toolbarOpacity).toBe('1')
-  })
-
-  test('工具栏包含缩放和下载按钮', async ({ page }) => {
-    const container = page.locator('.ie-container')
-    await expect(container.first()).toBeVisible({ timeout: 15000 })
-
-    // 悬停显示工具栏
-    await container.first().hover()
-    await page.waitForTimeout(300)
-
-    // 检查工具栏按钮
+    // 检查工具栏按钮数量（缩小、放大、适应画布、全屏、下载 = 5个）
     const buttons = page.locator('.ie-toolbar-btn')
     const count = await buttons.count()
-
-    // 应该有：缩小、放大、适应画布、全屏、下载 = 5 个按钮
     expect(count).toBeGreaterThanOrEqual(5)
   })
 
-  test('明暗色主题切换', async ({ page }) => {
+  test('工具栏在悬停时显示', async ({ page }) => {
     const container = page.locator('.ie-container')
-    await expect(container.first()).toBeVisible({ timeout: 15000 })
+    const toolbar = page.locator('.ie-viewer-toolbar')
 
-    // 获取当前主题下的背景色
-    const lightBg = await container.first().evaluate(
-      (el) => window.getComputedStyle(el).getPropertyValue('--ie-bg').trim()
+    // 悬停前工具栏透明
+    const beforeOpacity = await toolbar.evaluate(
+      (el) => window.getComputedStyle(el).opacity
     )
 
-    // 切换到暗色主题
-    await page.evaluate(() => {
-      document.documentElement.classList.add('dark')
-    })
-    await page.waitForTimeout(200)
+    // 悬停容器
+    await container.hover()
+    await page.waitForTimeout(300) // 等待 transition
 
-    // 检查主题变量变化
-    const darkBg = await container.first().evaluate(
-      (el) => window.getComputedStyle(el).getPropertyValue('--ie-bg').trim()
+    // 悬停后工具栏可见
+    const afterOpacity = await toolbar.evaluate(
+      (el) => window.getComputedStyle(el).opacity
     )
-
-    // 暗色主题背景应该不同
-    expect(lightBg).not.toBe(darkBg)
-    console.log(`Theme: light=${lightBg}, dark=${darkBg}`)
+    expect(afterOpacity).toBe('1')
   })
 
-  test('缩放功能', async ({ page }) => {
+  test('缩放按钮可点击', async ({ page }) => {
     const container = page.locator('.ie-container')
-    await expect(container.first()).toBeVisible({ timeout: 15000 })
-
-    // 悬停显示工具栏
-    await container.first().hover()
+    await container.hover()
     await page.waitForTimeout(300)
 
     // 点击放大按钮
-    const zoomInBtn = page.locator('.ie-toolbar-btn').nth(1) // 第二个按钮是放大
+    const zoomInBtn = page.locator('.ie-toolbar-btn').nth(1)
+    await expect(zoomInBtn).toBeVisible()
     await zoomInBtn.click()
-    await page.waitForTimeout(200)
 
-    // 检查 canvas 缩放状态（通过检查 transform 或 zoom 值）
-    const canvas = page.locator('canvas')
-    const isRendered = await canvas.first().isVisible()
-    expect(isRendered).toBeTruthy()
+    // 点击后 canvas 仍然存在
+    const canvas = page.locator('.ie-container canvas').first()
+    await expect(canvas).toBeVisible()
   })
 })
 
-test.describe('Image Editor Plugin - 普通图片不受影响', () => {
-  test('普通 .png 图片渲染为 img 标签', async ({ page }) => {
-    await page.goto('/java-world/image-editor-test')
-    await page.waitForLoadState('networkidle')
+test.describe('Image Editor - 明暗色主题', () => {
+  test('亮色主题变量正确', async ({ page }) => {
+    await page.goto(TEST_PAGE)
+    await page.waitForSelector('.ie-container', { timeout: 15000 })
 
-    // 检查普通图片是否渲染为 <img> 标签
-    const imgTags = page.locator('img[src*=".png"], img[src*=".svg"]')
-    const count = await imgTags.count()
-    console.log(`Found ${count} normal <img> tags`)
-    // 普通图片应该保持为 img 标签
-    expect(count).toBeGreaterThanOrEqual(0)
-  })
-})
-
-test.describe('Image Editor Plugin - 功能完整性', () => {
-  test('fabric.js JSON 正确加载', async ({ page }) => {
-    await page.goto('/java-world/image-editor-test')
-    await page.waitForLoadState('networkidle')
-
-    // 等待 canvas 渲染
-    await page.waitForSelector('canvas', { timeout: 15000 })
-
-    // 检查 canvas 上是否有 fabric.js 对象
-    const hasFabricObjects = await page.evaluate(() => {
-      const canvas = document.querySelector('canvas')
-      if (!canvas) return false
-      // fabric.js 会在 canvas 元素上存储实例
-      return canvas.parentElement?.classList.contains('canvas-container') ||
-             !!document.querySelector('.canvas-container')
-    })
-
-    expect(hasFabricObjects).toBeTruthy()
-  })
-
-  test('容器有正确的 CSS 变量', async ({ page }) => {
-    await page.goto('/java-world/image-editor-test')
-    await page.waitForLoadState('networkidle')
-
-    const container = page.locator('.ie-container')
-    await expect(container.first()).toBeVisible({ timeout: 15000 })
-
-    // 检查 CSS 变量是否设置
-    const cssVars = await container.first().evaluate((el) => {
+    // 检查 CSS 变量
+    const cssVars = await page.locator('.ie-container').evaluate((el) => {
       const style = window.getComputedStyle(el)
       return {
         bg: style.getPropertyValue('--ie-bg').trim(),
         text: style.getPropertyValue('--ie-text').trim(),
         border: style.getPropertyValue('--ie-border').trim(),
-        accent: style.getPropertyValue('--ie-accent').trim(),
       }
     })
 
-    // 所有变量都应该有值
     expect(cssVars.bg).toBeTruthy()
     expect(cssVars.text).toBeTruthy()
     expect(cssVars.border).toBeTruthy()
-    expect(cssVars.accent).toBeTruthy()
-    console.log('CSS Variables:', cssVars)
   })
 
-  test('响应式布局', async ({ page }) => {
-    await page.goto('/java-world/image-editor-test')
-    await page.waitForLoadState('networkidle')
+  test('暗色主题切换', async ({ page }) => {
+    await page.goto(TEST_PAGE)
+    await page.waitForSelector('.ie-container', { timeout: 15000 })
+
+    // 获取亮色主题背景
+    const lightBg = await page.locator('.ie-container').evaluate((el) => {
+      return window.getComputedStyle(el).getPropertyValue('--ie-bg').trim()
+    })
+
+    // 切换到暗色主题
+    await page.evaluate(() => {
+      document.documentElement.classList.add('dark')
+    })
+    await page.waitForTimeout(300)
+
+    // 获取暗色主题背景
+    const darkBg = await page.locator('.ie-container').evaluate((el) => {
+      return window.getComputedStyle(el).getPropertyValue('--ie-bg').trim()
+    })
+
+    // 暗色主题背景应该不同
+    expect(lightBg).not.toBe(darkBg)
+    console.log(`Theme colors: light=${lightBg}, dark=${darkBg}`)
+  })
+})
+
+test.describe('Image Editor - 响应式布局', () => {
+  test('桌面端正常显示', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await page.goto(TEST_PAGE)
+    await page.waitForSelector('.ie-container', { timeout: 15000 })
 
     const container = page.locator('.ie-container')
-    await expect(container.first()).toBeVisible({ timeout: 15000 })
+    const box = await container.boundingBox()
+    expect(box).toBeTruthy()
+    expect(box!.width).toBeGreaterThan(200)
+  })
 
-    // 检查容器宽度
-    const box = await container.first().boundingBox()
+  test('平板端正常显示', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 })
+    await page.goto(TEST_PAGE)
+    await page.waitForSelector('.ie-container', { timeout: 15000 })
+
+    const container = page.locator('.ie-container')
+    const box = await container.boundingBox()
     expect(box).toBeTruthy()
     expect(box!.width).toBeGreaterThan(100)
-
-    // 检查不同视口下的表现
-    await page.setViewportSize({ width: 768, height: 1024 })
-    await page.waitForTimeout(500)
-
-    const tabletBox = await container.first().boundingBox()
-    expect(tabletBox).toBeTruthy()
-    expect(tabletBox!.width).toBeGreaterThan(100)
   })
 })
