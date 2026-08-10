@@ -10,7 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const docsDir = resolve(__dirname, '..')
 const SITE_BASE = '/java-world/'
 
-// open-in-editor 集成
+// 一次实例化，导出三块能力给 VitePress 的不同扩展点使用。
 const editorIntegration = openInEditor({
   docsDir,
   base: SITE_BASE,
@@ -38,6 +38,7 @@ export default withMermaid(
     ['meta', { name: 'twitter:card', content: 'summary' }],
     ['meta', { name: 'theme-color', content: '#2563eb' }],
     ['meta', { name: 'viewport', content: 'width=device-width,initial-scale=1' }],
+    // open-in-editor 的样式与客户端脚本已由 vite 插件通过 transformIndexHtml 自动注入。
   ],
 
   themeConfig: {

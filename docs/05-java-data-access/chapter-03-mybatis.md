@@ -215,7 +215,7 @@ public Object execute(SqlSession sqlSession, Object[] args) {
 
 ### 3.3.4 横向联系：反射与代理
 
-这里用到的 `java.lang.reflect.Proxy` 是 JDK 反射 API 的一部分。在第二卷《Java 面向对象》中我们详细讨论了反射机制——MyBatis 的 Mapper 代理正是反射在框架设计中的经典应用。
+这里用到的 `java.lang.reflect.Proxy` 是 JDK 反射 API 的一部分。在第一卷《Java 语言》中我们详细讨论了反射机制——MyBatis 的 Mapper 代理正是反射在框架设计中的经典应用。
 
 同时，这种"不修改原始代码、在调用前后插入额外逻辑"的模式，与第六卷将要讨论的 AOP（面向切面编程）异曲同工。区别在于 MyBatis 用 JDK 动态代理手写实现，而 Spring AOP 抽象了这一模式，提供了声明式的切面编程。
 
@@ -602,11 +602,3 @@ MyBatis 的动态 SQL 并非简单的字符串拼接。它使用 **OGNL 表达�
 | 插件机制 | 责任链模式，四个拦截点，分页/监控/加密的基础设施 |
 | 动态 SQL | OGNL + SqlNode 树，一个 XML 适配多种查询条件 |
 
----
-
-> **纵横联系**
->
-> - **第二卷《Java 面向对象》**：Mapper 动态代理的核心是 `java.lang.reflect.Proxy`，理解反射和接口抽象是理解 MyBatis 代理机制的前提。
-> - **第六卷《高级架构与设计模式》**：MyBatis 的插件机制是**责任链模式**的经典应用，其代理包装策略与 AOP 的实现原理高度一致。
-> - **第五卷后续章节**：下一章将对比 MyBatis 与 JPA/Hibernate 的设计理念差异，帮助你根据项目特点选择合适的持久化方案。
-> - **第四卷《并发与异步编程》**：SqlSession 的线程安全性设计（非线程安全）与数据库连接池的并发控制，涉及并发编程的核心概念。

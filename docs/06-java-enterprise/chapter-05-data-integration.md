@@ -1,6 +1,6 @@
 # 第5章 Spring 整合数据访问
 
-> 当 MyBatis 脱离 Spring 独立运行时，开发者需要手动创建 SqlSessionFactory、手动管理 SqlSession 的生命周期、手动处理事务。Spring 整合 MyBatis 后，这些工作全部交给容器管理。本章回答一个核心问题：**Spring 到底对 MyBatis 做了什么，让 Mapper 接口可以直接注入、事务自动生效、缓存行为发生变化？**
+> 独立使用 MyBatis，20 行模板代码：创建 SqlSessionFactory、获取 SqlSession、获取 Mapper、执行 SQL、处理异常、关闭 SqlSession。整合 Spring 后，一个 `@Autowired UserMapper mapper` 就够了，其余全部消失。Spring 到底对 MyBatis 做了什么，让 Mapper 接口可以直接注入、事务自动生效、缓存行为发生变化？
 
 ## 5.1 核心问题：独立 vs 整合
 
@@ -464,9 +464,3 @@ public class UserService {
 | 跨方法复用缓存 | 将多次查询放在同一个 `@Transactional` 方法中 |
 | 高并发场景 | 慎用一级缓存，考虑 Redis 等分布式缓存 |
 
----
-
-> **卷间纵横联系**
->
-> - **纵向**：本章深入了 Spring 与 MyBatis 的整合细节。下一章将把视角拉高到微服务架构，看数据访问层在分布式环境下如何工作。
-> - **横向**：对比第三卷《数据库与存储》中的事务隔离级别，Spring 的 `@Transactional` 只是声明了事务边界，底层的隔离级别仍然由数据库决定。对比第一卷《Java 基础》中的动态代理机制，MyBatis 的 MapperProxy 和 Spring 的 SqlSessionInterceptor 都是 JDK 动态代理的经典应用。

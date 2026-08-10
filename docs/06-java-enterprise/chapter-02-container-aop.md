@@ -1,6 +1,6 @@
 # 第2章 Spring 容器机制与 AOP
 
-> **核心问题：** Spring 容器从启动到就绪经历了哪些步骤？BeanDefinition 扮演什么角色？循环依赖如何通过三级缓存解决？AOP 的本质是什么，它的边界在哪里？
+> 你以为 Spring 只是帮你 `new` 对象？从 `new AnnotationConfigApplicationContext()` 到容器就绪，背后有 12 个步骤：扫描、解析、实例化、注入、初始化、后处理……BeanDefinition 是什么？循环依赖为什么靠三级缓存能解？AOP 代理在哪个环节织入？本章逐层拆解 Spring 容器的内部运作。
 
 ---
 
@@ -581,6 +581,3 @@ at com.example.OrderController.createOrder(OrderController.java:45)
 
 **调试技巧：** 在 IDE 中对生成的代理类设置断点无效，应对**目标方法**设置断点，或使用条件断点过滤。
 
----
-
-> **纵横联系：** 本章深入第 1 章 IoC 容器的内部机制，BeanDefinition 和 BeanPostProcessor 是理解 Spring Boot 自动配置的前提（第七卷）。AOP 是 @Transactional、@Cacheable 等声明式特性的底层支撑。三级缓存机制展示了 Spring 在设计上的精巧权衡——用一个 ObjectFactory 的延迟调用解决了代理对象的提前暴露问题。下一章 Spring MVC 中的拦截器（Interceptor）也运行在 AOP 的思想之上。
