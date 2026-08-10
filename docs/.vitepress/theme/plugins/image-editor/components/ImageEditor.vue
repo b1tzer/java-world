@@ -427,12 +427,10 @@ function zoomFit() {
     zoom.value = Math.min(scaleX, scaleY) * 0.9
     fabricCanvas.setZoom(zoom.value)
 
-    const center = fabricCanvas.getCenter()
-    fabricCanvas.setViewportTransform([1, 0, 0, 1, 0, 0])
-    fabricCanvas.zoomToPoint(
-      new fabricLib.Point(center.left, center.top),
-      zoom.value
-    )
+    // 更新 canvas 尺寸以匹配缩放后的大小
+    const scaledWidth = (workspace.width || canvasWidth.value) * zoom.value
+    const scaledHeight = (workspace.height || canvasHeight.value) * zoom.value
+    fabricCanvas.setDimensions({ width: scaledWidth, height: scaledHeight })
   }
   fabricCanvas.renderAll()
 }

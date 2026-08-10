@@ -152,6 +152,26 @@
   padding: 12px;
 }
 
+/* Canvas 画布区域（编辑模式） */
+.ie-canvas-area {
+  flex: 1;
+  overflow: hidden;
+  background: var(--ie-canvas-grid);
+  position: relative;
+}
+
+.ie-canvas-area .canvas-container {
+  position: absolute !important;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
+}
+
+.ie-canvas-area canvas {
+  display: block;
+}
+
 /* 状态栏 */
 .ie-status-bar {
   display: flex;
