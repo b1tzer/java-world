@@ -8,14 +8,17 @@
  *   4. 提取 viewBox / 宽高
  */
 
-import { VAR_TO_HEX } from './constants.js'
+import { THEME_VAR_TO_HEX } from './constants.js'
 
 /**
  * 将 CSS 变量替换为 hex 色值
+ * @param {string} svg - SVG 文本
+ * @param {'light'|'dark'} theme - 主题模式（默认 light）
  */
-function replaceCssVars(svg) {
+function replaceCssVars(svg, theme = 'light') {
+  const mapping = THEME_VAR_TO_HEX[theme] || THEME_VAR_TO_HEX.light
   let result = svg
-  for (const [varName, hex] of Object.entries(VAR_TO_HEX)) {
+  for (const [varName, hex] of Object.entries(mapping)) {
     result = result.replaceAll(`var(${varName})`, hex)
   }
   return result
@@ -177,15 +180,17 @@ function injectPathArrows(svg, markers) {
 
 /**
  * 主入口：预处理 SVG 文本，返回 Fabric.js 可直接加载的 SVG
+ * @param {string} rawSvg - 原始 SVG 文本
+ * @param {'light'|'dark'} theme - 主题模式（默认 light）
  * @returns {{ svg: string, originalViewBox: string, svgWidth: number, svgHeight: number }}
  */
-export function preprocessSvg(rawSvg) {
+export function preprocessSvg(rawSvg, theme = 'light') {
   let svg = rawSvg.replace(/<\?xml[^?]*\?>\s*/g, '')
 
   const { viewBox, width, height } = extractViewBox(svg)
 
-  // 1. CSS 变量 → hex
-  svg = replaceCssVars(svg)
+  // 1. CSS 变量 → hex（按当前主题）
+  svg = replaceCssVars(svg, theme)
 
   // 2. <stop style="stop-color:..."> → 直接属性
   svg = fixStopColors(svg)

@@ -37,24 +37,63 @@ export const ICONS = {
   textRight: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="21" x2="9" y1="12" y2="12"/><line x1="21" x2="7" y1="18" y2="18"/></svg>',
   dashed: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h2"/><path d="M10 12h2"/><path d="M15 12h2"/><path d="M20 12h2"/></svg>',
   close: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+  sun: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" x2="12" y1="1" y2="3"/><line x1="12" x2="12" y1="21" y2="23"/><line x1="4.22" x2="5.64" y1="4.22" y2="5.64"/><line x1="18.36" x2="19.78" y1="18.36" y2="19.78"/><line x1="1" x2="3" y1="12" y2="12"/><line x1="21" x2="23" y1="12" y2="12"/><line x1="4.22" x2="5.64" y1="19.78" y2="18.36"/><line x1="18.36" x2="19.78" y1="5.64" y2="4.22"/></svg>',
+  moon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
 }
 
-// CSS 变量色彩方案（28 个变量，与 custom.css :root 保持一致）
-export const CSS_COLORS = {
-  '#FFFFFF': '--diagram-surface-1', '#F8F9FA': '--diagram-surface-2', '#ECEFF1': '--diagram-surface-3',
-  '#BDBDBD': '--diagram-stroke-1', '#E0E0E0': '--diagram-stroke-2',
-  '#333333': '--diagram-text-1', '#666666': '--diagram-text-2', '#888888': '--diagram-text-3',
-  '#1565C0': '--diagram-accent-1', '#E3F2FD': '--diagram-accent-bg-1', '#BBDEFB': '--diagram-accent-bg-1b', '#0D47A1': '--diagram-accent-text-1',
-  '#2E7D32': '--diagram-accent-2', '#E8F5E9': '--diagram-accent-bg-2', '#C8E6C9': '--diagram-accent-bg-2b', '#1B5E20': '--diagram-accent-text-2',
-  '#7B1FA2': '--diagram-accent-3', '#F3E5F5': '--diagram-accent-bg-3', '#E1BEE7': '--diagram-accent-bg-3b', '#4A148C': '--diagram-accent-text-3',
-  '#E65100': '--diagram-accent-4', '#FFF3E0': '--diagram-accent-bg-4', '#BF360C': '--diagram-accent-text-4',
-  '#C62828': '--diagram-accent-5', '#FFCDD2': '--diagram-accent-bg-5', '#B71C1C': '--diagram-accent-text-5',
-  '#555555': '--diagram-arrow',
-  '#999999': '--diagram-ghost',
+// ── 亮色主题 hex 值（与 custom.css :root 保持一致）──
+const LIGHT_HEX = {
+  '--diagram-surface-1': '#FFFFFF', '--diagram-surface-2': '#F8F9FA', '--diagram-surface-3': '#ECEFF1',
+  '--diagram-stroke-1': '#BDBDBD', '--diagram-stroke-2': '#E0E0E0',
+  '--diagram-text-1': '#333333', '--diagram-text-2': '#666666', '--diagram-text-3': '#888888',
+  '--diagram-accent-1': '#1565C0', '--diagram-accent-bg-1': '#E3F2FD', '--diagram-accent-bg-1b': '#BBDEFB', '--diagram-accent-text-1': '#0D47A1',
+  '--diagram-accent-2': '#2E7D32', '--diagram-accent-bg-2': '#E8F5E9', '--diagram-accent-bg-2b': '#C8E6C9', '--diagram-accent-text-2': '#1B5E20',
+  '--diagram-accent-3': '#7B1FA2', '--diagram-accent-bg-3': '#F3E5F5', '--diagram-accent-bg-3b': '#E1BEE7', '--diagram-accent-text-3': '#4A148C',
+  '--diagram-accent-4': '#E65100', '--diagram-accent-bg-4': '#FFF3E0', '--diagram-accent-text-4': '#BF360C',
+  '--diagram-accent-5': '#C62828', '--diagram-accent-bg-5': '#FFCDD2', '--diagram-accent-text-5': '#B71C1C',
+  '--diagram-arrow': '#555555',
+  '--diagram-ghost': '#999999',
 }
 
-// 反向映射：CSS 变量名 → hex 值
-export const VAR_TO_HEX = {}
-for (const [hex, v] of Object.entries(CSS_COLORS)) {
-  VAR_TO_HEX[v] = hex
+// ── 暗色主题 hex 值（与 custom.css .dark 保持一致）──
+const DARK_HEX = {
+  '--diagram-surface-1': '#1a1a1a', '--diagram-surface-2': '#222222', '--diagram-surface-3': '#2a2a2a',
+  '--diagram-stroke-1': '#444444', '--diagram-stroke-2': '#333333',
+  '--diagram-text-1': '#e0e0e0', '--diagram-text-2': '#b0b0b0', '--diagram-text-3': '#808080',
+  '--diagram-accent-1': '#5C9CE6', '--diagram-accent-bg-1': '#0d2137', '--diagram-accent-bg-1b': '#1a3a5c', '--diagram-accent-text-1': '#90CAF9',
+  '--diagram-accent-2': '#66BB6A', '--diagram-accent-bg-2': '#0d2818', '--diagram-accent-bg-2b': '#1b4332', '--diagram-accent-text-2': '#A5D6A7',
+  '--diagram-accent-3': '#CE93D8', '--diagram-accent-bg-3': '#2d1b3d', '--diagram-accent-bg-3b': '#3d2550', '--diagram-accent-text-3': '#E1BEE7',
+  '--diagram-accent-4': '#FFB74D', '--diagram-accent-bg-4': '#3d2d15', '--diagram-accent-text-4': '#FFCC80',
+  '--diagram-accent-5': '#EF9A9A', '--diagram-accent-bg-5': '#3d1520', '--diagram-accent-text-5': '#FFCDD2',
+  '--diagram-arrow': '#b0b0b0',
+  '--diagram-ghost': '#666666',
 }
+
+// ── 按主题导出 VAR→HEX 映射（用于 preprocessor：CSS 变量 → hex 色值）──
+export const THEME_VAR_TO_HEX = {
+  light: LIGHT_HEX,
+  dark: DARK_HEX,
+}
+
+// ── 亮↔暗 双向 hex 映射（用于编辑器内主题切换：遍历 canvas 对象替换颜色）──
+// 所有键值统一大写，确保 swapColor 的 .toUpperCase() 能正确匹配
+export const LIGHT_TO_DARK = {}
+export const DARK_TO_LIGHT = {}
+for (const v of Object.keys(LIGHT_HEX)) {
+  LIGHT_TO_DARK[LIGHT_HEX[v].toUpperCase()] = DARK_HEX[v].toUpperCase()
+  DARK_TO_LIGHT[DARK_HEX[v].toUpperCase()] = LIGHT_HEX[v].toUpperCase()
+}
+
+// ── 合并映射 hex→CSS 变量（用于 postprocessor：保存时 hex→var(--xxx) 还原）──
+// 同一个 CSS 变量在亮/暗下有不同的 hex 值，还原时都映射到同一个变量名
+export const ALL_HEX_TO_VAR = {}
+for (const v of Object.keys(LIGHT_HEX)) {
+  ALL_HEX_TO_VAR[LIGHT_HEX[v]] = v
+  ALL_HEX_TO_VAR[DARK_HEX[v]] = v
+}
+
+// 兼容旧代码：保持 CSS_COLORS 导出（用于 postprocessor.js 中的 hexToCssVars）
+export const CSS_COLORS = ALL_HEX_TO_VAR
+
+// 兼容旧代码：保持 VAR_TO_HEX 导出（用于 preprocessor.js 中的 replaceCssVars）
+export const VAR_TO_HEX = LIGHT_HEX

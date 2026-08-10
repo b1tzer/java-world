@@ -7,7 +7,7 @@
  */
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { fabric } from 'fabric'
-import { ICONS } from './editor/constants.js'
+import { ICONS, LIGHT_TO_DARK, DARK_TO_LIGHT } from './editor/constants.js'
 import { preprocessSvg } from './editor/preprocessor.js'
 import { cleanFabricSvg, rgbToHex, hexToCssVars, restoreViewBox, removeCanvasBg } from './editor/postprocessor.js'
 import { CanvasManager } from './editor/CanvasManager.js'
@@ -23,7 +23,10 @@ import { toggleShadow, applyShadow } from './editor/plugins/shadow.js'
 // 确保 fabric 全局可用（兼容 loadSVGFromString 等需要全局 fabric 的 API）
 window.fabric = fabric
 
-const props = defineProps({ src: { type: String, required: true } })
+const props = defineProps({
+  src: { type: String, required: true },
+  showThemeToggle: { type: Boolean, default: true },
+})
 const emit = defineEmits(['close', 'saved'])
 
 // ── Vue 响应式状态 ──
@@ -60,6 +63,11 @@ const originalViewBox = ref('')
 const spacePressed = ref(false)
 const guideLines = ref([])
 const isPanning = ref(false)
+
+// ── 主题模式（与 VitePress 暗色模式同步） ──
+const themeMode = ref(
+  typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+)
 
 // ── 核心管理器 ──
 const canvasMgr = new CanvasManager()
@@ -272,7 +280,7 @@ async function loadAndInit() {
   }
 
   // 预处理 SVG
-  const { svg, originalViewBox: vb, svgWidth: sw, svgHeight: sh } = preprocessSvg(svgText)
+  const { svg, originalViewBox: vb, svgWidth: sw, svgHeight: sh } = preprocessSvg(svgText, themeMode.value)
   if (vb) originalViewBox.value = vb
   if (sw > 0) svgWidth.value = sw
   if (sh > 0) svgHeight.value = sh
@@ -288,8 +296,6 @@ async function loadAndInit() {
 
   // 初始化画布
   const fc = canvasMgr.init(container.querySelector('canvas'), w, h)
-  window.__fabricCanvas = fc
-  window.__canvasMgr = canvasMgr
 
   // 加载 SVG 对象
   fabric.loadSVGFromString(svg, (objects) => {
@@ -301,28 +307,13 @@ async function loadAndInit() {
         fc.add(obj)
       })
 
-      // 确保所有对象可选择（跳过背景层）
+      // 确保所有对象可选择
       fc.getObjects().forEach(o => {
-        if (o.excludeFromExport) return  // 背景层对象，已在 addBackground 中锁定
         o.set({ selectable: true, evented: true })
         if (o._objects) o._objects.forEach(c => c.set({ selectable: true, evented: true }))
       })
 
       canvasMgr.addBackground(svgWidth.value, svgHeight.value)
-
-      // ★ 锁定背景元素：canvas 背景层（excludeFromExport）+ SVG 大面积底框矩形
-      const svgW = svgWidth.value, svgH = svgHeight.value
-      fc.getObjects().forEach(o => {
-        if (o.excludeFromExport) {
-          o.set({ selectable: false, evented: false, hoverCursor: 'default' })
-          return
-        }
-        const ow = Math.round((o.width || 0) * (o.scaleX || 1))
-        const oh = Math.round((o.height || 0) * (o.scaleY || 1))
-        if (o.type === 'rect' && ow > svgW * 0.7 && oh > svgH * 0.7) {
-          o.set({ selectable: false, evented: false, hoverCursor: 'default' })
-        }
-      })
       fc.renderAll()
       canvasMgr.zoomFit()
       historyMgr.save(fc,
@@ -423,6 +414,68 @@ function ensureInteractive(o) {
     }
   }
   if (o._objects) o._objects.forEach(ensureInteractive)
+}
+
+// ── 主题切换 ──
+function toggleTheme() {
+  const fc = canvasMgr.canvas
+  if (!fc) return
+
+  const from = themeMode.value === 'light' ? 'light' : 'dark'
+  const to = from === 'light' ? 'dark' : 'light'
+  const mapping = from === 'light' ? LIGHT_TO_DARK : DARK_TO_LIGHT
+  if (!mapping || !Object.keys(mapping).length) return
+
+  themeMode.value = to
+
+  // 递归替换对象颜色
+  function swapColor(hex) {
+    if (!hex || typeof hex !== 'string') return hex
+    const upper = hex.toUpperCase()
+    return mapping[upper] || hex
+  }
+
+  // 递归处理 fabric.Gradient
+  function swapGradient(gradient) {
+    if (!gradient || !gradient.colorStops) return gradient
+    const newStops = gradient.colorStops.map(stop => ({
+      ...stop,
+      color: swapColor(stop.color),
+    }))
+    return new fabric.Gradient({
+      type: gradient.type,
+      coords: { ...gradient.coords },
+      colorStops: newStops,
+    })
+  }
+
+  fc.getObjects().forEach(obj => {
+    if (obj.excludeFromExport) return
+    // 递归处理子对象（group 内部元素）
+    const processObject = (o) => {
+      if (o.fill && typeof o.fill === 'string') o.set('fill', swapColor(o.fill))
+      if (o.fill && typeof o.fill === 'object' && o.fill.type) o.set('fill', swapGradient(o.fill))
+      if (o.stroke && typeof o.stroke === 'string') o.set('stroke', swapColor(o.stroke))
+      if (o.shadow && o.shadow.color) o.shadow.color = swapColor(o.shadow.color)
+      if (o._objects) o._objects.forEach(processObject)
+    }
+    processObject(obj)
+  })
+
+  // 同步更新画布样式
+  const isDark = to === 'dark'
+  fc.set('backgroundColor', isDark ? '#1a1a1a' : '#f5f5f5')
+  // 更新背景白板的颜色
+  const bgObjects = fc.getObjects().filter(o => o.excludeFromExport)
+  bgObjects.forEach(o => {
+    if (o.type === 'rect' && o.width > 0 && o.height > 0) {
+      // 白板背景：暗色模式下也相应调整
+      o.set('fill', isDark ? '#2a2a2a' : '#ffffff')
+      o.set('stroke', isDark ? '#555555' : '#cccccc')
+    }
+  })
+
+  fc.requestRenderAll()
 }
 
 // ── 保存 ──
@@ -578,6 +631,10 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
           <button @click="applyTextAlign('right')" data-tip="文字右对齐" :class="{ active: currentTextAlign === 'right' }"><span v-html="ICONS.textRight"></span></button>
         </div>
         <div class="sep" />
+        <button v-if="props.showThemeToggle" @click="toggleTheme()" :data-tip="themeMode === 'light' ? '切换到暗色模式' : '切换到亮色模式'" class="theme-toggle-btn">
+          <span v-if="themeMode === 'light'" v-html="ICONS.sun"></span>
+          <span v-else v-html="ICONS.moon"></span>
+        </button>
         <button class="btn-save" data-tip="保存 (Ctrl+S)" @click="save" :disabled="saving">{{ saving ? '保存中...' : '保存' }}</button>
         <button data-tip="关闭" @click="emit('close')"><span v-html="ICONS.close"></span></button>
       </div>
