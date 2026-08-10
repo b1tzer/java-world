@@ -213,3 +213,13 @@
 .ie-fullscreen .ie-canvas-wrapper {
   height: calc(100vh - var(--ie-toolbar-height));
 }
+
+/* 编辑模式工具栏按钮禁用状态 */
+.ie-toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ie-toolbar-btn:disabled:hover {
+  background: transparent;
+}

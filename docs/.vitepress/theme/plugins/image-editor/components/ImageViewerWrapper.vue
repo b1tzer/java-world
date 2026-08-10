@@ -7,6 +7,13 @@
     <div v-else-if="error" class="ie-error">
       <span>加载失败: {{ error.message }}</span>
     </div>
+    <ImageEditor
+      v-else-if="mode === 'edit'"
+      :src="resolvedSrc"
+      :title="alt"
+      @save="onSave"
+      @export="onExport"
+    />
     <ImageViewer
       v-else
       :src="resolvedSrc"
@@ -21,6 +28,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import ImageViewer from './ImageViewer.vue'
+import ImageEditor from './ImageEditor.vue'
 
 const props = withDefaults(defineProps<{
   src: string
@@ -29,6 +37,11 @@ const props = withDefaults(defineProps<{
 }>(), {
   mode: 'view',
 })
+
+const emit = defineEmits<{
+  (e: 'save', data: object): void
+  (e: 'export', format: string, data: string): void
+}>()
 
 const loading = ref(true)
 const error = ref<Error | null>(null)
@@ -43,44 +56,25 @@ function onError(err: Error) {
   error.value = err
 }
 
+function onSave(data: object) {
+  emit('save', data)
+}
+
+function onExport(format: string, data: string) {
+  emit('export', format, data)
+}
+
 // 解析相对路径
 function resolveSrc(src: string): string {
-  // 如果是绝对 URL，直接返回
   if (src.startsWith('http://') || src.startsWith('https://')) {
     return src
   }
-
-  // VitePress 中，md 文件中的相对路径会被 Vite 处理
-  // 但 markdown-it 插件输出的是原始路径
-  // 需要根据当前页面路径解析
-  if (typeof window !== 'undefined') {
-    const base = import.meta.env.BASE_URL || '/'
-    const pagePath = window.location.pathname
-
-    // 如果 src 以 ./ 开头，相对于当前页面
-    if (src.startsWith('./')) {
-      const dir = pagePath.substring(0, pagePath.lastIndexOf('/'))
-      return base + dir.substring(base.length) + '/' + src.substring(2)
-    }
-
-    // 如果 src 以 / 开头，是绝对路径
-    if (src.startsWith('/')) {
-      return src
-    }
-
-    // 其他情况，相对于当前页面
-    const dir = pagePath.substring(0, pagePath.lastIndexOf('/'))
-    return base + dir.substring(base.length) + '/' + src
-  }
-
   return src
 }
 
 onMounted(() => {
-  console.log('[ImageViewerWrapper] mounted, src:', props.src)
+  console.log('[ImageViewerWrapper] mounted, src:', props.src, 'mode:', props.mode)
   resolvedSrc.value = resolveSrc(props.src)
-  console.log('[ImageViewerWrapper] resolvedSrc:', resolvedSrc.value)
-  // 直接设置 loading 为 false，让 ImageViewer 组件处理加载
   loading.value = false
 })
 </script>

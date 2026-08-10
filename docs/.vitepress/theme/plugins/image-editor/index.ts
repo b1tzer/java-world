@@ -4,6 +4,7 @@ import type { ImageEditorOptions, ImageEditorPlugin } from './types'
 import { imageEditorMarkdownIt } from './markdown-it'
 import ImageViewerWrapper from './components/ImageViewerWrapper.vue'
 import ImageViewer from './components/ImageViewer.vue'
+import ImageEditor from './components/ImageEditor.vue'
 import './styles/editor.css'
 
 /**
@@ -46,6 +47,7 @@ export function createImageEditor(options: ImageEditorOptions = {}): ImageEditor
       app.component('ImageViewerWrapper', ImageViewerWrapper)
       // 注册独立使用的组件
       app.component('ImageViewer', ImageViewer)
+      app.component('ImageEditor', ImageEditor)
     },
 
     /**
@@ -67,7 +69,7 @@ export function createImageEditor(options: ImageEditorOptions = {}): ImageEditor
 }
 
 // 导出组件供独立使用
-export { ImageViewer, ImageViewerWrapper }
+export { ImageViewer, ImageViewerWrapper, ImageEditor }
 
 // 导出 composables
 export { useTheme } from './composables/useTheme'
