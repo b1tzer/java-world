@@ -582,9 +582,3 @@ Spring AOP 应用全景
 | 编程式事务 | TransactionTemplate / PlatformTransactionManager，精确控制 |
 | 与 AOP 的关系 | 事务是 AOP 的典型应用，代理模式是底层支撑 |
 
----
-
-> **纵横联系**
-> - **向前（第四卷《网络与通信》）**：Web 层的 `@Controller` 调用 `@Service`，事务就在 Service 层静静等待，确保数据一致性。
-> - **向后（第六卷《Spring 高级特性》）**：本章的 AOP 代理机制将在第六卷中被展开为完整的 AOP 知识体系。事务传播、缓存管理、权限校验——它们共享同一套代理基础设施。
-> - **横向（第七卷《微服务架构》）**：当事务跨越多个微服务时，单机的 `@Transactional` 力不从心，分布式事务（TCC、Saga、Seata）将成为新的挑战。

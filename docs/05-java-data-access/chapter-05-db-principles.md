@@ -532,10 +532,3 @@ public void criticalTransfer(Long fromId, Long toId, BigDecimal amount) {
 ---
 
 > 数据库的锁和隔离级别是底层机制，但在 Java 应用中，你不会直接操作它们——Spring 用一个 `@Transactional` 注解帮你搞定。这个注解背后是什么？事务传播机制在嵌套调用时怎么运作？为什么加了注解数据还是"飞"了？下一章回答这些问题。
->
-> **纵横联系**
->
-> - **与第 3 章（JDBC）的联系**：JDBC 的 `PreparedStatement` 缓存与 Parser 的预编译直接相关；事务隔离级别通过 `Connection.setTransactionIsolation()` 设置。
-> - **与第 4 章（ORM 框架）的联系**：Hibernate/JPA 的懒加载和 N+1 问题，本质是索引和执行计划的问题；`@Version` 注解就是乐观锁的 ORM 映射。
-> - **与第 6 章（连接池）的联系**：锁等待和事务隔离直接影响连接的持有时间，进而影响连接池的利用率。
-> - **与第 7 章（分库分表）的联系**：当单表数据量突破索引的舒适区（比如超过 2000 万行），B+Tree 的高度和 I/O 次数会显著增加，这是分库分表的核心驱动力之一。

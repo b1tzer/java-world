@@ -476,4 +476,3 @@ void domainShouldNotDependOnInfrastructure() {
 
 > **架构不是目的，演进才是。** 本章介绍的分层架构、六边形架构、Clean Architecture，各有适用场景。初学者从三层起步，业务复杂时引入六边形/Clean Architecture 的思想，不要一开始就追求"完美架构"。第2章将在架构基础上深入领域建模——DDD 是让架构"长对肉"的关键方法论。第3章则从架构转向性能，探讨高并发场景下的系统设计策略。
 
----

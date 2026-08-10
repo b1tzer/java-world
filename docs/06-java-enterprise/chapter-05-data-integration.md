@@ -464,9 +464,3 @@ public class UserService {
 | 跨方法复用缓存 | 将多次查询放在同一个 `@Transactional` 方法中 |
 | 高并发场景 | 慎用一级缓存，考虑 Redis 等分布式缓存 |
 
----
-
-> **纵横联系**
->
-> - **纵向**：本章深入了 Spring 与 MyBatis 的整合细节。下一章将把视角拉高到微服务架构，看数据访问层在分布式环境下如何工作。
-> - **横向**：对比第五卷《数据访问》中的事务隔离级别，Spring 的 `@Transactional` 只是声明了事务边界，底层的隔离级别仍然由数据库决定。对比第一卷《Java 语言》中的动态代理机制，MyBatis 的 MapperProxy 和 Spring 的 SqlSessionInterceptor 都是 JDK 动态代理的经典应用。
