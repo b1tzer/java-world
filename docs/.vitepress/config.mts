@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { openInEditor } from 'vitepress-plugin-open-in-editor'
 import fs from 'fs'
 import path from 'path'
+import svgLoader from 'vite-svg-loader'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const docsDir = resolve(__dirname, '..')
@@ -220,6 +221,7 @@ export default withMermaid(
       },
     },
     plugins: [
+      svgLoader(),
       editorIntegration.vite(),
       {
         name: 'svg-save-api',
