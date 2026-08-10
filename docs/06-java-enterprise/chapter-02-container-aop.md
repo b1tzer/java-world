@@ -1,6 +1,6 @@
 # 第2章 Spring 容器机制与 AOP
 
-> **核心问题：** Spring 容器从启动到就绪经历了哪些步骤？BeanDefinition 扮演什么角色？循环依赖如何通过三级缓存解决？AOP 的本质是什么，它的边界在哪里？
+> 你以为 Spring 只是帮你 `new` 对象？从 `new AnnotationConfigApplicationContext()` 到容器就绪，背后有 12 个步骤：扫描、解析、实例化、注入、初始化、后处理……BeanDefinition 是什么？循环依赖为什么靠三级缓存能解？AOP 代理在哪个环节织入？本章逐层拆解 Spring 容器的内部运作。
 
 ---
 

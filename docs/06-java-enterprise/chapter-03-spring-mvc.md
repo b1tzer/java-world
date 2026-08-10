@@ -1,6 +1,6 @@
 # 第3章 Spring MVC
 
-> **核心问题：** 一个 HTTP 请求从浏览器发出后，经历了怎样的旅程才变成 Java 方法的参数？DispatcherServlet 如何调度整个请求处理流程？参数解析和异常处理的机制是什么？
+> 你在 Controller 写了个 `@GetMapping("/user")`，浏览器就拿到了 JSON。中间发生了什么？从 Tomcat 接收 TCP 连接，到 Filter 链、DispatcherServlet、HandlerMapping、参数解析、返回值处理、异常兜底——20 多个组件参与了这场接力。本章追踪一个请求从浏览器到 Java 方法再回到浏览器的完整旅程。
 
 ---
 
