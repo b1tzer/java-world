@@ -206,7 +206,7 @@ export default withMermaid(
       // Image Editor: 拦截 .editor.json 图片语法，自动升级为编辑器组件
       imageEditorMarkdownIt(md, {
         patterns: [/\.editor\.json$/, /\.fabric\.json$/],
-        defaultMode: 'view',
+        defaultMode: 'edit',
       })
     },
   },
