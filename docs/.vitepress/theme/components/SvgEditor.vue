@@ -482,31 +482,43 @@ function toggleTheme() {
 async function save() {
   if (!canvasMgr.canvas) return
   saving.value = true
-  const fc = canvasMgr.canvas
-  let svgText = fc.toSVG()
 
-  svgText = cleanFabricSvg(svgText)
-  svgText = rgbToHex(svgText)
-  svgText = removeCanvasBg(svgText)
-  svgText = restoreViewBox(svgText, originalViewBox.value)
-  svgText = hexToCssVars(svgText)
+  // 保存时必须使用亮色模式导出，确保 hex→CSS变量 映射精确。
+  // 暗色模式下 #B0B0B0 同时对应 --diagram-text-2 和 --diagram-arrow，
+  // ALL_HEX_TO_VAR 是 last-write-wins，会导致颜色映射错误。
+  const wasDark = themeMode.value === 'dark'
+  if (wasDark) toggleTheme() // 临时切回亮色
 
   try {
+    const fc = canvasMgr.canvas
+    let svgText = fc.toSVG()
+
+    svgText = cleanFabricSvg(svgText)
+    svgText = rgbToHex(svgText)
+    svgText = removeCanvasBg(svgText)
+    svgText = restoreViewBox(svgText, originalViewBox.value)
+    svgText = hexToCssVars(svgText)
+
     const resp = await fetch('/__svg-save__', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: props.src, content: svgText }),
     })
+
     if (resp.ok) {
       emit('saved')
       emit('close')
     } else {
       alert('保存失败: ' + await resp.text())
+      // 保存失败时恢复暗色预览（由 finally 统一处理）
     }
   } catch (e) {
     alert('保存失败: ' + e.message)
+  } finally {
+    // 恢复用户之前的暗色预览状态
+    if (wasDark) toggleTheme()
+    saving.value = false
   }
-  saving.value = false
 }
 
 onMounted(loadAndInit)
