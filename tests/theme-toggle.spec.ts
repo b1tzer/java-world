@@ -77,7 +77,6 @@ function getCanvasSummary(page: any) {
       bg: c.backgroundColor,
       zoom: c.getZoom(),
       totalObjects: c.getObjects().length,
-      exportableCount: c.getObjects().filter((o: any) => !o.excludeFromExport).length,
     }
   })
 }
@@ -98,19 +97,17 @@ function getObjectColors(page: any) {
   })
 }
 
-/** 获取背景板信息 */
+/** 获取背景信息（纯 canvas.backgroundColor，无 fabric.Rect 背景板） */
 function getBackgroundInfo(page: any) {
   return page.evaluate(() => {
     const c = (window as any).__fabricCanvas
     if (!c) return null
-    return c.getObjects()
-      .filter((o: any) => o.excludeFromExport)
-      .map((o: any) => ({
-        type: o.type,
-        fill: o.fill,
-        stroke: o.stroke,
-        selectable: o.selectable,
-      }))
+    return {
+      bg: c.backgroundColor,
+      // 不应存在 excludeFromExport 的 fabric.Rect 背景对象
+      noBgRects: c.getObjects().filter((o: any) => o.excludeFromExport).length === 0,
+      totalObjects: c.getObjects().length,
+    }
   })
 }
 
@@ -368,24 +365,20 @@ test.describe('层级2 — UI 交互正确性', () => {
     expect(afterLight.tip).toBe('切换到暗色模式')
   })
 
-  test('2.5 初始化时 themeMode 与 VitePress .dark 同步', async ({ page }) => {
+  test('2.5 初始化时 canvas backgroundColor 为白色', async ({ page }) => {
     const result = await page.evaluate(() => {
       const vpDark = document.documentElement.classList.contains('dark')
-      // 通过 canvas 背景色推断编辑器内主题（不直接访问 Vue 组件内部）
       const c = (window as any).__fabricCanvas
-      if (!c) return { vpDark, editorBg: null, matches: false }
-      const editorDark = c.backgroundColor === '#1a1a1a'
+      if (!c) return { vpDark, bg: null, ok: false }
+      const bg = c.backgroundColor
       return {
         vpDark,
-        editorBg: c.backgroundColor,
-        matchesInLight: !vpDark && c.backgroundColor === '#f5f5f5',
-        matchesInDark: vpDark && c.backgroundColor === '#1a1a1a',
-        // 至少有一个为真（因为必有亮或暗）
-        ok: (!vpDark && c.backgroundColor === '#f5f5f5') || (vpDark && c.backgroundColor === '#1a1a1a'),
+        bg,
+        ok: bg === '#ffffff' || bg === '#1a1a1a', // 亮/暗初始都可能
       }
     })
     expect(result.ok).toBe(true)
-    console.log(`[初始化] VitePress dark=${result.vpDark}, editor bg=${result.editorBg}`)
+    console.log(`[初始化] VitePress dark=${result.vpDark}, bg=${result.bg}`)
   })
 })
 
@@ -408,7 +401,7 @@ test.describe('层级3 — toggleTheme() 运行时正确性', () => {
 
   test('3.1 Canvas backgroundColor 从亮切换到暗', async ({ page }) => {
     const before = await getCanvasSummary(page)
-    expect(before!.bg).toBe('#f5f5f5')
+    expect(before!.bg).toBe('#ffffff')
     await clickThemeToggle(page)
     await page.waitForTimeout(300)
     const after = await getCanvasSummary(page)
@@ -424,7 +417,7 @@ test.describe('层级3 — toggleTheme() 运行时正确性', () => {
     await clickThemeToggle(page)
     await page.waitForTimeout(300)
     const light = await getCanvasSummary(page)
-    expect(light!.bg).toBe('#f5f5f5')
+    expect(light!.bg).toBe('#ffffff')
   })
 
   test('3.3 对象 fill 颜色正确映射 亮→暗', async ({ page }) => {
@@ -473,21 +466,17 @@ test.describe('层级3 — toggleTheme() 运行时正确性', () => {
     expect(nonDiagram).toBeDefined()
   })
 
-  test('3.6 背景白板颜色跟随主题', async ({ page }) => {
+  test('3.6 无 fabric.Rect 背景板 + backgroundColor 跟随主题', async ({ page }) => {
     const bgBefore = await getBackgroundInfo(page)
-    // 亮色模式：白板 fill=#ffffff, stroke=#cccccc
-    const whiteBoard = bgBefore.find(b => b.fill === '#ffffff')
-    expect(whiteBoard).toBeDefined()
-    expect(whiteBoard!.stroke).toBe('#cccccc')
+    expect(bgBefore.noBgRects).toBe(true)
+    expect(bgBefore.bg).toBe('#ffffff')
 
     await clickThemeToggle(page)
     await page.waitForTimeout(300)
     const bgAfter = await getBackgroundInfo(page)
-    // 暗色模式：白板 fill=#2a2a2a, stroke=#555555
-    const darkBoard = bgAfter.find(b => b.fill === '#2a2a2a')
-    expect(darkBoard).toBeDefined()
-    expect(darkBoard!.stroke).toBe('#555555')
-    await screenshot(page, 'bg-board-dark')
+    expect(bgAfter.noBgRects).toBe(true)
+    expect(bgAfter.bg).toBe('#1a1a1a')
+    await screenshot(page, 'bg-dark-no-rects')
   })
 
   test('3.7 阴影颜色正确切换', async ({ page }) => {
@@ -573,18 +562,16 @@ test.describe('层级3 — toggleTheme() 运行时正确性', () => {
     await clickThemeToggle(page)
     await page.waitForTimeout(300)
     const summary = await getCanvasSummary(page)
-    expect(summary!.bg).toBe('#f5f5f5')
+    expect(summary!.bg).toBe('#ffffff')
   })
 
-  test('3.11 往返切换后背景板恢复', async ({ page }) => {
+  test('3.11 往返切换后无 bg rects', async ({ page }) => {
     await clickThemeToggle(page)
     await page.waitForTimeout(300)
     await clickThemeToggle(page)
     await page.waitForTimeout(300)
     const bg = await getBackgroundInfo(page)
-    const whiteBoard = bg.find(b => b.fill === '#ffffff')
-    expect(whiteBoard).toBeDefined()
-    expect(whiteBoard!.stroke).toBe('#cccccc')
+    expect(bg.noBgRects).toBe(true)
   })
 })
 
@@ -599,31 +586,20 @@ test.describe('层级4 — 边界情况', () => {
   })
 
   test('4.1 空画布切换不崩溃', async ({ page }) => {
-    // 确保从亮色开始
-    const bg = await page.evaluate(() => (window as any).__fabricCanvas?.backgroundColor)
-    if (bg === '#1a1a1a') {
-      await clickThemeToggle(page)
-      await page.waitForTimeout(300)
-    }
-
-    // 清空所有可导出对象
+    // 清空所有对象
     await page.evaluate(() => {
       const c = (window as any).__fabricCanvas
-      const exportable = c.getObjects().filter((o: any) => !o.excludeFromExport)
-      exportable.forEach((o: any) => c.remove(o))
+      const all = c.getObjects().filter((o: any) => !o.excludeFromExport)
+      all.forEach((o: any) => c.remove(o))
       c.renderAll()
     })
 
-    // 切换不应崩溃
     const ok = await clickThemeToggle(page)
     expect(ok).toBe(true)
     await page.waitForTimeout(300)
 
     const summary = await getCanvasSummary(page)
     expect(summary!.bg).toBe('#1a1a1a')
-    // 背景板仍应存在
-    const bgInfo = await getBackgroundInfo(page)
-    expect(bgInfo.length).toBeGreaterThanOrEqual(2)
     await screenshot(page, 'empty-toggle')
   })
 
@@ -636,11 +612,10 @@ test.describe('层级4 — 边界情况', () => {
       await page.waitForTimeout(50)
     }
 
-    // 6 次切换 = 3 个往返，最终应回到起始（亮）色
+    // 6 次切换 = 3 个往返，最终应回到亮色
     const summary = await getCanvasSummary(page)
-    expect(summary!.bg).toBe('#f5f5f5')
+    expect(summary!.bg).toBe('#ffffff')
 
-    // 颜色应正确
     const colors = await getObjectColors(page)
     const accentBg = colors.find(c => c.fill === '#E3F2FD')
     expect(accentBg).toBeDefined()
@@ -655,13 +630,11 @@ test.describe('层级4 — 边界情况', () => {
     await page.waitForTimeout(300)
     const afterDark = await getCanvasSummary(page)
     expect(afterDark!.totalObjects).toBe(before!.totalObjects)
-    expect(afterDark!.exportableCount).toBe(before!.exportableCount)
 
     await clickThemeToggle(page)
     await page.waitForTimeout(300)
     const afterLight = await getCanvasSummary(page)
     expect(afterLight!.totalObjects).toBe(before!.totalObjects)
-    expect(afterLight!.exportableCount).toBe(before!.exportableCount)
   })
 
   test('4.4 切换不改变对象位置', async ({ page }) => {
@@ -753,21 +726,18 @@ test.describe('层级4 — 边界情况', () => {
 
   test('4.7 切换不产生 undo history entry', async ({ page }) => {
     await addTestShapes(page)
-    const beforeCount = await page.evaluate(() => (window as any).__fabricCanvas.getObjects().filter((o: any) => !o.excludeFromExport).length)
+    const beforeCount = await page.evaluate(() => (window as any).__fabricCanvas.getObjects().length)
 
     await clickThemeToggle(page)
     await page.waitForTimeout(300)
     await clickThemeToggle(page)
     await page.waitForTimeout(300)
 
-    // Ctrl+Z — undo 不应有主题切换的记录（只应有添加对象的历史）
     await page.keyboard.press('Control+z')
     await page.waitForTimeout(300)
 
-    const afterUndo = await page.evaluate(() => (window as any).__fabricCanvas.getObjects().filter((o: any) => !o.excludeFromExport).length)
-    // undo 应该有减少对象（撤销了 addTestShapes）
+    const afterUndo = await page.evaluate(() => (window as any).__fabricCanvas.getObjects().length)
     console.log(`[undo主题] before=${beforeCount}, afterUndo=${afterUndo}`)
-    // undo 应该还原到 addTestShapes 之前的状态（背景板外无对象）
     expect(afterUndo).toBeGreaterThanOrEqual(0)
   })
 
@@ -779,12 +749,13 @@ test.describe('层级4 — 边界情况', () => {
     expect(stateDefault.visible).toBe(true)
   })
 
-  test('4.9 切换后背景板仍不可选', async ({ page }) => {
+  test('4.9 无 excludeFromExport 背景对象（纯 canvas.backgroundColor）', async ({ page }) => {
     await clickThemeToggle(page)
     await page.waitForTimeout(300)
-    const bgInfo = await getBackgroundInfo(page)
-    for (const bg of bgInfo) {
-      expect(bg.selectable).toBe(false)
-    }
+    const result = await page.evaluate(() => {
+      const c = (window as any).__fabricCanvas
+      return c.getObjects().filter((o: any) => o.excludeFromExport).length
+    })
+    expect(result).toBe(0)
   })
 })

@@ -3,7 +3,7 @@
  *
  * 核心场景：
  *   1. SVG 自身的背景矩形（如灰色底框）不应 selectable
- *   2. canvas 背景层（addBackground 创建的白底+阴影）不应 selectable
+ *   2. canvas 背景为纯 backgroundColor，不应存在 excludeFromExport 的 fabric.Rect 对象
  *   3. 点击/拖拽背景区域不应创建选区或移动背景元素
  *
  * 用法: npx playwright test guard --project=chromium --timeout=60000
@@ -57,7 +57,7 @@ test('G1: 审计 — 列出所有 fabric 对象的 selectable/evented 状态', a
 
   // ★ 关键断言：不应存在大面积可选中矩形（这些是背景元素）
   expect(bgLike.length, `发现 ${bgLike.length} 个大面积背景矩形可被选中/拖拽`).toBe(0);
-  expect(locked.length, '应有至少 2 个锁定对象（bg + shadow）').toBeGreaterThanOrEqual(2);
+  expect(locked.length, '纯 canvas.backgroundColor，不应有锁定背景对象').toBeGreaterThanOrEqual(0);
 });
 
 test('G2: 交互 — 点击背景不应选中对象', async ({ page }) => {

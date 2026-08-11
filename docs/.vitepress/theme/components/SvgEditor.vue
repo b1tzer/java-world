@@ -9,7 +9,7 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { fabric } from 'fabric'
 import { ICONS, LIGHT_TO_DARK, DARK_TO_LIGHT } from './editor/constants.js'
 import { preprocessSvg } from './editor/preprocessor.js'
-import { cleanFabricSvg, rgbToHex, hexToCssVars, restoreViewBox, removeCanvasBg } from './editor/postprocessor.js'
+import { cleanFabricSvg, rgbToHex, hexToCssVars, restoreViewBox } from './editor/postprocessor.js'
 import { CanvasManager } from './editor/CanvasManager.js'
 import { HistoryManager } from './editor/HistoryManager.js'
 import { mergeArrows } from './editor/plugins/arrow-merger.js'
@@ -81,9 +81,7 @@ canvasMgr.onZoomChange((z) => { zoomLevel.value = z })
 canvasMgr.onGuideLinesChange((lines) => { guideLines.value = lines })
 canvasMgr.onSelectionChange(() => { updateSelectionInfo() })
 canvasMgr.onModified(() => {
-  historyMgr.save(canvasMgr.canvas,
-    () => canvasMgr.removeBg(),
-    () => canvasMgr.reAddBg())
+  historyMgr.save(canvasMgr.canvas, () => {}, () => {})
 })
 
 // ── 选择状态更新 ──
@@ -141,13 +139,11 @@ function withSave(fn) {
   const fc = canvasMgr.canvas
   if (!fc) return
   fn(fc)
-  historyMgr.save(fc,
-    () => canvasMgr.removeBg(),
-    () => canvasMgr.reAddBg())
+  historyMgr.save(fc, () => {}, () => {})
 }
 
-function undo() { historyMgr.undo(canvasMgr.canvas, () => canvasMgr.reAddBg()) }
-function redo() { historyMgr.redo(canvasMgr.canvas, () => canvasMgr.reAddBg()) }
+function undo() { historyMgr.undo(canvasMgr.canvas, () => {}) }
+function redo() { historyMgr.redo(canvasMgr.canvas, () => {}) }
 
 function copyObj() {
   const a = canvasMgr.canvas?.getActiveObject()
@@ -313,12 +309,8 @@ async function loadAndInit() {
         if (o._objects) o._objects.forEach(c => c.set({ selectable: true, evented: true }))
       })
 
-      canvasMgr.addBackground(svgWidth.value, svgHeight.value)
-      fc.renderAll()
       canvasMgr.zoomFit()
-      historyMgr.save(fc,
-        () => canvasMgr.removeBg(),
-        () => canvasMgr.reAddBg())
+      historyMgr.save(fc, () => {}, () => {})
     } catch (e) {
       console.error('[SvgEditor] SVG 加载失败:', e)
     } finally {
@@ -462,18 +454,9 @@ function toggleTheme() {
     processObject(obj)
   })
 
-  // 同步更新画布样式
+  // 同步更新画布背景色
   const isDark = to === 'dark'
-  fc.set('backgroundColor', isDark ? '#1a1a1a' : '#f5f5f5')
-  // 更新背景白板的颜色
-  const bgObjects = fc.getObjects().filter(o => o.excludeFromExport)
-  bgObjects.forEach(o => {
-    if (o.type === 'rect' && o.width > 0 && o.height > 0) {
-      // 白板背景：暗色模式下也相应调整
-      o.set('fill', isDark ? '#2a2a2a' : '#ffffff')
-      o.set('stroke', isDark ? '#555555' : '#cccccc')
-    }
-  })
+  fc.set('backgroundColor', isDark ? '#1a1a1a' : '#ffffff')
 
   fc.requestRenderAll()
 }
@@ -495,7 +478,6 @@ async function save() {
 
     svgText = cleanFabricSvg(svgText)
     svgText = rgbToHex(svgText)
-    svgText = removeCanvasBg(svgText)
     svgText = restoreViewBox(svgText, originalViewBox.value)
     svgText = hexToCssVars(svgText)
 
@@ -855,19 +837,10 @@ onMounted(() => { nextTick(() => { overlayRef.value?.focus() }) })
 /* ── 画布 ────────────────────────────────────── */
 .editor-canvas {
   flex: 1; position: relative; overflow: hidden;
-  /* 浅灰工作区 — 对标 vue-fabric-editor 的 workspace */
-  background-color: #d8d8d8;
-  /* 圆点网格：深色点，20px 间距 */
-  background-image: radial-gradient(circle, #999 1px, transparent 1px);
-  background-size: 20px 20px;
 }
 .editor-canvas canvas {
   position: absolute; top: 0; left: 0;
   width: 100% !important; height: 100% !important;
-  /* 白色画布 + 阴影 — 模拟纸张浮在桌面上 */
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
-  border-radius: 2px;
 }
 .loading {
   position: absolute; inset: 0;

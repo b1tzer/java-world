@@ -22,7 +22,6 @@ export class CanvasManager {
     this.canvas = null
     this._zoomLevel = 100
     this._guideLines = []
-    this._bgRects = []
     this._spacePressed = false
     this._isPanning = false
     this._lastPanPoint = { x: 0, y: 0 }
@@ -42,7 +41,7 @@ export class CanvasManager {
     const fc = new window.fabric.Canvas(canvasEl, {
       width: containerW,
       height: containerH,
-      backgroundColor: '#f5f5f5',
+      backgroundColor: '#ffffff',
       selection: true,
       preserveObjectStacking: true,
       perPixelTargetFind: false,
@@ -217,7 +216,7 @@ export class CanvasManager {
    */
   _setupInteractionEvents(fc) {
     fc.on('object:added', (e) => {
-      if (e.target && !e.target.excludeFromExport) {
+      if (e.target) {
         e.target.set({ selectable: true, evented: true })
         if (e.target._objects) e.target._objects.forEach(o => o.set({ selectable: true, evented: true }))
       }
@@ -313,35 +312,10 @@ export class CanvasManager {
 
   getZoomLevel() { return this._zoomLevel }
 
-  // ── 背景白板管理 ──
-  addBackground(svgWidth, svgHeight) {
-    if (svgWidth <= 0 || svgHeight <= 0) return
-    const shadow = new window.fabric.Rect({
-      left: -1, top: -1, width: svgWidth + 2, height: svgHeight + 2,
-      fill: 'transparent', stroke: 'rgba(0,0,0,0.15)', strokeWidth: 3,
-      selectable: false, evented: false, excludeFromExport: true,
-    })
-    const bg = new window.fabric.Rect({
-      left: 0, top: 0, width: svgWidth, height: svgHeight,
-      fill: '#ffffff', stroke: '#cccccc', strokeWidth: 1,
-      selectable: false, evented: false, excludeFromExport: true,
-    })
-    this._bgRects = [shadow, bg]
-    this.canvas.add(shadow)
-    this.canvas.add(bg)
-    shadow.sendToBack()
-    bg.sendToBack()
-  }
-
-  removeBg() { this._bgRects.forEach(r => this.canvas.remove(r)) }
-
-  reAddBg() {
-    if (!this._bgRects.length) return
-    const fc = this.canvas
-    fc.getObjects().filter(o => o.excludeFromExport).forEach(o => fc.remove(o))
-    this._bgRects.forEach(r => { fc.add(r); r.sendToBack() })
-    fc.requestRenderAll()
-  }
+  // ── 背景（canvas.backgroundColor 直接控制，无需 fabric.Rect 对象）──
+  addBackground() {}
+  removeBg() {}
+  reAddBg() {}
 
   // ── 回调注册 ──
   onZoomChange(fn) { this._onZoomChange = fn }

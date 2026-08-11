@@ -67,74 +67,56 @@ test.describe('SvgEditor 边界与功能区外测试', () => {
   })
 
   // ════════════════════════════════════════════════════════════════
-  // 一、背景白板
+  // 一、背景（纯 canvas.backgroundColor，无 fabric.Rect 背景板）
   // ════════════════════════════════════════════════════════════════
 
-  test('1.1 背景白板存在且不可选', async ({ page }) => {
+  test('1.1 canvas.backgroundColor 为白色 + 无 excludeFromExport 对象', async ({ page }) => {
     const result = await page.evaluate(() => {
       const c = (window as any).__fabricCanvas
       if (!c) return null
-      const bgObjects = c.getObjects().filter((o: any) => o.excludeFromExport)
       return {
-        bgCount: bgObjects.length,
-        bgDetails: bgObjects.map((o: any) => ({
-          type: o.type, selectable: o.selectable, evented: o.evented, fill: o.fill,
-        })),
+        bg: c.backgroundColor,
+        noBgRects: c.getObjects().filter((o: any) => o.excludeFromExport).length === 0,
+        totalObjects: c.getObjects().length,
       }
     })
-    console.log(`[背景] ${result!.bgCount} 个背景对象`, JSON.stringify(result!.bgDetails))
-    expect(result!.bgCount).toBe(2)
-    for (const bg of result!.bgDetails) {
-      expect(bg.selectable).toBe(false)
-      expect(bg.evented).toBe(false)
-    }
-    await screenshot(page, 'bg-exists')
+    console.log(`[背景] bg=${result!.bg}, noBgRects=${result!.noBgRects}`)
+    expect(result!.bg).toBe('#ffffff')
+    expect(result!.noBgRects).toBe(true)
+    await screenshot(page, 'bg-canvas-only')
   })
 
-  test('1.2 undo 后背景仍然存在', async ({ page }) => {
+  test('1.2 undo 后 backgroundColor 仍是白色', async ({ page }) => {
     await addRectWithSave(page)
-    const beforeBg = await page.evaluate(() => {
-      const c = (window as any).__fabricCanvas
-      return c.getObjects().filter((o: any) => o.excludeFromExport).length
-    })
     await page.keyboard.press('Control+z')
     await page.waitForTimeout(500)
-    const afterBg = await page.evaluate(() => {
-      const c = (window as any).__fabricCanvas
-      return c.getObjects().filter((o: any) => o.excludeFromExport).length
-    })
-    console.log(`[undo背景] undo前: ${beforeBg}, undo后: ${afterBg}`)
-    expect(afterBg).toBe(beforeBg)
+    const bg = await page.evaluate(() => (window as any).__fabricCanvas?.backgroundColor)
+    expect(bg).toBe('#ffffff')
     await screenshot(page, 'bg-after-undo')
   })
 
-  test('1.3 undo 后背景不可拖动', async ({ page }) => {
+  test('1.3 undo 后无 excludeFromExport 对象', async ({ page }) => {
     await addRectWithSave(page)
     await page.keyboard.press('Control+z')
     await page.waitForTimeout(500)
-    const result = await page.evaluate(() => {
+    const count = await page.evaluate(() => {
       const c = (window as any).__fabricCanvas
-      return c.getObjects().filter((o: any) => o.excludeFromExport).map((o: any) => ({
-        selectable: o.selectable, evented: o.evented,
-      }))
+      return c.getObjects().filter((o: any) => o.excludeFromExport).length
     })
-    for (const bg of result) {
-      expect(bg.selectable).toBe(false)
-      expect(bg.evented).toBe(false)
-    }
-    await screenshot(page, 'bg-not-draggable')
+    expect(count).toBe(0)
+    await screenshot(page, 'no-excluded-after-undo')
   })
 
-  test('1.4 导出 SVG 不包含背景', async ({ page }) => {
+  test('1.4 导出 SVG 无 excludeFromExport 对象（全部可导出）', async ({ page }) => {
     const result = await page.evaluate(() => {
       const c = (window as any).__fabricCanvas
       if (!c) return null
-      const exportable = c.getObjects().filter((o: any) => !o.excludeFromExport)
       const all = c.getObjects().length
-      return { all, exportable: exportable.length, diff: all - exportable.length }
+      const excluded = c.getObjects().filter((o: any) => o.excludeFromExport).length
+      return { all, excluded }
     })
-    console.log(`[导出] 总对象: ${result!.all}, 可导出: ${result!.exportable}, 背景: ${result!.diff}`)
-    expect(result!.diff).toBe(2)
+    console.log(`[导出] 总对象: ${result!.all}, excluded: ${result!.excluded}`)
+    expect(result!.excluded).toBe(0)
   })
 
   // ════════════════════════════════════════════════════════════════
