@@ -81,6 +81,8 @@ export default withMermaid(
           { text: '垃圾回收', link: '/02-jvm-runtime/chapter-04-gc' },
           { text: 'JIT 编译', link: '/02-jvm-runtime/chapter-05-jit' },
           { text: '线上排查与诊断', link: '/02-jvm-runtime/chapter-06-diagnostics' },
+          { text: '案例集（一）：CPU 飙升、内存泄漏与 GC 调优', link: '/02-jvm-runtime/chapter-06-diagnostics-cases-part1' },
+          { text: '案例集（二）：低内存低 CPU GC 疑难杂症与堆外内存', link: '/02-jvm-runtime/chapter-06-diagnostics-cases-part2' },
         ]
       },
       {
@@ -100,6 +102,7 @@ export default withMermaid(
           { text: '异步编程', link: '/03-java-concurrency/chapter-11-async-model' },
           { text: '虚拟线程与结构化并发', link: '/03-java-concurrency/chapter-12-virtual-thread' },
           { text: '诊断与优化', link: '/03-java-concurrency/chapter-13-diagnostics' },
+          { text: '案例集：死锁、线程池、虚拟线程与综合并发诊断', link: '/03-java-concurrency/chapter-13-diagnostics-cases' },
         ]
       },
       {

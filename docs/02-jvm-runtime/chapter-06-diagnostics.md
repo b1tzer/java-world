@@ -1,6 +1,6 @@
 # 第六章 线上排查与诊断
 
-> 本章将前五章的理论落地为实战能力。覆盖 OOM、CPU 100%、Full GC 等常见问题的诊断流程，以及 MAT、Thread Dump、Arthas 等工具的使用。
+> 凌晨三点 CPU 100% 告警。`top` 看 pid → `jstack` dump 线程栈 → 几百个 `RUNNABLE` 线程栈顶全是 `HashMap.get()`——你以为找到了根因。但再看 `vmstat`，context switch 每秒才 200——不是业务线程在烧 CPU，是所有线程在 `while(true)` 自旋等锁。排查方向从「慢查询」180 度转向「锁竞争」——只差一个 `vmstat`。线上排障最怕的不是查不到，是查对了方向但看了错误的数据。
 
 ---
 
@@ -410,6 +410,28 @@ jad com.example.ReportGenerator
 | dump 路径 | `-XX:HeapDumpPath=/path/` | dump 文件存储位置 |
 | Metaspace | `-XX:MaxMetaspaceSize=256m` | 限制 Metaspace 大小 |
 | 压缩指针 | `-XX:+UseCompressedOops` | 64 位 JVM 默认开启 |
+
+---
+
+## 6.9 实战案例集
+
+以上内容是诊断工具和方法的速查手册。以下案例集从生产环境真实事故中精挑细选，每个案例都包含完整的事故背景、排查链路、根因定位和修复验证：
+
+- **[案例集（一）：CPU 飙升与内存泄漏实战](./chapter-06-diagnostics-cases-part1)**
+  - 正则灾难性回溯（ReDoS）—— 一行正则烧了银行的支付网关
+  - 本地缓存无上限 —— 把整个订单表装进内存
+  - CGLIB 动态代理未复用 —— 爆掉 256MB Metaspace
+
+- **[案例集（二）：GC 调优与综合诊断实战](./chapter-06-diagnostics-cases-part2)**
+  - 背靠背 Full GC —— 双十一订单服务的蜕变
+  - 连接池耗尽 —— 200 个线程全卡在 getConnection()
+  - Arthas + JFR 综合诊断 —— 接口从 50ms 变成 3000ms 的全链路追踪
+
+- **[案例集（三）：低内存低 CPU 下的 GC 疑难杂症](./chapter-06-diagnostics-cases-part3)**
+  - 支付回调的 Young GC 风暴 —— 日志拼接每秒造 300MB 垃圾
+  - 索引热更新的 Survivor 复制风暴 —— 500MB 对象在新生代来回搬家
+  - SafePoint 同步延迟 —— GC 只花了 0.14 秒，线程却停了 2.26 秒
+  - Log4j2 + PretenureSizeThreshold 组合技 —— 2MB 的"日志炸弹"直冲老年代
 
 ---
 

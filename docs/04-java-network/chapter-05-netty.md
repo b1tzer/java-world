@@ -1,6 +1,6 @@
 # 第5章 Netty：Java 高性能网络框架
 
-> 你的 Dubbo Provider 日志刷出一条让你心惊的 WARN：`Thread pool is EXHAUSTED! Pool Size: 200 (active: 200, core: 200, max: 200)`。200 个 `DubboServerHandler-20880-thread` 全部 active，45678 个任务在排队。溯源代码发现一个 `sleep(6000)` 的测试残留——这一个慢调用，把整个线程池堵了 6 秒。你能做的不是改那个 `sleep`（你已经改完了），而是理解 Dubbo 背后的 Netty 线程模型为什么 200 个线程全被拖死了、dispatcher 和 threadpool 的区别是什么、以及为什么只调大 `threads` 有时候没用。
+> 面试官问 Netty 的线程模型——你说得出 Boss/Worker，但说不清为什么一个 EventLoop 绑一个 Channel 就不用加锁、dispatcher 决定「在哪跑」和 threadpool 决定「用多大池子接」之间的区别、以及 `§5.3` 那个 `Direct buffer memory` OOM 为什么堆还有空间照样炸。本章拆穿"Netty 就是 NIO 封装"这种半对半错的理解——EventLoop 不是线程池、ByteBuf 不是 Buffer、Pipeline 不是责任链那么简单。
 
 > **📖 阅读建议**：§5.1 是为什么要有 Netty（对比第4章 NIO），§5.2 是核心线程模型（你线上排障最需要的部分），§5.3 ByteBuf（`Direct buffer memory` OOM 根因），§5.4 编解码（粘包/拆包解决方案），§5.5 Reactor 模式全景。删除API罗列式讲解，保留原理和排查路径。
 
