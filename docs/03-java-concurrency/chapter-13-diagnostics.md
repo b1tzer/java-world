@@ -639,6 +639,22 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
 ---
 
+## 13.9 实战案例集
+
+以上内容是并发诊断方法、工具和优化策略的速查手册。以下案例集从生产环境真实事故中精挑细选，每个案例都包含完整的事故背景、排查链路、根因定位和修复验证：
+
+- **[案例集（一）：死锁、线程池与并发集合实战](./chapter-13-diagnostics-cases-part1)**
+  - 双十一的死锁 —— 订单与库存的锁序之战
+  - 618 的雪崩 —— CallerRunsPolicy 把 Tomcat 线程全拖下水
+  - ConcurrentHashMap 去重失效 —— 可变 key 的 hashCode 陷阱
+
+- **[案例集（二）：虚拟线程与综合并发诊断实战](./chapter-13-diagnostics-cases-part2)**
+  - 虚拟线程 pinning —— 同步锁让 5000 QPS 跌到 800
+  - CompletableFuture + DiscardPolicy —— 静默丢弃任务导致永久阻塞
+  - 线程池 core = max + 无界队列 —— maxPoolSize 永远不触发
+
+---
+
 > **纵横联系**
 >
 > - **向前依赖**：Thread Dump 的通用语法、`jstack` / `jcmd` / VisualVM / JFR / JMC 的操作细节，全部在第二卷第 6 章"线上排查与诊断"中展开——本章只讲并发场景下的读法与并发特化事件。§13.2 的死锁检测建立在第 2 章的线程状态机之上；§13.5 的六种优化策略分别对应到第 6-11 章的具体工具。

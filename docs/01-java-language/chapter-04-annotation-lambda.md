@@ -1,6 +1,6 @@
 # 第四章 注解与 Lambda
 
-> 本章完成 Java 语言层的最后两块拼图：注解是 Java 的元数据系统，让代码可以携带额外信息供编译器和框架使用；Lambda 是 Java 的行为抽象机制，让函数成为一等公民。两者分别代表了 Java 在"元数据驱动"和"函数式编程"两个方向的演进。
+> `@Override` 报错的那次，你找到了拼写错误的父类方法名——`toString()` 写成了 `toSting()`。编译期发现了一个运行期要排查半天的问题。`@Override` 背后是 APT（Annotation Processing Tool）——`@Transactional` 生成代理类靠的是同一套机制。Java 的注解不是注释——是编译期代码生成器。而 Lambda 走的是另一条路：`invokedynamic` 指令让 JVM 在运行时自己决定怎么创建那个函数对象——这两套机制，构成了 Java 在"元数据驱动"和"函数式编程"两个方向上的演进。
 
 ---
 

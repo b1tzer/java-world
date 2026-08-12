@@ -1,6 +1,6 @@
 # 第一章 字节码与类加载
 
-> 本章回答两个核心问题：Java 源码编译后变成了什么？这些编译产物如何进入 JVM？将 Class 文件结构和类加载机制合并为一章，建立"源码 → 字节码 → JVM"的完整认知。
+> `ServiceLoader.load(Driver.class)` 找 JDBC 驱动——这行代码背后藏了 JVM 最经典的设计冲突。驱动在 classpath 里，但 `ServiceLoader` 用的是 `Thread Context ClassLoader`，而双亲委派要求先问父加载器——结果：核心库 `rt.jar` 里的代码找不到应用路径下的 jar。SPI 打破了双亲委派，不是设计缺陷，是权衡。本章从「为什么需要字节码」到「双亲委派何时该打破」，建立"源码 → 字节码 → JVM"的完整认知。
 
 ---
 
